@@ -15,7 +15,8 @@ export function openSse(req, res) {
   const onClose = () => {
     closed = true;
   };
-  req.on('close', onClose);
+  // The response closes when the client disconnects or we end the stream.
+  res.on('close', onClose);
   return {
     send(event, data) {
       if (closed) return;

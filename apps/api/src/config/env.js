@@ -34,6 +34,10 @@ const ApiEnvBase = ServerEnvSchema.extend({
   /** A4 tutor */
   TUTOR_RATE_LIMIT_PER_HOUR: z.coerce.number().int().min(1).default(20),
   TUTOR_MAX_QUESTION_CHARS: z.coerce.number().int().min(20).max(2000).default(500),
+  /** Cosine similarity below which a question counts as off-topic (if it also shares no words). Tune per embedding model. */
+  TUTOR_MIN_RELEVANCE: z.coerce.number().min(0).max(1).default(0.35),
+  /** Passages at or above this similarity count as grounding for an answer. */
+  TUTOR_MIN_PASSAGE_SCORE: z.coerce.number().min(0).max(1).default(0.3),
 });
 
 const noMockInProduction = [

@@ -167,3 +167,16 @@ Design choices for 7–8B models:
 Prompts: `prompts/syllabus.{topics,prereqs,crossLinks}.v1`, `prompts/topic.{easy,tenMark,flashcards,mcqs,curiosity,realWorld}.v1`, `prompts/mcq.selfCheck.v1`, `prompts/pyq.tag.v1`, each with a JSON schema. The matching zod schemas are in `apps/api/src/ai/schemas.js`.
 
 Tests (`ai/pipelines/pipelines.test.js`) script the mock model and compare each pipeline's saved result with golden files in `apps/api/test/fixtures/ai/`. Regenerate them after an intended change with `UPDATE_GOLDEN=1 npx vitest run src/ai/pipelines` and review the diff.
+
+## Tutor (A4)
+
+`apps/api/src/ai/tutor.js`, prompt `prompts/tutor.answer.v1.md`, route `apps/api/src/modules/tutor/routes.js`.
+
+1. **Guardrails before any model call.** Questions matching a short unsafe list get a fixed refusal. A question is off-topic when its embedding similarity to the topic and to every passage is below `TUTOR_MIN_RELEVANCE` **and** it shares no words with the topic's material; it gets a fixed refusal (the "cricket score" case). Length is capped by `TUTOR_MAX_QUESTION_CHARS`; students get `TUTOR_RATE_LIMIT_PER_HOUR` questions per hour.
+2. **Context.** Paragraphs of the topic's **published** resources, the best chunks of the faculty's notes for the topic, and the prerequisite topics' published easy explanations, ranked by similarity to the question. Passages at or above `TUTOR_MIN_PASSAGE_SCORE` ground the answer. Drafts are never read.
+3. **Answer.** The prompt says: answer only from the context; if it isn't there, say so and point to a related topic; simple English; one analogy; end with a "Check:" question. Up to 6 earlier turns are included. Tokens stream to the browser over SSE.
+4. **Citations.** The top 3 grounding passages, each with the topic-page section it came from, so the web app can scroll to it. Ungrounded answers carry no citations.
+5. **Privacy and logging.** Only topic content, the question and the student's own earlier turns are sent; never names or ids. Each question is logged with topic, latency, grounded/refused flags, prompt version and its embedding (for clustering). The asker is stored only as a salted hash, used for the hourly limit.
+6. **Common doubts.** `commonQuestions()` groups the last 60 days of questions greedily by cosine ≥ 0.8 (same embedding model only) and reports how many were not answerable from the material.
+
+Thresholds depend on the embedding model: `nomic-embed-text` gives unrelated English text a fairly high baseline similarity. Check the defaults with `npm run ai:eval` (A5) when you change models.

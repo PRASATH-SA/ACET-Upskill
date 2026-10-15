@@ -7,22 +7,11 @@
  * - embed(): bag-of-words hashing, so texts that share words get similar vectors.
  * - `offline = true` makes every call fail like a stopped server.
  */
+import { tokenize } from '../../text.js';
+
+export { tokenize };
 
 export const MOCK_EMBED_DIM = 64;
-
-const STOPWORDS = new Set(
-  'a an and are as at be by do does for from how in is it of on or that the this to was we what when where which why with you your'.split(
-    ' ',
-  ),
-);
-
-export function tokenize(text) {
-  return String(text)
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .filter((w) => w.length > 1 && !STOPWORDS.has(w))
-    .map((w) => w.replace(/(ing|ed|es|s)$/, '')); // crude stemming: "tables" ≈ "table"
-}
 
 function hash(word) {
   let h = 2166136261;
@@ -120,6 +109,7 @@ export class MockProvider {
 
   async chat(req) {
     this.#checkOnline();
+    if (req.signal?.aborted) throw new DOMException('The operation was aborted', 'AbortError');
     this.calls.push(req);
     const handler = this.handlers.get(req.task);
     let out;
@@ -141,7 +131,11 @@ export class MockProvider {
     const text = handler
       ? String(typeof handler === 'function' ? await handler(req, this.calls.length) : handler)
       : 'Mock answer from the provided context.';
-    for (const piece of text.match(/\S+\s*/g) ?? []) yield { token: piece };
+    for (const piece of text.match(/\S+\s*/g) ?? []) {
+      // Like a real server: an aborted request stops the stream.
+      if (req.signal?.aborted) throw new DOMException('The operation was aborted', 'AbortError');
+      yield { token: piece };
+    }
     yield { done: true, usage: { promptTokens: 10, completionTokens: 20 } };
   }
 

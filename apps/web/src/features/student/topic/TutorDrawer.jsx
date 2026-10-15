@@ -8,8 +8,18 @@ import { Badge, Button, Drawer, Textarea } from '../../../components/ui';
 export const TUTOR_MAX_QUESTION = 500;
 const MAX_TURNS = 6;
 
-/** Citation chip: jumps to the topic-page section the source came from. */
+/**
+ * Citation chip: jumps to the topic-page section the source came from. Faculty notes and
+ * prerequisite explanations aren't sections of this page, so they show as plain labels.
+ */
 function CitationChip({ c, onJump }) {
+  if (!c.section) {
+    return (
+      <span className="inline-flex min-h-[32px] items-center rounded-full border border-line bg-surface px-3 text-xs font-semibold text-navy">
+        {c.title}
+      </span>
+    );
+  }
   return (
     <button
       type="button"

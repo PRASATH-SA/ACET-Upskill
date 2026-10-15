@@ -71,3 +71,26 @@ test.describe('F4 topic page and F5 practice', () => {
     await expect(page.getByText(/Card 2 of|Session complete/)).toBeVisible();
   });
 });
+
+test('tutor: a question about the topic streams an answer with a citation that jumps to the section', async ({
+  page,
+}) => {
+  await openNormalization(page, 'student10@acet.test');
+  await page.getByRole('button', { name: 'Ask why' }).click();
+  const drawer = page.getByRole('dialog', { name: 'Ask why' });
+  await drawer.getByLabel(/Ask a question/).fill('Why do we split tables into smaller tables?');
+  await drawer.getByRole('button', { name: 'Ask' }).click();
+  await expect(drawer.getByText(/Check:/)).toBeVisible();
+  const chip = drawer
+    .getByRole('button', { name: /In simple words|10-mark|Curiosity|Real-world/ })
+    .first();
+  await expect(chip).toBeVisible();
+  await chip.click();
+  await expect(drawer).toBeHidden();
+
+  // An unrelated question gets the refusal, not an invented answer.
+  await page.getByRole('button', { name: 'Ask why' }).click();
+  await drawer.getByLabel(/Ask a question/).fill('What was the cricket score yesterday?');
+  await drawer.getByRole('button', { name: 'Ask' }).click();
+  await expect(drawer.getByText(/I can only answer questions about "Normalization"/)).toBeVisible();
+});

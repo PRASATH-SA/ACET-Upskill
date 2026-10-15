@@ -145,3 +145,16 @@ export function scriptContentModel({ selfCheckAgrees = true } = {}) {
       },
     });
 }
+
+/**
+ * The tutor (A4): answers by quoting the first context passage, then an analogy and a check
+ * question, in the shape the tutor prompt asks for.
+ */
+export function scriptTutorModel() {
+  mock().on('tutor.answer', (req) => {
+    const context = between(userText(req), 'Context:\n', "\n\nStudent's question");
+    const first = (context.match(/\[1\] ([^\n]+)/)?.[1] ?? '').split(/(?<=\.)\s/)[0];
+    if (!first) return "Your faculty's material for this topic does not cover that.";
+    return `${first} Think of it like one master register instead of many copies. Check: why would two copies of the same fact cause trouble?`;
+  });
+}
