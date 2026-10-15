@@ -205,3 +205,12 @@ Re-running a draft replaces only earlier AI drafts of the same kind that are una
 |---|---|---|---|
 | POST | `/ai/tutor/ask` | any with access to the topic | `{ topicId, question, history? }` (history: last 6 turns as `{ role, content }`). **SSE**: `token` events `{ text }`, then `done` `{ grounded, refused, reason?, citations: [{ kind: resource\|chunk\|prerequisite, id, title, section }] }`, or `error` `{ code, message }`. Before streaming: 400 when the question is too long, 429 `RATE_LIMITED` past the hourly limit (students), 503 `AI_OFFLINE` while the circuit is open |
 | GET | `/subjects/:id/tutor/common-questions` | owning faculty, admin | Last 60 days of tutor questions grouped by meaning: `{ clusters: [{ representative, count, notGrounded, topicTitle, examples }], total }` |
+
+### Admin AI settings (A5)
+
+| Method | Path | Roles | Notes |
+|---|---|---|---|
+| GET | `/admin/ai` | admin | `{ health, settings: { chatModel, embedModel, overrides, defaults, provider }, queue: { queued, running }, recentFailures, lastWeek }` |
+| PUT | `/admin/ai/settings` | admin | `{ chatModel?, embedModel? }` (`null` = back to the env default). Must be pulled on the model server (400 otherwise). Applies to new calls and jobs without a restart; changing the embedding model also returns `reembedJobId` |
+
+Faculty feedback per prompt version (approved / edited / rejected / pending) is in `GET /admin/usage` → `aiDrafts`.

@@ -180,3 +180,13 @@ Tests (`ai/pipelines/pipelines.test.js`) script the mock model and compare each 
 6. **Common doubts.** `commonQuestions()` groups the last 60 days of questions greedily by cosine ≥ 0.8 (same embedding model only) and reports how many were not answerable from the material.
 
 Thresholds depend on the embedding model: `nomic-embed-text` gives unrelated English text a fairly high baseline similarity. Check the defaults with `npm run ai:eval` (A5) when you change models.
+
+## Evaluation and controls (A5)
+
+**Runtime model switch.** `apps/api/src/modules/settings/service.js` stores an optional chat and embedding model in the `settings` collection. The gateway resolves models on every call: the setting if present, otherwise env. Each process caches it for 5 seconds, so the worker follows an admin change without a restart. Only models the server reports as pulled are accepted. Changing the embedding model queues `embeddings.reembed`; until it finishes, retrieval ignores vectors from the old model.
+
+**Eval.** `npm run ai:eval` (`evals/run.js`) needs only the model server. It runs `topic.easy`, `topic.tenMark`, `topic.flashcards`, `topic.mcqs` and the MCQ self-check on the 12-topic golden set in `evals/dataset.json` and prints: JSON valid on the first try, repair rate, failures after repair, MCQ self-check agreement, grounded share (≥ 60 % of content words found in the notes) and latency. With `--models a,b` it writes the comparison to `docs/ai-eval.md`. Options: `--task <task>`, `--limit <n>`, `--out <file>`, `--mock` (harness check only), `--verbose`.
+
+To improve a weak prompt, copy it to `v<n+1>`, change the copy, and compare `npm run ai:eval -- --task <task>` before and after. Never edit a published version.
+
+**Feedback signals.** `GET /admin/usage` reports, per prompt version, how many AI drafts were approved, edited, rejected or are pending. A version with many edits or rejections is a candidate for a new prompt version.

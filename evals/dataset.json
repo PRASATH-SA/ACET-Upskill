@@ -1,0 +1,66 @@
+{
+  "name": "DBMS golden set v1",
+  "description": "Faculty-style notes for 12 topics of CS T53 Database Management Systems (Pondicherry University, R2023). Used by npm run ai:eval to compare local models on the A3 content tasks.",
+  "topics": [
+    {
+      "title": "Relational Model",
+      "syllabusLine": "Unit 2: Relational model: relations, tuples, attributes, domains",
+      "notes": "The relational model stores data in relations, which we usually call tables. Each row of a table is a tuple and each column is an attribute. The set of allowed values for an attribute is its domain; for example the domain of semester is the integers 1 to 8. A relation schema gives the name of the relation and its attributes, such as Student(roll_no, name, dept, semester). A relation instance is the set of tuples stored at one moment. Because a relation is a set, no two tuples may be exactly the same, and the order of rows does not matter. The degree of a relation is its number of attributes and the cardinality is its number of tuples. Each attribute value must be atomic, meaning it cannot be split further inside the model. The relational model was proposed by E. F. Codd in 1970 and is the basis of SQL databases such as MySQL, PostgreSQL and Oracle. Its strength is that data is described independently of how it is stored, so queries can be written without knowing the file layout."
+    },
+    {
+      "title": "Keys",
+      "syllabusLine": "Unit 2: Keys: super key, candidate key, primary key, foreign key",
+      "notes": "A key is a set of attributes that identifies a tuple in a relation. A super key is any set of attributes whose values are unique for every tuple; {roll_no, name} is a super key of Student because roll_no alone is already unique. A candidate key is a minimal super key: if any attribute is removed it no longer identifies tuples. A relation can have several candidate keys, for example roll_no and aadhaar_no. The primary key is the candidate key chosen by the designer; it must never be null and should not change. The other candidate keys are called alternate keys. A foreign key is an attribute in one relation that refers to the primary key of another relation, such as dept_id in Student referring to Department. The database enforces referential integrity: a foreign key value must exist in the referenced relation or be null. A composite key uses two or more attributes together, such as (roll_no, course_code) in an Enrolment relation."
+    },
+    {
+      "title": "Relational Algebra",
+      "syllabusLine": "Unit 2: Relational algebra operations",
+      "notes": "Relational algebra is a procedural query language: each operation takes relations as input and produces a relation as output, so operations can be combined. Selection, written sigma, picks the tuples that satisfy a condition, for example the students of semester 5. Projection, written pi, keeps only some attributes and removes duplicate tuples. Union, intersection and set difference combine two union-compatible relations, which must have the same number of attributes with matching domains. The Cartesian product pairs every tuple of one relation with every tuple of another. A join is a Cartesian product followed by a selection; the natural join matches tuples on attributes with the same name and keeps one copy of each. Rename, written rho, gives a relation or attribute a new name, which is needed when a relation is joined with itself. SQL queries are translated by the optimiser into relational algebra expressions, which it rearranges to find a cheaper plan, for example by applying selections before joins."
+    },
+    {
+      "title": "Functional Dependency",
+      "syllabusLine": "Unit 3: Functional dependencies and Armstrong's axioms",
+      "notes": "A functional dependency X determines Y, written X -> Y, holds when any two tuples that agree on X must also agree on Y. For example roll_no -> name, because a roll number belongs to one student. X is the determinant and Y is the dependent. A dependency is trivial when Y is a subset of X. Armstrong's axioms let us derive new dependencies: reflexivity (if Y is a subset of X then X -> Y), augmentation (if X -> Y then XZ -> YZ) and transitivity (if X -> Y and Y -> Z then X -> Z). From these we get union, decomposition and pseudo-transitivity rules. The closure of an attribute set X, written X+, is the set of all attributes X determines; if X+ contains every attribute, X is a super key. A minimal cover is an equivalent set of dependencies with no redundant dependency and no extra attribute on the left. Functional dependencies are the tool we use to find keys and to test normal forms."
+    },
+    {
+      "title": "Data Anomalies",
+      "syllabusLine": "Unit 3: Update, insertion and deletion anomalies",
+      "notes": "Anomalies are problems caused by storing the same fact in many tuples. Consider one table StudentDept(roll_no, name, dept, hod) where the head of department is repeated for every student of that department. An update anomaly happens when the HOD changes: every tuple of that department must be changed, and if one is missed the data becomes inconsistent. An insertion anomaly happens when we cannot record a fact without an unrelated fact: a new department with no students cannot be stored because roll_no is part of the key. A deletion anomaly happens when deleting one fact removes another: if the last student of a department leaves, the department and its HOD disappear too. All three anomalies come from redundancy, and they are the reason we normalise tables. The cure is to decompose the table so that each fact is stored once, for example Student(roll_no, name, dept) and Department(dept, hod)."
+    },
+    {
+      "title": "Normalization",
+      "syllabusLine": "Unit 3: Normalization and decomposition",
+      "notes": "Normalization is the process of organising relations to reduce redundancy and remove anomalies. It works by decomposition: a relation is split into smaller relations, guided by functional dependencies. A good decomposition has two properties. It must be lossless, meaning the natural join of the parts gives back exactly the original relation with no extra spurious tuples; a decomposition of R into R1 and R2 is lossless if their common attributes form a key of R1 or of R2. It should also be dependency preserving, meaning every functional dependency can still be checked inside one of the new relations without a join. Normal forms are a ladder of conditions: 1NF, 2NF, 3NF and BCNF, each stricter than the one before. Higher normal forms reduce redundancy but create more tables and more joins, so designers usually stop at 3NF or BCNF, and sometimes denormalise deliberately for read speed in reporting systems."
+    },
+    {
+      "title": "1NF, 2NF and 3NF",
+      "syllabusLine": "Unit 3: First, second and third normal forms",
+      "notes": "A relation is in first normal form (1NF) when every attribute holds atomic values and there are no repeating groups; a column holding a list of phone numbers breaks 1NF and is fixed by a separate Phone table. A relation is in second normal form (2NF) when it is in 1NF and no non-prime attribute depends on only part of a candidate key. In Enrolment(roll_no, course_code, student_name, grade), student_name depends only on roll_no, which is a partial dependency; splitting out Student(roll_no, student_name) removes it. A relation is in third normal form (3NF) when it is in 2NF and no non-prime attribute depends transitively on a key through another non-prime attribute. In Student(roll_no, dept, hod), roll_no -> dept and dept -> hod make hod transitively dependent; moving Department(dept, hod) into its own relation gives 3NF. Every relation can be decomposed into 3NF in a way that is both lossless and dependency preserving."
+    },
+    {
+      "title": "BCNF",
+      "syllabusLine": "Unit 3: Boyce-Codd normal form",
+      "notes": "Boyce-Codd normal form (BCNF) is a stricter version of 3NF. A relation is in BCNF when, for every non-trivial functional dependency X -> Y, X is a super key. 3NF allows an exception when Y is a prime attribute, so a relation can be in 3NF but not BCNF when it has overlapping candidate keys. Example: Teaching(student, course, faculty) where each faculty member teaches one course (faculty -> course) and a student takes a course from one faculty member ({student, course} -> faculty). Faculty is a determinant but not a super key, so the relation is not in BCNF. Decomposing into (faculty, course) and (student, faculty) gives BCNF. A BCNF decomposition is always lossless, but it is not always dependency preserving: here {student, course} -> faculty can no longer be checked within one table. Designers choose between BCNF and 3NF depending on whether that lost dependency matters."
+    },
+    {
+      "title": "Indexing",
+      "syllabusLine": "Unit 4: Indexing: ordered indices, primary and secondary indices",
+      "notes": "An index is an auxiliary structure that speeds up finding records by the value of a search key, like the index at the back of a textbook. Without an index the database must scan the whole file. An ordered index keeps search-key values in sorted order with pointers to records. A primary or clustering index is defined on the attribute the file itself is sorted by; a secondary index is on another attribute and must be dense. A dense index has an entry for every search-key value, while a sparse index has entries for only some values and works only when the file is sorted on that key. Multi-level indices put an index on the index when the index itself is too large for memory. Indices make reads faster but slow down inserts, updates and deletes, because every index must be updated, and they use extra disk space. Primary keys are usually indexed automatically."
+    },
+    {
+      "title": "B+ Tree Index",
+      "syllabusLine": "Unit 4: B+ tree index files",
+      "notes": "A B+ tree is a balanced, multi-level index used by almost every relational database. All data pointers are stored in the leaf nodes, which are linked to each other in key order, so range queries simply walk along the leaves. Internal nodes hold only keys that guide the search. Every path from the root to a leaf has the same length, so a lookup reads only a few disk blocks even for millions of records. Each node except the root must be at least half full; with a node size of n pointers, a node has between ceiling of n/2 and n children. When an insertion fills a leaf, the leaf splits into two and a key moves up to the parent; splits can travel up to the root, which is how the tree grows in height. Deletions can merge or redistribute nodes that become less than half full. Because nodes match disk block size, B+ trees keep the number of disk accesses low."
+    },
+    {
+      "title": "Hashing",
+      "syllabusLine": "Unit 4: Static and dynamic hashing",
+      "notes": "Hashing organises records into buckets using a hash function on the search key, so an equality search computes the bucket address directly instead of searching an index. In static hashing the number of buckets is fixed. When many keys map to the same bucket, overflow chains form and searches slow down; a poor hash function causes skew, where a few buckets hold most records. Dynamic hashing lets the structure grow. Extendable hashing uses a directory of bucket pointers indexed by the first i bits of the hash value; when a bucket overflows it splits, and the directory doubles only when needed. Hash indices are excellent for equality queries such as finding the student with roll number 21CS045, but they cannot answer range queries such as marks between 60 and 80, because hashing destroys key order. For range queries a B+ tree index is the better choice."
+    },
+    {
+      "title": "Transaction Concepts",
+      "syllabusLine": "Unit 5: Transactions and ACID properties",
+      "notes": "A transaction is a unit of work that reads and writes data and must be treated as one whole, such as transferring fee money from a student wallet to the college account. Transactions must have the ACID properties. Atomicity means all of the transaction's changes happen or none do; if the system crashes after debiting the wallet but before crediting the college, the debit is undone. Consistency means a transaction takes the database from one valid state to another, keeping rules such as balances never going negative. Isolation means concurrent transactions do not see each other's partial results; the outcome is as if they ran one after another. Durability means once a transaction commits, its changes survive crashes, which the system ensures by writing log records to stable storage. A transaction moves through the states active, partially committed, committed, failed and aborted. The recovery system enforces atomicity and durability, and concurrency control enforces isolation."
+    }
+  ]
+}

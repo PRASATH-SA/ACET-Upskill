@@ -74,8 +74,8 @@ export function scriptMapModel() {
 
 /** A fresh subject with no topics, owned by the fixture's faculty. */
 /** Scripted content answers, all grounded in the Normalization notes. */
-export function scriptContentModel({ selfCheckAgrees = true } = {}) {
-  mock()
+export function scriptContentModel({ selfCheckAgrees = true, provider } = {}) {
+  (provider ?? mock())
     .on('topic.easy', {
       text: 'Normalization means splitting one big table into smaller tables so that each fact is stored only once and nothing gets out of sync.',
       analogy: 'Like keeping one master attendance register instead of copies in every classroom.',

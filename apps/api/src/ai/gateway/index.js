@@ -5,6 +5,7 @@
  */
 import { env } from '../../config/env.js';
 import { logger as rootLogger } from '../../lib/logger.js';
+import { resolveModels } from '../../modules/settings/service.js';
 import { prompts } from '../prompts.js';
 import { AIValidationError } from './errors.js';
 import { MockProvider } from './providers/mock.js';
@@ -301,22 +302,22 @@ export function createGateway({
 let current;
 let modelResolver;
 
-/** Lets A5 runtime settings override the env model names for new calls. */
+/** Test helper: force the model names (overrides the A5 settings). */
 export function setModelResolver(fn) {
   modelResolver = fn;
 }
 
-/** The process-wide gateway, built from env on first use. */
+/**
+ * The process-wide gateway, built from env on first use. Model names come from the A5
+ * admin setting when one is saved (cached a few seconds), else from env, so a model change
+ * applies to new calls and jobs without a restart.
+ */
 export function gateway() {
   if (!current) {
     const cfg = env();
     current = createGateway({
       provider: createProvider(cfg),
-      models: async () =>
-        (await modelResolver?.()) ?? {
-          chatModel: cfg.LLM_CHAT_MODEL,
-          embedModel: cfg.LLM_EMBED_MODEL,
-        },
+      models: async () => (await modelResolver?.()) ?? resolveModels(),
       timeoutMs: cfg.LLM_TIMEOUT_MS,
       concurrency: cfg.LLM_MAX_CONCURRENCY,
     });

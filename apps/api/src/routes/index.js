@@ -12,6 +12,7 @@ import { syllabusRoutes } from '../modules/syllabus/routes.js';
 import { userRoutes } from '../modules/users/routes.js';
 import { workshopRoutes } from '../modules/workshops/routes.js';
 import { aiRoutes } from '../modules/ai/routes.js';
+import { settingsRoutes } from '../modules/settings/routes.js';
 import { tutorRoutes } from '../modules/tutor/routes.js';
 import { healthRoutes } from './health.js';
 
@@ -37,6 +38,7 @@ export function apiRouter() {
   r.use('/', outcomeRoutes());
   r.use('/', insightRoutes());
   r.use('/', tutorRoutes());
+  r.use('/', settingsRoutes());
   r.use('/ai', aiRoutes());
   return r;
 }
