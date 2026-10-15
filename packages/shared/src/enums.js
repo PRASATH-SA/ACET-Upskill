@@ -87,6 +87,9 @@ export const LEARNING_STEPS = [
 ];
 export const LearningStepSchema = z.enum(LEARNING_STEPS);
 
-/** A.3 / A.7 — supported local LLM providers. */
-export const LLM_PROVIDERS = ['ollama', 'openai-compatible'];
+/**
+ * A.3 / A.7 — supported local LLM providers. `mock` is a deterministic fake for tests, CI and
+ * e2e runs without a model; the API refuses it when NODE_ENV=production.
+ */
+export const LLM_PROVIDERS = ['ollama', 'openai-compatible', 'mock'];
 export const LLMProviderSchema = z.enum(LLM_PROVIDERS);

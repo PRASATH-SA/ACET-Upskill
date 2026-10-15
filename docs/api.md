@@ -72,6 +72,7 @@ Unknown routes return 401 to anonymous callers and 404 to signed-in users.
 
 | Method | Path | Roles | Notes |
 |---|---|---|---|
+| GET | `/search?q=&limit=` | any | Subjects and topics the user may open, matched on title/code (plain text, not a regex). Students: approved topics of their syllabus version only (F1 top-bar search) |
 | GET | `/subjects` | any | Students: their syllabus version only. Faculty: own subjects. `?syllabusVersionId&semester` |
 | POST | `/subjects` | admin | `CreateSubjectSchema` (assign `facultyIds`) |
 | GET, PATCH, DELETE | `/subjects/:id` | read: any with access; write: admin | |
@@ -104,6 +105,7 @@ Unknown routes return 401 to anonymous callers and 404 to signed-in users.
 | GET | `/materials?topicId=\|subjectId=` | owning faculty, admin | Without the extracted text |
 | GET, DELETE | `/materials/:id` | owning faculty, admin | |
 | GET | `/materials/:id/file` | owning faculty, admin | |
+| POST | `/materials/:id/ingest` | owning faculty, admin | Re-run chunking and embedding (A2). Materials also carry `ingestStatus` (`queued`, `running`, `done`, `failed`, `skipped`), `chunkCount` and `ingestJobId` |
 | GET | `/review-queue` | faculty (own subjects), admin | Drafts across resources, flashcards, questions and PYQs. `?subjectId&topicId&kind&source&status&needsAttention&includeRejected&page&limit` |
 | POST | `/review-queue/bulk` | faculty, admin | `{ action: approve\|publish\|reject, reason?, items: [{ type, id }] }`. All-or-nothing; every change is audited |
 | GET | `/topics/:id/page` | any with access | Student topic page: `topic`, `curiosity`, `video`, `easy`, `tenMark`, `realWorld`, `workshop`, `workshops`, `pyqs`, `flashcardCount`, `questionCount`, `prerequisites`, `unlocks`. Published only; missing kinds are omitted |
@@ -114,6 +116,7 @@ Unknown routes return 401 to anonymous callers and 404 to signed-in users.
 |---|---|---|---|
 | POST | `/topics/:id/open` | any with access | Students: notStarted → learning |
 | GET | `/topics/:id/quiz?limit=10` | any with access | Random published MCQs with `id, stem, options, difficulty` only. Never answers |
+| POST | `/flashcards/:id/rate` | student | `{ rating }` from the topic page deck (F4). Enrols the published card in revision if needed, then reschedules it with FSRS |
 | POST | `/quiz/submit` | student | `SubmitQuizSchema`. Returns score, per-question correctness, explanations, `whyWrong`, the mastery change, and how many items entered revision |
 | GET | `/revision/today` | student | Due items grouped by topic, each with front/back |
 | POST | `/revision/:id/rate` | student | `{ rating: again\|hard\|good\|easy }` → next due date (FSRS) and mastery |
@@ -164,3 +167,20 @@ Mastery rules and thresholds (`MASTERY_*` env vars) are documented in `apps/api/
 | GET | `/subjects/:id/co-attainment/export?format=csv\|pdf` | owning faculty, admin | File download, audited |
 | GET | `/admin/usage` | admin | Users by role, weekly active students (8 weeks), topics published, AI drafts approved/rejected/edited by prompt version |
 | GET | `/admin/audit-logs` | admin | `?action&actorId&targetId&page&limit` |
+
+## AI (A1, A2)
+
+Every model call goes through the gateway (`docs/ai.md`). AI endpoints return `503 AI_OFFLINE` when the model server is unreachable; nothing outside `/ai/*` depends on it.
+
+| Method | Path | Roles | Notes |
+|---|---|---|---|
+| GET | `/ai/health` | any | `{ provider, reachable, chatModel, embedModel, models, chatModelPulled, embedModelPulled, modelsPulled, circuit }`. Always 200; `reachable: false` when the server is down |
+| GET | `/ai/jobs?subjectId=&limit=` | faculty, admin | Recent jobs (own jobs, or a subject's jobs for its faculty) |
+| GET | `/ai/jobs/:id` | job owner, subject faculty, admin | `{ id, type, status, progress, step, result, output, error, logs, promptVersions, … }` |
+| GET | `/ai/jobs/:id/events` | as above | **SSE.** `snapshot` once, then `progress` (changed fields and new log lines), then `done`. Comment heartbeats every 15 s. Reconnecting resumes from a fresh snapshot |
+| POST | `/ai/jobs/:id/cancel` | faculty, admin | Queued jobs stop at once; running jobs stop at their next step. 422 if already finished |
+| POST | `/ai/retrieve` | owning faculty, admin | `{ query, topicId? , subjectId?, k?, allowSubjectFallback? }` → `{ chunks: [{ id, text, heading, score, … }], scope, model }` |
+| GET | `/ai/topics/:id/coverage` | owning faculty, admin | `hasEnoughMaterial`: `{ enough, reason, chunkCount, words, staleChunks }` |
+| POST | `/ai/reembed` | admin | `202 { jobId }`. Re-embeds chunks made with another embedding model |
+
+Job statuses: `queued → running → succeeded | failed | cancelled`. A job can succeed with `result: "needsMaterial"` and create nothing (A3).

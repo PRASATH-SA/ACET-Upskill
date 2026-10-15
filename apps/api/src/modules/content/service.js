@@ -3,6 +3,9 @@ import { oid } from '../../db/mongoose.js';
 import { facultySubjectIds, isStaff, loadSubject, loadTopic } from '../../lib/access.js';
 import { badRequest, forbidden, notFound } from '../../lib/errors.js';
 import { storage } from '../../lib/storage.js';
+import { INGEST_JOB, INGESTIBLE_KINDS } from '../../ai/pipelines/ingest.js';
+import { vectorStore } from '../../ai/rag/vectorStore.js';
+import { createJob } from '../ai/jobs.js';
 import { sniffFile } from '../../lib/upload.js';
 import { audit } from '../audit/service.js';
 import { Pyq } from '../exam/model.js';
@@ -183,7 +186,41 @@ export async function uploadMaterial(user, input, file) {
     target: { type: 'material', id: String(material._id) },
     meta: { kind: input.kind, scanned: extracted.scanned },
   });
-  return material;
+  return startIngest(user, material);
+}
+
+/**
+ * A2: chunk and embed a material in the background. Files with no text (scans, images,
+ * PPTX/DOCX until extraction exists) and PYQ papers are marked skipped.
+ */
+async function startIngest(user, material) {
+  if (!INGESTIBLE_KINDS.includes(material.kind) || !material.extractedText?.trim()) {
+    material.ingestStatus = 'skipped';
+    await material.save();
+    return material;
+  }
+  const job = await createJob({
+    type: INGEST_JOB,
+    input: { materialId: String(material._id) },
+    createdBy: user.id,
+    subjectId: material.subjectId,
+    topicId: material.topicId ?? undefined,
+  });
+  // The inline runner may already have finished; don't overwrite its status.
+  await Material.updateOne(
+    { _id: material._id, ingestStatus: 'notStarted' },
+    { $set: { ingestStatus: 'queued' } },
+  );
+  await Material.updateOne({ _id: material._id }, { $set: { ingestJobId: job._id } });
+  return Material.findById(material._id);
+}
+
+/** POST /materials/:id/ingest — retry or refresh ingestion (e.g. after a failure). */
+export async function reingestMaterial(user, id) {
+  const m = await getMaterial(user, id);
+  m.ingestStatus = 'notStarted';
+  await m.save();
+  return startIngest(user, m);
 }
 
 /** Material list without the (large) extracted text. */
@@ -216,6 +253,7 @@ export async function openMaterialFile(user, id) {
 export async function deleteMaterial(user, id) {
   const m = await getMaterial(user, id);
   await storage().remove(m.fileKey);
+  await vectorStore().deleteByMaterial(m._id);
   await m.deleteOne();
   await audit({ actorId: user.id, action: 'material.delete', target: { type: 'material', id } });
 }

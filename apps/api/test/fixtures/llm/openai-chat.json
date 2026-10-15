@@ -1,0 +1,17 @@
+{
+  "id": "chatcmpl-1",
+  "object": "chat.completion",
+  "created": 1760500000,
+  "model": "qwen2.5-7b-instruct",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "{\"text\":\"Normalization removes redundancy.\"}"
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": { "prompt_tokens": 175, "completion_tokens": 22, "total_tokens": 197 }
+}

@@ -70,9 +70,13 @@ const materialSchema = new Schema(
     /** A2 sets this when chunks and embeddings are ready. */
     ingestStatus: {
       type: String,
-      enum: ['notStarted', 'queued', 'running', 'done', 'failed'],
+      // skipped = nothing to embed (no extractable text, or a PYQ paper).
+      enum: ['notStarted', 'queued', 'running', 'done', 'failed', 'skipped'],
       default: 'notStarted',
     },
+    ingestJobId: { type: ObjectId, ref: 'AiJob', default: null },
+    chunkCount: { type: Number, default: 0 },
+    ingestError: String,
     uploadedBy: { type: ObjectId, ref: 'User', required: true },
   },
   { timestamps: true },

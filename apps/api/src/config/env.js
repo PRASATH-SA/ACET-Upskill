@@ -5,7 +5,7 @@ import { ServerEnvSchema, parseEnv } from '@acet/shared';
  * API configuration. The shared ServerEnvSchema covers A.3/A.7 variables; this adds
  * API-only tunables (mastery thresholds, report thresholds, cookie settings).
  */
-export const ApiEnvSchema = ServerEnvSchema.extend({
+const ApiEnvBase = ServerEnvSchema.extend({
   APP_VERSION: z.string().default('0.1.0'),
   COOKIE_SECURE: z
     .enum(['true', 'false'])
@@ -22,7 +22,29 @@ export const ApiEnvSchema = ServerEnvSchema.extend({
   CO_ATTAINMENT_THRESHOLD: z.coerce.number().min(1).max(100).default(60),
   MENTOR_INACTIVE_DAYS: z.coerce.number().int().min(1).default(7),
   MENTOR_RISK_NEEDS_REVISION: z.coerce.number().int().min(1).default(3),
+  /** A1–A3: where AI jobs run. `agenda` = the worker; `inline` = in this process (tests, e2e). */
+  AI_JOB_RUNNER: z.enum(['agenda', 'inline']).default('agenda'),
+  /** Versioned prompt templates (A.7.6). Defaults to <repo>/prompts. */
+  PROMPTS_DIR: z.string().optional(),
+  /** A2 retrieval thresholds */
+  RAG_TOP_K: z.coerce.number().int().min(1).max(20).default(6),
+  RAG_MIN_SCORE: z.coerce.number().min(0).max(1).default(0.35),
+  RAG_MIN_CHUNKS: z.coerce.number().int().min(1).default(1),
+  RAG_MIN_WORDS: z.coerce.number().int().min(1).default(150),
+  /** A4 tutor */
+  TUTOR_RATE_LIMIT_PER_HOUR: z.coerce.number().int().min(1).default(20),
+  TUTOR_MAX_QUESTION_CHARS: z.coerce.number().int().min(20).max(2000).default(500),
 });
+
+const noMockInProduction = [
+  (e) => !(e.NODE_ENV === 'production' && e.LLM_PROVIDER === 'mock'),
+  {
+    message: 'LLM_PROVIDER=mock is for tests only and cannot be used in production',
+    path: ['LLM_PROVIDER'],
+  },
+];
+
+export const ApiEnvSchema = ApiEnvBase.refine(...noMockInProduction);
 
 let cached;
 
@@ -45,8 +67,8 @@ export function env() {
  * The worker shares the API's config but never issues tokens or serves the web app,
  * so those variables are optional there.
  */
-export const WorkerEnvSchema = ApiEnvSchema.partial({
+export const WorkerEnvSchema = ApiEnvBase.partial({
   WEB_ORIGIN: true,
   JWT_ACCESS_SECRET: true,
   JWT_REFRESH_SECRET: true,
-});
+}).refine(...noMockInProduction);

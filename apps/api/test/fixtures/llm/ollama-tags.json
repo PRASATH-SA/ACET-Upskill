@@ -1,0 +1,11 @@
+{
+  "models": [
+    {
+      "name": "qwen2.5:7b-instruct",
+      "model": "qwen2.5:7b-instruct",
+      "size": 4683087332,
+      "details": { "family": "qwen2", "parameter_size": "7.6B", "quantization_level": "Q4_K_M" }
+    },
+    { "name": "nomic-embed-text:latest", "model": "nomic-embed-text:latest", "size": 274302450 }
+  ]
+}

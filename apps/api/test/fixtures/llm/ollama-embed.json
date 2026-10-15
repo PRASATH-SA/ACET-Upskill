@@ -1,0 +1,9 @@
+{
+  "model": "nomic-embed-text",
+  "embeddings": [
+    [0.1, -0.2, 0.3],
+    [0.0, 0.5, -0.1]
+  ],
+  "total_duration": 12345678,
+  "prompt_eval_count": 12
+}

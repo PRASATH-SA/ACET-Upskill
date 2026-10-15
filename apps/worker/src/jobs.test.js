@@ -31,6 +31,14 @@ describe('worker jobs', () => {
     );
   });
 
+  it('registers ai.run, which runs the aiJobs document named in the job data', async () => {
+    const agenda = fakeAgenda();
+    const runAiJob = vi.fn(async () => {});
+    defineJobs(agenda, { sweepOverdue: vi.fn(), runAiJob, logger: { info: vi.fn() } });
+    await agenda.jobs.get(JOB_NAMES.aiRun)({ attrs: { data: { jobId: 'job-123' } } });
+    expect(runAiJob).toHaveBeenCalledWith('job-123');
+  });
+
   it('schedules the sweep daily', async () => {
     const agenda = fakeAgenda();
     await scheduleRecurring(agenda);

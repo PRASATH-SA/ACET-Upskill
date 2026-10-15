@@ -64,6 +64,7 @@ export function contentRoutes() {
   r.get('/materials', staff, validate({ query: ListMaterialsQuerySchema }), h(c.listMaterials));
   r.get('/materials/:id', staff, validate(P), h(c.getMaterial));
   r.get('/materials/:id/file', staff, validate(P), h(c.getMaterialFile));
+  r.post('/materials/:id/ingest', staff, validate(P), h(c.reingestMaterial));
   r.delete('/materials/:id', staff, validate(P), h(c.deleteMaterial));
 
   r.get('/review-queue', staff, validate({ query: ReviewQueueQuerySchema }), h(c.reviewQueue));

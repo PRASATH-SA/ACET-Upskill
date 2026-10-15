@@ -6,6 +6,8 @@ import {
   loadEnv,
   logger,
   sweepOverdue,
+  runAiJob,
+  scheduleReembedIfStale,
 } from '@acet/api';
 import { defineJobs, scheduleRecurring } from './jobs.js';
 
@@ -29,10 +31,17 @@ async function main() {
     logger.error({ err: err.message, job: job.attrs.name }, 'job failed'),
   );
 
-  defineJobs(agenda, { sweepOverdue, logger });
+  defineJobs(agenda, { sweepOverdue, runAiJob, logger });
   await agenda.start();
   await scheduleRecurring(agenda);
   logger.info('worker started');
+  // A2.2: re-embed chunks if the embedding model changed since they were made.
+  const reembedJob = await scheduleReembedIfStale().catch((err) => {
+    logger.warn({ err: err.message }, 're-embed check failed');
+    return null;
+  });
+  if (reembedJob)
+    logger.info({ jobId: reembedJob }, 'embedding model changed: re-embedding chunks');
 
   let stopping = false;
   const shutdown = async (signal) => {

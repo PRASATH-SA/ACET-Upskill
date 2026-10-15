@@ -11,6 +11,7 @@ import { practiceRoutes } from '../modules/practice/routes.js';
 import { syllabusRoutes } from '../modules/syllabus/routes.js';
 import { userRoutes } from '../modules/users/routes.js';
 import { workshopRoutes } from '../modules/workshops/routes.js';
+import { aiRoutes } from '../modules/ai/routes.js';
 import { healthRoutes } from './health.js';
 
 /**
@@ -34,5 +35,6 @@ export function apiRouter() {
   r.use('/', workshopRoutes());
   r.use('/', outcomeRoutes());
   r.use('/', insightRoutes());
+  r.use('/ai', aiRoutes());
   return r;
 }

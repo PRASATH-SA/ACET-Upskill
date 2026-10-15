@@ -5,13 +5,27 @@
 export const JOB_NAMES = Object.freeze({
   noop: 'noop',
   masteryOverdueSweep: 'mastery.overdueSweep',
+  /** A1–A3: runs one aiJobs document (ingestion, map drafting, content drafting, PYQ tagging). */
+  aiRun: 'ai.run',
 });
 
 /**
  * @param {{ define: Function }} agenda
- * @param {{ sweepOverdue: (opts?: object) => Promise<number>, logger: { info: Function } }} deps
+ * @param {{ sweepOverdue: (opts?: object) => Promise<number>, runAiJob?: (id: string) => Promise<void>, logger: { info: Function } }} deps
  */
-export function defineJobs(agenda, { sweepOverdue, logger }) {
+export function defineJobs(agenda, { sweepOverdue, runAiJob, logger }) {
+  // AI work is slow on CPU-only machines: allow long locks, and let LLM_MAX_CONCURRENCY in the
+  // gateway limit model calls rather than limiting jobs here.
+  if (runAiJob) {
+    agenda.define(
+      JOB_NAMES.aiRun,
+      { concurrency: 4, lockLifetime: 60 * 60 * 1000 },
+      async (job) => {
+        await runAiJob(job.attrs.data.jobId);
+      },
+    );
+  }
+
   agenda.define(JOB_NAMES.noop, async (job) => {
     logger.info({ job: JOB_NAMES.noop, data: job.attrs.data ?? null }, 'noop job ran');
   });

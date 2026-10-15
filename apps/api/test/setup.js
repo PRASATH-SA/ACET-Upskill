@@ -25,6 +25,9 @@ setEnv(
     BCRYPT_ROUNDS: '4',
     UPLOAD_DIR: uploadDir,
     API_RATE_LIMIT_PER_MIN: '100000',
+    // No real LLM in tests (A1.8): the deterministic mock provider, and jobs run in-process.
+    LLM_PROVIDER: 'mock',
+    AI_JOB_RUNNER: 'inline',
   }),
 );
 setStorage(new LocalDiskStorage(uploadDir));

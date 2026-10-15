@@ -85,6 +85,9 @@ services:
     build: { context: ., dockerfile: apps/worker/Dockerfile }
     environment:
       <<: *node-env
+      # The worker runs AI jobs; ingestion reads uploaded material from the shared volume.
+      UPLOAD_DIR: /data/uploads
+    volumes: ['uploads:/data/uploads']
     depends_on:
       mongo: { condition: service_healthy }
 

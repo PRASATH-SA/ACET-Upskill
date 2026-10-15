@@ -10,6 +10,7 @@ COPY apps/web/package.json apps/web/
 RUN npm ci --omit=dev --workspace @acet/api --include-workspace-root=false && npm cache clean --force
 COPY packages/shared packages/shared
 COPY apps/api apps/api
+COPY prompts prompts
 RUN mkdir -p /data/uploads && chown node:node /data/uploads
 USER node
 WORKDIR /app/apps/api

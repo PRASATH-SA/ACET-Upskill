@@ -67,6 +67,8 @@ export const listMaterials = async (req, res) =>
   ok(res, await s.listMaterials(currentUser(req), req.query));
 export const getMaterial = async (req, res) =>
   ok(res, await s.getMaterial(currentUser(req), id(req)));
+export const reingestMaterial = async (req, res) =>
+  ok(res, await s.reingestMaterial(currentUser(req), id(req)));
 export const getMaterialFile = async (req, res) =>
   sendFile(res, await s.openMaterialFile(currentUser(req), id(req)));
 export const deleteMaterial = async (req, res) => {

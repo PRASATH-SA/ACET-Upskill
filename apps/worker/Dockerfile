@@ -11,6 +11,7 @@ RUN npm ci --omit=dev --workspace @acet/worker --workspace @acet/api --include-w
 COPY packages/shared packages/shared
 COPY apps/api apps/api
 COPY apps/worker apps/worker
+COPY prompts prompts
 USER node
 WORKDIR /app/apps/worker
 CMD ["node", "src/index.js"]

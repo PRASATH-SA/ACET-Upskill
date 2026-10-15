@@ -1,0 +1,3 @@
+{"model":"qwen2.5:7b-instruct","message":{"role":"assistant","content":"Each "},"done":false}
+{"model":"qwen2.5:7b-instruct","message":{"role":"assistant","content":"fact once."},"done":false}
+{"model":"qwen2.5:7b-instruct","message":{"role":"assistant","content":""},"done":true,"prompt_eval_count":90,"eval_count":4}
