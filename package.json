@@ -1,0 +1,39 @@
+{
+  "name": "acet-skillup",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ACET SkillUp: syllabus concept maps, guided topic learning and spaced revision for ACET, Puducherry",
+  "workspaces": [
+    "packages/shared",
+    "apps/api",
+    "apps/worker",
+    "apps/web"
+  ],
+  "engines": {
+    "node": ">=20.12"
+  },
+  "scripts": {
+    "dev": "concurrently -k -n api,worker,web -c blue,magenta,green \"npm run dev -w @acet/api\" \"npm run dev -w @acet/worker\" \"npm run dev -w @acet/web\"",
+    "dev:api": "npm run dev -w @acet/api",
+    "dev:web": "npm run dev -w @acet/web",
+    "dev:worker": "npm run dev -w @acet/worker",
+    "db:dev": "npm run db:dev -w @acet/api",
+    "seed": "npm run seed -w @acet/api",
+    "ai:pull": "node scripts/ai-pull.js",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "concurrently": "^9.2.5",
+    "eslint": "^9.39.5",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "globals": "^15.15.0",
+    "prettier": "^3.3.3"
+  },
+  "type": "module"
+}

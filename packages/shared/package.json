@@ -1,0 +1,20 @@
+{
+  "name": "@acet/shared",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Shared zod schemas, types, enums and constants for web, api and worker",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.4"
+  }
+}

@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-surface font-sans text-body leading-body antialiased;
+  }
+  h1,
+  h2,
+  h3 {
+    @apply font-heading font-extrabold text-navy;
+  }
+}
+
+@layer components {
+  .eyebrow {
+    @apply text-xs font-bold uppercase tracking-[0.3em] text-red;
+  }
+  .card {
+    @apply rounded-card border border-line bg-card;
+  }
+}

@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Cache MongoDB test binary
+        uses: actions/cache@v4
+        with:
+          path: .cache/mongodb-binaries
+          key: mongodb-binaries-${{ runner.os }}-7.0.24
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm test
+      - name: Build web
+        run: npm run build -w @acet/web

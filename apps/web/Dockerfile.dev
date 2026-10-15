@@ -1,0 +1,14 @@
+# ACET SkillUp web dev server (Vite). Production serving with nginx comes in Phase H1.
+FROM node:20-alpine
+WORKDIR /app
+COPY package.json package-lock.json ./
+COPY packages/shared/package.json packages/shared/
+COPY apps/api/package.json apps/api/
+COPY apps/worker/package.json apps/worker/
+COPY apps/web/package.json apps/web/
+RUN npm ci --workspace @acet/web --include-workspace-root=false
+COPY packages/shared packages/shared
+COPY apps/web apps/web
+WORKDIR /app/apps/web
+EXPOSE 5173
+CMD ["npx", "vite", "--host", "0.0.0.0"]

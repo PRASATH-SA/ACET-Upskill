@@ -1,0 +1,102 @@
+# ACET SkillUp — local stack (Phase 0).
+#   cp .env.example .env      # then set JWT secrets
+#   docker compose up --build
+#   docker compose run --rm ollama-pull     # first time only: downloads the models
+# Web: http://localhost:5173   API: http://localhost:4000/api/v1/health
+
+name: acet-skillup
+
+x-node-env: &node-env
+  NODE_ENV: development
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  MONGO_URI: mongodb://mongo:27017/acet_skillup?replicaSet=rs0
+  LLM_PROVIDER: ${LLM_PROVIDER:-ollama}
+  LLM_BASE_URL: ${LLM_BASE_URL:-http://ollama:11434}
+  LLM_CHAT_MODEL: ${LLM_CHAT_MODEL:-qwen2.5:7b-instruct}
+  LLM_EMBED_MODEL: ${LLM_EMBED_MODEL:-nomic-embed-text}
+  LLM_TIMEOUT_MS: ${LLM_TIMEOUT_MS:-120000}
+  LLM_MAX_CONCURRENCY: ${LLM_MAX_CONCURRENCY:-2}
+
+services:
+  mongo:
+    image: mongo:7
+    # A single-node replica set: transactions (bulk map save, approvals) need one.
+    command: ['--replSet', 'rs0', '--bind_ip_all']
+    ports: ['27017:27017']
+    volumes: ['mongo-data:/data/db']
+    healthcheck:
+      # Initiates the replica set on first start, then reports healthy once it is primary.
+      test:
+        - CMD
+        - mongosh
+        - --quiet
+        - --eval
+        - "try { rs.status().ok } catch (e) { rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'mongo:27017' }] }).ok }"
+      interval: 5s
+      timeout: 10s
+      retries: 20
+      start_period: 10s
+
+  ollama:
+    image: ollama/ollama:latest
+    ports: ['11434:11434']
+    volumes: ['ollama-data:/root/.ollama']
+    # NVIDIA GPU (needs the NVIDIA Container Toolkit). Uncomment to use it:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  # One-shot: downloads the chat and embedding models into the ollama volume.
+  ollama-pull:
+    image: ollama/ollama:latest
+    depends_on: [ollama]
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: ['/bin/sh', '-c']
+    command:
+      - 'ollama pull ${LLM_CHAT_MODEL:-qwen2.5:7b-instruct} && ollama pull ${LLM_EMBED_MODEL:-nomic-embed-text} && ollama list'
+    profiles: ['setup']
+    restart: 'no'
+
+  api:
+    build: { context: ., dockerfile: apps/api/Dockerfile }
+    environment:
+      <<: *node-env
+      API_PORT: 4000
+      WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:5173}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?Set JWT_ACCESS_SECRET in .env}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?Set JWT_REFRESH_SECRET in .env}
+      UPLOAD_DIR: /data/uploads
+    ports: ['4000:4000']
+    volumes: ['uploads:/data/uploads']
+    depends_on:
+      mongo: { condition: service_healthy }
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://localhost:4000/api/v1/health']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  worker:
+    build: { context: ., dockerfile: apps/worker/Dockerfile }
+    environment:
+      <<: *node-env
+    depends_on:
+      mongo: { condition: service_healthy }
+
+  web:
+    build: { context: ., dockerfile: apps/web/Dockerfile.dev }
+    environment:
+      API_PROXY_TARGET: http://api:4000
+      VITE_API_BASE_URL: /api/v1
+    ports: ['5173:5173']
+    depends_on: [api]
+
+volumes:
+  mongo-data:
+  ollama-data:
+  uploads:
