@@ -13,6 +13,8 @@ export default [
       '.cache/**',
       '.data/**',
       'uploads/**',
+      'playwright-report/**',
+      'test-results/**',
     ],
   },
   js.configs.recommended,
@@ -32,6 +34,11 @@ export default [
       'no-var': 'error',
       'prefer-const': 'error',
     },
+  },
+  {
+    // Playwright specs run in Node but pass callbacks to page.evaluate() in the browser.
+    files: ['e2e/**/*.js'],
+    languageOptions: { globals: { ...globals.node, ...globals.browser } },
   },
   {
     files: ['apps/web/src/**/*.{js,jsx}'],

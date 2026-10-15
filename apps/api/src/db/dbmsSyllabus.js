@@ -1,3 +1,4 @@
+import { layoutMap } from '@acet/shared';
 import { Subject, Topic, TopicLink, Unit } from '../modules/syllabus/model.js';
 
 /**
@@ -122,8 +123,13 @@ export async function createDbmsSubject({
   const units = {};
   for (const u of DBMS_UNITS) units[u.number] = await Unit.create({ ...u, subjectId: subject._id });
 
+  // Lay the map out left to right by prerequisite depth, one band per unit (shared dagre layout).
+  const positions = layoutMap(
+    DBMS_TOPICS.map((t) => ({ id: t.key, unitId: String(t.unit) })),
+    DBMS_LINKS.map((l) => ({ fromTopicId: l.from, toTopicId: l.to, type: l.type })),
+    { unitOrder: DBMS_UNITS.map((u) => String(u.number)) },
+  );
   const topics = {};
-  let col = 0;
   for (const [i, t] of DBMS_TOPICS.entries()) {
     topics[t.key] = await Topic.create({
       unitId: units[t.unit]._id,
@@ -131,7 +137,7 @@ export async function createDbmsSubject({
       title: t.title,
       summary: t.summary,
       order: i,
-      position: { x: 260 * col++, y: t.unit === 4 ? 220 : 0 },
+      position: positions[t.key],
       status,
     });
   }

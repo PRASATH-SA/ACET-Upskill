@@ -298,3 +298,43 @@ describe('progress', () => {
     expect(revisionStreak(['2026-03-07'], now)).toBe(0);
   });
 });
+
+describe('inline flashcard rating (F4)', () => {
+  it('enrols a published card on first rating and reschedules it with FSRS', async () => {
+    const f = await dbmsFixture();
+    const { cards } = await publishedPractice(f, 'relational');
+    const id = String(cards[0]._id);
+    const first = await api()
+      .post(`/api/v1/flashcards/${id}/rate`)
+      .set(f.student.auth)
+      .send({ rating: 'good' })
+      .expect(200);
+    expect(new Date(first.body.data.nextDue).getTime()).toBeGreaterThan(Date.now());
+    expect(await Review.countDocuments({ userId: f.student.id, itemId: cards[0]._id })).toBe(1);
+
+    // A second rating reuses the same schedule instead of enrolling again.
+    await api()
+      .post(`/api/v1/flashcards/${id}/rate`)
+      .set(f.student.auth)
+      .send({ rating: 'again' })
+      .expect(200);
+    expect(await Review.countDocuments({ userId: f.student.id, itemId: cards[0]._id })).toBe(1);
+  });
+
+  it('refuses draft cards, other syllabus versions and non-students', async () => {
+    const f = await dbmsFixture();
+    const { cards } = await publishedPractice(f, 'relational');
+    const draft = await Flashcard.create({
+      topicId: f.topics.relational._id,
+      subjectId: f.subject._id,
+      front: 'draft',
+      back: 'draft',
+      status: 'draft',
+    });
+    const send = (user, id) =>
+      api().post(`/api/v1/flashcards/${id}/rate`).set(user.auth).send({ rating: 'good' });
+    await send(f.student, String(draft._id)).expect(404);
+    await send(f.outsider, String(cards[0]._id)).expect(403);
+    await send(f.faculty, String(cards[0]._id)).expect(403);
+  });
+});

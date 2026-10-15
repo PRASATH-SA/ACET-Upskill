@@ -12,6 +12,19 @@ export const COLORS = {
   card: '#FFFFFF',
 };
 
+/**
+ * Supporting shades (F1), not in A.8. Darker variants keep small text on tinted backgrounds
+ * above WCAG AA 4.5:1; success and warning are for status badges and the revision dot only.
+ */
+export const SUPPORT_COLORS = {
+  navyDark: '#0B2247',
+  redDark: '#B3191E',
+  blueDark: '#1F4FB8',
+  success: '#1C6B3C',
+  warning: '#F28C28',
+  warningDark: '#8A4A0B',
+};
+
 export const FONTS = {
   heading: { family: 'Montserrat', weights: [700, 800] },
   body: { family: 'Inter', weights: [400, 500, 600], lineHeight: 1.7 },
@@ -34,17 +47,20 @@ export const SHAPE = {
   mobileBreakpointPx: 768,
 };
 
-/** A.8 — map node colours per state. Locked greys and the revision dot are not in A.8 and may be tuned in F3. */
+/**
+ * A.8 — map node colours per state. Locked text is navy (A.8: "locked-state text"), which keeps
+ * it above AA contrast on the grey fill. The revision dot is the warning orange.
+ */
 export const MAP_NODE_STYLE = {
   mastered: { fill: COLORS.gold, border: COLORS.goldBorder, text: COLORS.navy },
   current: { fill: COLORS.blue, border: COLORS.blue, text: COLORS.card },
   unlocked: { fill: COLORS.card, border: COLORS.blue, text: COLORS.navy },
-  locked: { fill: '#E5E7EB', border: '#C7CCD4', text: '#6B7280' },
+  locked: { fill: '#E5E7EB', border: '#C7CCD4', text: COLORS.navy },
   needsRevision: {
     fill: COLORS.gold,
     border: COLORS.goldBorder,
     text: COLORS.navy,
-    dot: '#F28C28',
+    dot: SUPPORT_COLORS.warning,
   },
 };
 

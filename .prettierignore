@@ -7,3 +7,5 @@ coverage
 .data
 package-lock.json
 apps/api/uploads
+playwright-report
+test-results

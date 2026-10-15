@@ -6,6 +6,7 @@ import {
   CreateUnitSchema,
   IdParamsSchema,
   ListSubjectsQuerySchema,
+  SearchQuerySchema,
   SaveMapSchema,
   UpdateLinkSchema,
   UpdateSubjectSchema,
@@ -23,6 +24,7 @@ const staff = requireRole('faculty', 'admin');
 export function syllabusRoutes() {
   const r = Router();
 
+  r.get('/search', validate({ query: SearchQuerySchema }), h(c.search));
   r.get('/subjects', validate({ query: ListSubjectsQuerySchema }), h(c.listSubjects));
   r.post(
     '/subjects',

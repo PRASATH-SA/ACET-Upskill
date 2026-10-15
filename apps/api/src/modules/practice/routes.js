@@ -52,6 +52,15 @@ export function practiceRoutes() {
     ),
   );
 
+  r.post(
+    '/flashcards/:id/rate',
+    student,
+    validate({ ...P, body: RateReviewSchema }),
+    h(async (req, res) =>
+      ok(res, await s.rateFlashcard(currentUser(req), req.params.id, req.body.rating)),
+    ),
+  );
+
   r.get(
     '/subjects/:id/map/me',
     student,

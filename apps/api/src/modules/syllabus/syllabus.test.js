@@ -340,3 +340,28 @@ describe('topic CRUD', () => {
     expect(await TopicLink.exists({ toTopicId: f.id('indexing') })).toBeNull();
   });
 });
+
+describe('search', () => {
+  it('finds topics a student may open and never draft topics or other versions', async () => {
+    const f = await fixture();
+    const other = await fixture();
+    await Topic.updateOne({ _id: f.id('bcnf') }, { $set: { status: 'draft' } });
+    const res = await api().get('/api/v1/search?q=norm').set(f.student.auth).expect(200);
+    const titles = res.body.data.topics.map((t) => t.title);
+    expect(titles).toContain('Normalization');
+    expect(res.body.data.topics.every((t) => t.subjectId === f.sid)).toBe(true);
+    expect(res.body.data.topics.some((t) => t.subjectId === other.sid)).toBe(false);
+
+    const bcnf = await api().get('/api/v1/search?q=bcnf').set(f.student.auth).expect(200);
+    expect(bcnf.body.data.topics).toEqual([]);
+    const staff = await api().get('/api/v1/search?q=bcnf').set(f.faculty.auth).expect(200);
+    expect(staff.body.data.topics).toHaveLength(1);
+  });
+
+  it('treats the query as text, not a regex, and requires one', async () => {
+    const f = await fixture();
+    const res = await api().get('/api/v1/search?q=.*').set(f.student.auth).expect(200);
+    expect(res.body.data.topics).toEqual([]);
+    await api().get('/api/v1/search').set(f.student.auth).expect(400);
+  });
+});

@@ -1,4 +1,4 @@
-import { ListSubjectsQuerySchema } from '@acet/shared';
+import { ListSubjectsQuerySchema, SearchQuerySchema } from '@acet/shared';
 import { loadSubject } from '../../lib/access.js';
 import { created, ok, q } from '../../lib/http.js';
 import { currentUser } from '../../middleware/auth.js';
@@ -59,3 +59,8 @@ export const crossUnitLinks = async (req, res) =>
 export const prerequisites = async (req, res) =>
   ok(res, await s.prerequisitesOf(currentUser(req), id(req)));
 export const unlocks = async (req, res) => ok(res, await s.unlocks(currentUser(req), id(req)));
+
+export const search = async (req, res) => {
+  const { q: term, limit } = q(req, SearchQuerySchema);
+  ok(res, await s.search(currentUser(req), term, limit));
+};

@@ -2,22 +2,121 @@
 @tailwind components;
 @tailwind utilities;
 
+/* A.8 global type scale: Montserrat 700/800 headings, Inter body at line-height 1.7. */
 @layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
   body {
-    @apply bg-surface font-sans text-body leading-body antialiased;
+    @apply bg-surface font-sans text-base text-body leading-body antialiased;
   }
   h1,
   h2,
+  h3,
+  h4 {
+    @apply font-heading font-extrabold leading-tight text-navy;
+  }
+  h1 {
+    @apply text-2xl sm:text-3xl;
+  }
+  h2 {
+    @apply text-xl sm:text-2xl;
+  }
   h3 {
-    @apply font-heading font-extrabold text-navy;
+    @apply text-lg font-bold;
+  }
+  h4 {
+    @apply text-base font-bold;
+  }
+  a {
+    @apply text-blue-dark underline-offset-2 hover:underline;
+  }
+  /* Keyboard focus is always visible (F1 acceptance). */
+  :focus-visible {
+    @apply outline-none ring-2 ring-blue ring-offset-2;
+  }
+  /* A.8: never justify text. */
+  p,
+  li {
+    text-align: start;
   }
 }
 
 @layer components {
   .eyebrow {
-    @apply text-xs font-bold uppercase tracking-[0.3em] text-red;
+    @apply text-xs font-bold uppercase tracking-[0.3em] text-red-dark;
   }
   .card {
     @apply rounded-card border border-line bg-card;
+  }
+  .prose-acet {
+    @apply max-w-none text-body;
+  }
+  .prose-acet h1,
+  .prose-acet h2,
+  .prose-acet h3 {
+    @apply mb-2 mt-5 first:mt-0;
+  }
+  .prose-acet p,
+  .prose-acet ul,
+  .prose-acet ol,
+  .prose-acet pre,
+  .prose-acet table {
+    @apply my-3;
+  }
+  .prose-acet ul {
+    @apply list-disc pl-6;
+  }
+  .prose-acet ol {
+    @apply list-decimal pl-6;
+  }
+  .prose-acet strong {
+    @apply font-semibold text-navy;
+  }
+  .prose-acet code {
+    @apply rounded bg-surface px-1 py-0.5 text-sm text-navy;
+  }
+  .prose-acet pre {
+    @apply overflow-x-auto rounded-xl bg-surface p-4;
+  }
+  .prose-acet table {
+    @apply w-full border-collapse text-sm;
+  }
+  .prose-acet th,
+  .prose-acet td {
+    @apply border border-line px-3 py-2 text-left;
+  }
+  .prose-acet blockquote {
+    @apply border-l-4 border-gold pl-4 italic;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #fff;
+  }
+  /* "Print" on the 10-mark answer prints only that section. */
+  body[data-print] * {
+    visibility: hidden;
+  }
+  body[data-print='step-prepare'] #step-prepare,
+  body[data-print='step-prepare'] #step-prepare * {
+    visibility: visible;
+  }
+  body[data-print='step-prepare'] #step-prepare {
+    position: absolute;
+    inset: 0 0 auto 0;
   }
 }

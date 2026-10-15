@@ -108,3 +108,8 @@ export const MyMapNodeSchema = z.object({
   score: z.number().nullable(),
   missingPrerequisites: z.array(z.string()),
 });
+
+export const SearchQuerySchema = z.object({
+  q: z.string().trim().min(1).max(100),
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+});

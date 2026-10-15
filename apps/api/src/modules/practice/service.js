@@ -317,6 +317,23 @@ export async function rateReview(user, reviewId, rating, now = new Date()) {
   return { reviewId: String(review._id), rating, nextDue: next.due, mastery: after };
 }
 
+/**
+ * POST /flashcards/:id/rate — rating a card from the topic page's inline deck (F4).
+ * Enrols the published card in the student's schedule if needed, then rates it like revision.
+ */
+export async function rateFlashcard(user, flashcardId, rating, now = new Date()) {
+  const card = await Flashcard.findOne({ _id: flashcardId, status: PUBLISHED }).lean();
+  if (!card) throw notFound('Flashcard');
+  const { topic } = await loadTopic(user, String(card.topicId), 'read');
+  await enrol(user.id, topic, 'flashcard', [card._id], now);
+  const review = await Review.findOne({
+    userId: user.id,
+    itemType: 'flashcard',
+    itemId: card._id,
+  }).lean();
+  return rateReview(user, String(review._id), rating, now);
+}
+
 // ---------- overdue sweep ----------
 
 /**

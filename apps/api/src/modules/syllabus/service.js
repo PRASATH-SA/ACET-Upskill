@@ -471,3 +471,43 @@ export async function crossUnitLinks(user, subjectId) {
   const { map } = await graphFor(user, subjectId);
   return map.links.filter((l) => l.crossUnit);
 }
+
+// ---------- search ----------
+
+const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * GET /search?q= — topics and subjects the user may open, matched on title/code.
+ * Uses listSubjects for scoping, so students only ever get approved topics of their version.
+ */
+export async function search(user, q, limit = 20) {
+  const subjects = await listSubjects(user, {});
+  if (!subjects.length) return { subjects: [], topics: [] };
+  const re = new RegExp(escapeRegex(q), 'i');
+  const byId = new Map(subjects.map((s) => [String(s._id), s]));
+  const topics = await Topic.find({
+    subjectId: { $in: subjects.map((s) => s._id) },
+    title: re,
+    ...(user.role === 'student' ? { status: { $in: STUDENT_MAP_STATUSES } } : {}),
+  })
+    .select('title summary subjectId unitId')
+    .sort({ title: 1 })
+    .limit(limit)
+    .lean();
+  return {
+    subjects: subjects
+      .filter((s) => re.test(s.name) || re.test(s.code))
+      .map((s) => ({ id: String(s._id), code: s.code, name: s.name, semester: s.semester })),
+    topics: topics.map((t) => {
+      const s = byId.get(String(t.subjectId));
+      return {
+        id: String(t._id),
+        title: t.title,
+        summary: t.summary ?? '',
+        subjectId: String(t.subjectId),
+        subjectCode: s?.code,
+        subjectName: s?.name,
+      };
+    }),
+  };
+}
