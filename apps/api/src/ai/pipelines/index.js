@@ -3,3 +3,6 @@
  * registerPipeline(type, handler) when imported.
  */
 import './ingest.js';
+import './draftMap.js';
+import './draftContent.js';
+import './tagPyqs.js';

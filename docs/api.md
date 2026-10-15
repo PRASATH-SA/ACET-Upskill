@@ -184,3 +184,15 @@ Every model call goes through the gateway (`docs/ai.md`). AI endpoints return `5
 | POST | `/ai/reembed` | admin | `202 { jobId }`. Re-embeds chunks made with another embedding model |
 
 Job statuses: `queued → running → succeeded | failed | cancelled`. A job can succeed with `result: "needsMaterial"` and create nothing (A3).
+
+### AI generation (A3)
+
+All three run as background jobs (`202 { data: { jobId } }`); follow them with `GET /ai/jobs/:id/events`. They return `503 AI_OFFLINE` at once while the circuit breaker is open. Everything they create is `status: draft`, `source: ai` with `aiMeta { model, promptVersion, jobId, sourceChunkIds }`.
+
+| Method | Path | Roles | Notes |
+|---|---|---|---|
+| POST | `/ai/subjects/:id/draft-map` | owning faculty, admin | `{ materialId? }` (default: the subject's latest syllabus PDF). Units, topics (with subtopics) and prerequisite/related links as drafts, cycle-free, laid out left to right. No readable syllabus → `result: "needsMaterial"` |
+| POST | `/ai/topics/:id/draft-content` | owning faculty, admin | `{ kinds?: ["easy","tenMark","flashcards","mcq","curiosity","realWorld"] }` (default all). Too little material → `result: "needsMaterial"`, nothing created. MCQs the self-check disagrees with get `needsAttention: true` |
+| POST | `/ai/pyqs/tag` | owning faculty, admin | `{ subjectId }`. Tags untagged **draft** PYQs with 1–3 topics chosen from the 5 nearest by embedding; stores `tagConfidence` per topic |
+
+Re-running a draft replaces only earlier AI drafts of the same kind that are unapproved and unedited. Approved, published, faculty-written and faculty-edited items are never touched.

@@ -149,3 +149,21 @@ Check the result with `GET /api/v1/ai/health`: `reachable` and `modelsPulled` sh
 ## Tests
 
 No real LLM runs in CI. `LLM_PROVIDER=mock` gives deterministic answers: a scripted reply per task (`provider.on(task, …)`), otherwise schema-valid sample data, and bag-of-words embeddings. The adapters have contract tests against recorded Ollama and OpenAI-compatible responses in `apps/api/test/fixtures/llm/`.
+
+## Generation pipelines (A3)
+
+| Job type | File | Steps |
+|---|---|---|
+| `syllabus.toMap` | `ai/pipelines/draftMap.js` | split units (regex, no model call) → `syllabus.topics` per unit (long units map-reduced in ~1,800-token parts and merged) → dedupe by normalised title → `syllabus.prereqs` per unit → one `syllabus.crossLinks` pass over ≤ 40 topics → drop the lowest-confidence link of every prerequisite cycle → dagre layout → save drafts |
+| `topic.draftContent` | `ai/pipelines/draftContent.js` | `hasEnoughMaterial` (else `needsMaterial`) → retrieve top chunks (≤ 2,400 tokens) → one call per kind: `topic.easy`, `topic.tenMark`, `topic.flashcards` ×3 (5 each), `topic.mcqs` ×2 (5 each), `topic.curiosity`, `topic.realWorld` → `mcq.selfCheck` per MCQ |
+| `pyq.tag` | `ai/pipelines/tagPyqs.js` | embed topics and questions → 5 nearest topics per question → `pyq.tag` picks among those numbers only → keep picks with confidence ≥ 0.4 |
+
+Design choices for 7–8B models:
+- The model never invents ids or topic names in link and tag tasks: it answers with numbers from a list the pipeline gave it, and out-of-range numbers are dropped.
+- Unit splitting and title de-duplication are deterministic code, not model calls.
+- A kind that fails validation after its one repair attempt fails the job with a message naming the kind; drafts already saved for other kinds stay (they passed validation) and are listed in the job output.
+- If the model server drops mid-job, the job stops and fails with `AI_OFFLINE`.
+
+Prompts: `prompts/syllabus.{topics,prereqs,crossLinks}.v1`, `prompts/topic.{easy,tenMark,flashcards,mcqs,curiosity,realWorld}.v1`, `prompts/mcq.selfCheck.v1`, `prompts/pyq.tag.v1`, each with a JSON schema. The matching zod schemas are in `apps/api/src/ai/schemas.js`.
+
+Tests (`ai/pipelines/pipelines.test.js`) script the mock model and compare each pipeline's saved result with golden files in `apps/api/test/fixtures/ai/`. Regenerate them after an intended change with `UPDATE_GOLDEN=1 npx vitest run src/ai/pipelines` and review the diff.

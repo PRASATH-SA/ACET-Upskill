@@ -1,0 +1,61 @@
+{
+  "units": [
+    "1. INTRODUCTION",
+    "2. RELATIONAL MODEL AND SQL",
+    "3. DATABASE DESIGN",
+    "4. STORAGE AND INDEXING",
+    "5. TRANSACTIONS"
+  ],
+  "topics": [
+    "Purpose of Database Systems",
+    "Views of Data",
+    "Data Models",
+    "Database Architecture",
+    "Database Users and Administrators",
+    "Relational Model",
+    "Keys",
+    "Relational Algebra",
+    "SQL Queries",
+    "Nested Subqueries",
+    "Functional Dependency",
+    "Data Anomalies",
+    "Normalization",
+    "  Lossless Decomposition",
+    "1NF 2NF and 3NF",
+    "BCNF",
+    "File Organization",
+    "Indexing",
+    "B+ Tree Index",
+    "Hashing",
+    "Transaction Concepts",
+    "Concurrency Control",
+    "Recovery System"
+  ],
+  "prerequisites": [
+    "1NF 2NF and 3NF -> BCNF",
+    "B+ Tree Index -> Hashing",
+    "Concurrency Control -> Recovery System",
+    "Data Anomalies -> Normalization",
+    "Data Models -> Database Architecture",
+    "Database Architecture -> Database Users and Administrators",
+    "File Organization -> Indexing",
+    "Functional Dependency -> Data Anomalies",
+    "Indexing -> B+ Tree Index",
+    "Keys -> Relational Algebra",
+    "Normalization -> 1NF 2NF and 3NF",
+    "Normalization -> Lossless Decomposition",
+    "Purpose of Database Systems -> Views of Data",
+    "Relational Algebra -> SQL Queries",
+    "Relational Model -> Keys",
+    "SQL Queries -> Nested Subqueries",
+    "Transaction Concepts -> Concurrency Control",
+    "Views of Data -> Data Models"
+  ],
+  "related": [
+    "File Organization ~ Transaction Concepts",
+    "Functional Dependency ~ File Organization",
+    "Purpose of Database Systems ~ Relational Model",
+    "Relational Model ~ Functional Dependency"
+  ],
+  "droppedForCycles": 5
+}

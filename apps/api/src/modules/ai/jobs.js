@@ -137,6 +137,8 @@ export async function failJob(jobId, err) {
         status: 'failed',
         finishedAt: new Date(),
         error: { code: err.code ?? 'INTERNAL', message: err.message ?? 'Job failed' },
+        // Pipelines that saved some items before failing report them here.
+        ...(err.output ? { output: err.output } : {}),
       },
     },
   );

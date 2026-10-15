@@ -1,6 +1,17 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { IdParamsSchema, ObjectIdSchema } from '@acet/shared';
+import {
+  DraftContentSchema,
+  DraftMapSchema,
+  IdParamsSchema,
+  ObjectIdSchema,
+  TagPyqsSchema,
+} from '@acet/shared';
+import { AIOfflineError } from '../../ai/gateway/errors.js';
+import { DRAFT_CONTENT_JOB } from '../../ai/pipelines/draftContent.js';
+import { DRAFT_MAP_JOB } from '../../ai/pipelines/draftMap.js';
+import { TAG_PYQS_JOB } from '../../ai/pipelines/tagPyqs.js';
+import { audit } from '../audit/service.js';
 import { gateway } from '../../ai/gateway/index.js';
 import { asyncHandler as h, ok, validate } from '../../lib/http.js';
 import { openSse } from '../../lib/sse.js';
@@ -56,6 +67,77 @@ export function aiRoutes() {
     requireRole('faculty', 'admin'),
     validate(P),
     h(async (req, res) => ok(res, await cancelJob(currentUser(req), req.params.id))),
+  );
+
+  // ---------- A3 generation: each returns 202 { jobId } ----------
+
+  /** Fails fast while the circuit breaker says the model server is down (A.7.8). */
+  const assertOnline = () => {
+    if (gateway().breaker.isOpen) {
+      throw new AIOfflineError('AI service offline. Try again in a minute.');
+    }
+  };
+  const accepted = (res, job) => res.status(202).json({ data: { jobId: String(job._id) } });
+
+  r.post(
+    '/subjects/:id/draft-map',
+    requireRole('faculty', 'admin'),
+    validate({ ...P, body: DraftMapSchema }),
+    h(async (req, res) => {
+      const user = currentUser(req);
+      const subject = await loadSubject(user, req.params.id, 'write');
+      assertOnline();
+      const job = await createJob({
+        type: DRAFT_MAP_JOB,
+        input: { subjectId: req.params.id, materialId: req.body.materialId },
+        createdBy: user.id,
+        subjectId: subject._id,
+      });
+      accepted(res, job);
+    }),
+  );
+
+  r.post(
+    '/topics/:id/draft-content',
+    requireRole('faculty', 'admin'),
+    validate({ ...P, body: DraftContentSchema }),
+    h(async (req, res) => {
+      const user = currentUser(req);
+      const { topic } = await loadTopic(user, req.params.id, 'write');
+      assertOnline();
+      const job = await createJob({
+        type: DRAFT_CONTENT_JOB,
+        input: { topicId: req.params.id, kinds: req.body.kinds },
+        createdBy: user.id,
+        subjectId: topic.subjectId,
+        topicId: topic._id,
+      });
+      await audit({
+        actorId: user.id,
+        action: 'ai.draftContent',
+        target: { type: 'topic', id: req.params.id },
+        meta: { kinds: req.body.kinds },
+      });
+      accepted(res, job);
+    }),
+  );
+
+  r.post(
+    '/pyqs/tag',
+    requireRole('faculty', 'admin'),
+    validate({ body: TagPyqsSchema }),
+    h(async (req, res) => {
+      const user = currentUser(req);
+      const subject = await loadSubject(user, req.body.subjectId, 'write');
+      assertOnline();
+      const job = await createJob({
+        type: TAG_PYQS_JOB,
+        input: { subjectId: req.body.subjectId },
+        createdBy: user.id,
+        subjectId: subject._id,
+      });
+      accepted(res, job);
+    }),
   );
 
   // A2: retrieval preview for faculty (what the AI would ground a draft on).

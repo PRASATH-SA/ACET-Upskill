@@ -5,3 +5,4 @@ export * from './syllabus.js';
 export * from './content.js';
 export * from './practice.js';
 export * from './reports.js';
+export * from './ai.js';

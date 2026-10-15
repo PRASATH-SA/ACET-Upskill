@@ -1,0 +1,33 @@
+{
+  "resources": [
+    {
+      "kind": "curiosity",
+      "title": "The address that would not update",
+      "body": "A college office stores each student address in five different registers. A student moves house."
+    },
+    {
+      "kind": "easy",
+      "title": "In simple words",
+      "body": "Normalization means splitting one big table into smaller tables so that each fact is stored only once and nothing gets out of sync.\n\n> **Think of it like this:** Like keeping one master attendance register instead of copies in every classroom."
+    },
+    {
+      "kind": "realWorld",
+      "title": "Where this is used",
+      "body": "- Banking systems keep one customer record.\n- Railway reservation stores trains once.\n- College ERP keeps one student table."
+    },
+    {
+      "kind": "tenMark",
+      "title": "10-mark answer: Normalization",
+      "body": "**Definition.** Normalization organises tables to reduce redundancy.\n\n**Need.** Redundant data causes update, insertion and deletion anomalies.\n\n**Explanation**\n\n1. **1NF**: Atomic values and no repeating groups.\n2. **2NF**: No partial dependency on a composite key.\n3. **3NF**: No transitive dependency between non-key attributes.\n\n**Example / diagram.** Split Student(Roll, Name, Dept, HOD) into Student(Roll, Name, Dept) and Dept(Dept, HOD).\n\n**Advantages**\n\n- Less redundancy\n- No anomalies\n\n**Conclusion.** Normalization keeps data consistent through lossless decomposition."
+    },
+    {
+      "kind": "workshop",
+      "title": "Normalise a mess sheet",
+      "body": "1. Take the sample mess-bill sheet. 2. List its functional dependencies. 3. Split it into 3NF tables.\n\n**Submit:** A PDF with your tables and dependencies."
+    }
+  ],
+  "flashcards": 15,
+  "mcqs": 10,
+  "curiosity": "What goes wrong?",
+  "needsAttention": 0
+}
