@@ -4,6 +4,7 @@ import { storage } from '../../lib/storage.js';
 import { sniffFile } from '../../lib/upload.js';
 import { audit } from '../audit/service.js';
 import { User } from '../users/model.js';
+import { Topic } from '../syllabus/model.js';
 import { Submission, Workshop } from './model.js';
 
 const SUBMISSION_TYPES = ['pdf', 'docx', 'pptx', 'png', 'jpg', 'webp'];
@@ -22,6 +23,39 @@ export async function createWorkshop(user, topicId, input) {
     target: { type: 'workshop', id: String(w._id) },
   });
   return w;
+}
+
+/** GET /subjects/:id/workshops — every workshop of a subject with submission counts (F6). */
+export async function subjectWorkshops(user, subjectId) {
+  await loadSubject(user, subjectId, 'write');
+  const workshops = await Workshop.find({ subjectId }).sort({ dueAt: -1 }).lean();
+  const ids = workshops.map((w) => w._id);
+  const [counts, topics] = await Promise.all([
+    Submission.aggregate([
+      { $match: { workshopId: { $in: ids } } },
+      {
+        $group: {
+          _id: '$workshopId',
+          submitted: { $sum: 1 },
+          graded: { $sum: { $cond: [{ $ifNull: ['$gradedAt', false] }, 1, 0] } },
+        },
+      },
+    ]),
+    Topic.find({ _id: { $in: workshops.map((w) => w.topicId) } })
+      .select('title')
+      .lean(),
+  ]);
+  const countOf = new Map(counts.map((c) => [String(c._id), c]));
+  const titleOf = new Map(topics.map((t) => [String(t._id), t.title]));
+  return workshops.map((w) => ({
+    id: String(w._id),
+    topicId: String(w.topicId),
+    topicTitle: titleOf.get(String(w.topicId)) ?? '',
+    brief: w.brief,
+    dueAt: w.dueAt,
+    submitted: countOf.get(String(w._id))?.submitted ?? 0,
+    graded: countOf.get(String(w._id))?.graded ?? 0,
+  }));
 }
 
 export async function listWorkshops(user, topicId) {
@@ -76,8 +110,10 @@ export async function submit(user, workshopId, { text }, file) {
       },
     },
     { upsert: true, new: true, setDefaultsOnInsert: true },
-  );
-  return doc;
+  ).lean();
+  // Never expose the storage key (H1): the file is fetched through /submissions/:id/file.
+  const { _id, __v: _v, fileKey: storedKey, ...rest } = doc;
+  return { id: String(_id), ...rest, hasFile: Boolean(storedKey) };
 }
 
 export async function listSubmissions(user, workshopId) {

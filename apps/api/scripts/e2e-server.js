@@ -32,6 +32,10 @@ Object.assign(process.env, {
   LOGIN_RATE_LIMIT_PER_MIN: '1000',
   API_RATE_LIMIT_PER_MIN: '100000',
   UPLOAD_DIR: path.join(tmp, 'e2e-uploads'),
+  // AI jobs run in this process. CI uses the scripted mock model; set E2E_LLM=real to use the
+  // provider from the environment (the manual "local-ai" run with Ollama, H1).
+  AI_JOB_RUNNER: 'inline',
+  ...(process.env.E2E_LLM === 'real' ? {} : { LLM_PROVIDER: 'mock' }),
 });
 
 const { loadEnv } = await import('../src/config/env.js');
@@ -42,6 +46,13 @@ const { createApp } = await import('../src/app.js');
 loadEnv();
 await connectMongo(process.env.MONGO_URI);
 await seed();
+if (process.env.E2E_LLM !== 'real') {
+  const { scriptContentModel, scriptMapModel, scriptTutorModel } =
+    await import('../test/mockModel.js');
+  scriptMapModel();
+  scriptContentModel();
+  scriptTutorModel?.();
+}
 const server = createApp().listen(port, () => {
   process.stdout.write(`e2e api listening on ${port}\n`);
 });

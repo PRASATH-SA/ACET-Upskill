@@ -76,6 +76,12 @@ export function workshopRoutes() {
     h(async (req, res) => ok(res, await s.listSubmissions(currentUser(req), req.params.id))),
   );
   r.get(
+    '/subjects/:id/workshops',
+    staff,
+    validate(P),
+    h(async (req, res) => ok(res, await s.subjectWorkshops(currentUser(req), req.params.id))),
+  );
+  r.get(
     '/me/submissions',
     requireRole('student'),
     h(async (req, res) => ok(res, await s.mySubmissions(currentUser(req)))),

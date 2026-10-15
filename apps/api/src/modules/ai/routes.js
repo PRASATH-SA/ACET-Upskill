@@ -12,6 +12,8 @@ import { DRAFT_CONTENT_JOB } from '../../ai/pipelines/draftContent.js';
 import { DRAFT_MAP_JOB } from '../../ai/pipelines/draftMap.js';
 import { TAG_PYQS_JOB } from '../../ai/pipelines/tagPyqs.js';
 import { audit } from '../audit/service.js';
+import { Chunk } from '../../ai/rag/model.js';
+import { Material } from '../content/model.js';
 import { gateway } from '../../ai/gateway/index.js';
 import { asyncHandler as h, ok, validate } from '../../lib/http.js';
 import { openSse } from '../../lib/sse.js';
@@ -161,6 +163,47 @@ export function aiRoutes() {
       ok(res, await hasEnoughMaterial(req.params.id));
     }),
   );
+  // F6 review: the source chunks a draft was grounded on (aiMeta.sourceChunkIds).
+  r.get(
+    '/chunks',
+    requireRole('faculty', 'admin'),
+    validate({
+      query: z.object({
+        ids: z
+          .string()
+          .transform((s) => s.split(',').filter(Boolean))
+          .pipe(z.array(ObjectIdSchema).min(1).max(30)),
+      }),
+    }),
+    h(async (req, res) => {
+      const chunks = await Chunk.find({ _id: { $in: req.query.ids } })
+        .select('materialId topicId subjectId index heading text')
+        .lean();
+      const user = currentUser(req);
+      for (const sid of new Set(chunks.map((c) => String(c.subjectId)))) {
+        await loadSubject(user, sid, 'write');
+      }
+      const files = new Map(
+        (
+          await Material.find({ _id: { $in: chunks.map((c) => c.materialId) } })
+            .select('fileName')
+            .lean()
+        ).map((m) => [String(m._id), m.fileName]),
+      );
+      ok(
+        res,
+        chunks.map((c) => ({
+          id: String(c._id),
+          materialId: String(c.materialId),
+          fileName: files.get(String(c.materialId)) ?? null,
+          heading: c.heading,
+          text: c.text,
+          index: c.index,
+        })),
+      );
+    }),
+  );
+
   // A2.2: re-embed chunks made with another embedding model. Admin only.
   r.post(
     '/reembed',

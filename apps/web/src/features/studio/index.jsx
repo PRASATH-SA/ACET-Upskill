@@ -1,10 +1,7 @@
-import { Page } from '../../components/layout/AppShell';
-import { EyebrowHeading } from '../../components/ui';
-
-export function StudioHome() {
-  return (
-    <Page>
-      <EyebrowHeading eyebrow="Faculty studio" title="Your subjects" level={1} />
-    </Page>
-  );
-}
+export { StudioHome } from './StudioHome';
+export { SubjectBuilder } from './SubjectBuilder';
+export { TopicEditor } from './TopicEditor';
+export { ReviewQueue } from './ReviewQueue';
+export { QuestionBank } from './QuestionBank';
+export { WorkshopReview } from './WorkshopReview';
+export { InsightsPage } from './InsightsPage';

@@ -76,7 +76,7 @@ Unknown routes return 401 to anonymous callers and 404 to signed-in users.
 | GET | `/subjects` | any | Students: their syllabus version only. Faculty: own subjects. `?syllabusVersionId&semester` |
 | POST | `/subjects` | admin | `CreateSubjectSchema` (assign `facultyIds`) |
 | GET, PATCH, DELETE | `/subjects/:id` | read: any with access; write: admin | |
-| GET | `/subjects/:id/map` | any with access | `{ subject, units, topics, links }`. Links include `crossUnit`. Students get approved items only |
+| GET | `/subjects/:id/map` | any with access | `{ subject, units, topics, links }`. Topics and links carry `status` and `source` (`ai` drafts are outlined in the studio). Links include `crossUnit`. Students get approved items only |
 | PATCH | `/subjects/:id/map` | owning faculty, admin | `SaveMapSchema`: node positions/order/unit/title plus edge upserts and deletes, validated as a whole and written in one transaction |
 | PATCH | `/subjects/:id/map/approve` | owning faculty, admin | Every draft topic and link → approved |
 | GET | `/subjects/:id/learning-order` | any with access | Topological order, ties broken by unit then topic order |
@@ -146,6 +146,7 @@ Mastery rules and thresholds (`MASTERY_*` env vars) are documented in `apps/api/
 | PATCH, DELETE | `/workshops/:id` | owning faculty, admin | Delete refuses once there are submissions |
 | POST | `/workshops/:id/submissions` | student | Multipart `text` and/or `file` (pdf, docx, pptx, images). Replaces an ungraded submission. `late` is set after `dueAt` |
 | GET | `/workshops/:id/submissions` | owning faculty, admin | |
+| GET | `/subjects/:id/workshops` | owning faculty, admin | Every workshop of the subject with `topicTitle`, `submitted` and `graded` counts (F6) |
 | GET | `/me/submissions` | student | |
 | GET | `/submissions/:id/file` | the student or owning faculty | |
 | PATCH | `/submissions/:id/grade` | owning faculty, admin | `{ score, feedback }`, audited |
@@ -181,6 +182,7 @@ Every model call goes through the gateway (`docs/ai.md`). AI endpoints return `5
 | POST | `/ai/jobs/:id/cancel` | faculty, admin | Queued jobs stop at once; running jobs stop at their next step. 422 if already finished |
 | POST | `/ai/retrieve` | owning faculty, admin | `{ query, topicId? , subjectId?, k?, allowSubjectFallback? }` → `{ chunks: [{ id, text, heading, score, … }], scope, model }` |
 | GET | `/ai/topics/:id/coverage` | owning faculty, admin | `hasEnoughMaterial`: `{ enough, reason, chunkCount, words, staleChunks }` |
+| GET | `/ai/chunks?ids=a,b` | owning faculty, admin | Source chunks (text, heading, file name; no vectors) for the review queue side-by-side view (F6) |
 | POST | `/ai/reembed` | admin | `202 { jobId }`. Re-embeds chunks made with another embedding model |
 
 Job statuses: `queued → running → succeeded | failed | cancelled`. A job can succeed with `result: "needsMaterial"` and create nothing (A3).

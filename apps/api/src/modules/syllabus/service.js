@@ -288,6 +288,7 @@ export async function getMap(user, subjectId) {
       order: t.order ?? 0,
       position: { x: t.position?.x ?? 0, y: t.position?.y ?? 0 },
       status: t.status,
+      source: t.source ?? 'faculty',
     })),
     // A link is shown only when both of its topics are visible to this user.
     links: links

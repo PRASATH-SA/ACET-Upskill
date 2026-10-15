@@ -35,9 +35,7 @@ export async function extractPdfText(buffer) {
     for (let i = 1; i <= Math.min(pageCount, MAX_PAGES); i++) {
       const page = await doc.getPage(i);
       const content = await page.getTextContent();
-      pages.push(
-        content.items.map((it) => ('str' in it ? it.str + (it.hasEOL ? '\n' : ' ') : '')).join(''),
-      );
+      pages.push(joinItems(content.items));
       page.cleanup();
     }
     const text = normalise(pages.join('\n\n'));
@@ -57,6 +55,33 @@ export async function extractPdfText(buffer) {
   } finally {
     await doc.destroy();
   }
+}
+
+/**
+ * Joins pdf.js text items into lines. pdf.js has no items for blank lines, so a paragraph break
+ * is rebuilt from the vertical gap: a jump of more than ~1.6 line heights becomes a blank line.
+ * The A2 chunker splits on those breaks and on headings.
+ */
+export function joinItems(items) {
+  let out = '';
+  let lastY = null;
+  let lastH = 0;
+  for (const it of items) {
+    if (!('str' in it)) continue;
+    const y = it.transform?.[5];
+    const h = it.height || lastH || 10;
+    if (lastY !== null && y !== undefined && Math.abs(lastY - y) > h * 0.5) {
+      // A new line: decide between a line break and a paragraph break.
+      if (!out.endsWith('\n')) out += '\n';
+      if (Math.abs(lastY - y) > Math.max(h, lastH) * 1.6 && !out.endsWith('\n\n')) out += '\n';
+    }
+    out += it.str;
+    if (it.hasEOL && !out.endsWith('\n')) out += '\n';
+    else if (!it.hasEOL && it.str && !out.endsWith(' ')) out += ' ';
+    if (y !== undefined) lastY = y;
+    if (it.height) lastH = it.height;
+  }
+  return out;
 }
 
 function normalise(text) {

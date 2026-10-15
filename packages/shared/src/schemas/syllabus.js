@@ -83,6 +83,7 @@ export const MapTopicSchema = z.object({
   order: z.number(),
   position: PositionSchema,
   status: ContentStatusSchema,
+  source: z.enum(['ai', 'faculty']).default('faculty'),
 });
 export const MapLinkSchema = z.object({
   id: z.string(),
