@@ -6,6 +6,7 @@ import {
   Bot,
   CalendarDays,
   ChevronRight,
+  Code2,
   FileQuestion,
   Printer,
 } from 'lucide-react';
@@ -29,6 +30,7 @@ import { FlashcardDeck } from './FlashcardDeck';
 import { TutorDrawer } from './TutorDrawer';
 import { VideoPlayer } from './VideoPlayer';
 import { Workshops } from './Workshop';
+import { TopicCodeLab } from '../codelab/CodeLabList';
 
 const MASTERY_TONE = {
   notStarted: 'neutral',
@@ -46,7 +48,7 @@ export function availableSteps(page) {
   if (page.video || page.easy) steps.push('understand');
   if (page.tenMark) steps.push('prepare');
   if (page.flashcardCount > 0) steps.push('remember');
-  if (page.questionCount > 0) steps.push('practice');
+  if (page.questionCount > 0 || page.codeChallengeCount > 0) steps.push('practice');
   if (page.realWorld || page.workshop || page.workshops?.length) steps.push('apply');
   return steps;
 }
@@ -89,7 +91,7 @@ function Connections({ page }) {
               <li key={t.id}>
                 <Link
                   to={`/topics/${t.id}`}
-                  className="group block rounded-xl border border-line p-3 hover:border-blue hover:no-underline"
+                  className="group block rounded-xl border border-line p-3 glass-hover hover:no-underline"
                 >
                   <span className="flex items-center justify-between font-semibold text-navy group-hover:text-blue-dark">
                     {t.title} <ChevronRight className="h-4 w-4" aria-hidden />
@@ -260,7 +262,7 @@ export function TopicPage() {
       <nav aria-label="Breadcrumb" className="no-print text-sm">
         <ol className="flex flex-wrap items-center gap-1">
           <li>
-            <Link to={mapHref}>{t.subject.name}</Link>
+            <Link to={`/subjects/${t.subject.id}`}>{t.subject.name}</Link>
           </li>
           {t.unit && (
             <li className="flex items-center gap-1">
@@ -413,21 +415,33 @@ export function TopicPage() {
                 </StepSection>
               )}
 
-              {p.questionCount > 0 && (
+              {(p.questionCount > 0 || p.codeChallengeCount > 0) && (
                 <StepSection id="practice" eyebrow="Practice" title="Check yourself">
-                  <p>
-                    {p.questionCount} question{p.questionCount === 1 ? '' : 's'} with explanations.
-                    Score 80% or more to move this topic towards mastered.
-                  </p>
-                  <Button
-                    as={Link}
-                    to={`/topics/${t.id}/quiz`}
-                    size="lg"
-                    icon={ArrowRight}
-                    className="mt-4 hover:no-underline"
-                  >
-                    Take the quiz
-                  </Button>
+                  {p.questionCount > 0 && (
+                    <>
+                      <p>
+                        {p.questionCount} question{p.questionCount === 1 ? '' : 's'} with
+                        explanations. Score 80% or more to move this topic towards mastered.
+                      </p>
+                      <Button
+                        as={Link}
+                        to={`/topics/${t.id}/quiz`}
+                        size="lg"
+                        icon={ArrowRight}
+                        className="mt-4 hover:no-underline"
+                      >
+                        Take the quiz
+                      </Button>
+                    </>
+                  )}
+                  {p.codeChallengeCount > 0 && (
+                    <div className={p.questionCount > 0 ? 'mt-6 border-t border-line pt-5' : ''}>
+                      <h3 className="flex items-center gap-2">
+                        <Code2 className="h-5 w-5 text-navy" aria-hidden /> Code lab: SQL problems
+                      </h3>
+                      <TopicCodeLab topicId={t.id} subjectId={t.subject?.id} />
+                    </div>
+                  )}
                 </StepSection>
               )}
 

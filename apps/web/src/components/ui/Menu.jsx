@@ -69,7 +69,7 @@ export function Menu({ trigger, label, items, align = 'right' }) {
           aria-label={label}
           onKeyDown={onMenuKey}
           className={cn(
-            'absolute z-40 mt-2 min-w-[13rem] overflow-hidden rounded-2xl border border-line bg-card py-1',
+            'glass-strong absolute z-40 mt-2 min-w-[13rem] animate-glass-pop overflow-hidden rounded-2xl p-1.5',
             align === 'right' ? 'right-0' : 'left-0',
           )}
         >
@@ -87,7 +87,7 @@ export function Menu({ trigger, label, items, align = 'right' }) {
                   item.onSelect();
                 }}
                 className={cn(
-                  'flex min-h-[44px] w-full items-center gap-3 px-4 text-left text-sm font-medium hover:bg-surface focus:bg-surface focus:outline-none',
+                  'flex min-h-[44px] w-full items-center gap-3 rounded-xl px-3.5 text-left text-sm font-medium transition-colors hover:bg-navy/5 focus:bg-navy/5 focus:outline-none',
                   item.tone === 'danger' ? 'text-red-dark' : 'text-navy',
                 )}
               >

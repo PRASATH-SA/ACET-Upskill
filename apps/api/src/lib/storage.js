@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { createReadStream } from 'node:fs';
-import { mkdir, rm, stat, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { env } from '../config/env.js';
@@ -32,18 +32,57 @@ export class LocalDiskStorage {
     return key;
   }
 
-  async read(key) {
+  /** Moves an uploaded temp file (large videos are written to disk, not memory) into storage. */
+  async saveFile(srcPath, { folder, ext }) {
+    const key = `${folder}/${randomUUID()}.${ext}`;
     const full = this.resolve(key);
+    await mkdir(path.dirname(full), { recursive: true });
     try {
-      const info = await stat(full);
-      return { stream: createReadStream(full), size: info.size };
+      await rename(srcPath, full);
+    } catch {
+      // Different volume: copy, then remove the temp file.
+      await copyFile(srcPath, full);
+      await rm(srcPath, { force: true });
+    }
+    return key;
+  }
+
+  /**
+   * Opens a file for reading. With `range` ({ start, end } inclusive) only those bytes are
+   * streamed, so video players can seek without downloading the whole file.
+   */
+  async read(key, range) {
+    const full = this.resolve(key);
+    let info;
+    try {
+      info = await stat(full);
     } catch {
       throw new AppError('NOT_FOUND', 'File not found');
+    }
+    return {
+      stream: createReadStream(full, range ?? {}),
+      size: info.size,
+    };
+  }
+
+  /** Byte size, or null when the file is missing. */
+  async size(key) {
+    try {
+      return (await stat(this.resolve(key))).size;
+    } catch {
+      return null;
     }
   }
 
   async remove(key) {
     await rm(this.resolve(key), { force: true });
+  }
+
+  /** A folder for multer's temp files, inside the storage root so moves are renames. */
+  async tempDir() {
+    const dir = path.join(this.root, '.incoming');
+    await mkdir(dir, { recursive: true });
+    return dir;
   }
 }
 

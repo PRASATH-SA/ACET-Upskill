@@ -94,6 +94,44 @@ export const RealWorldSchema = z.object({
 
 export const SelfCheckSchema = z.object({ answerIndex: z.number().int().min(-1).max(5) });
 
+/** mcq.variants: same item shape as topic.mcqs. */
+export const McqVariantsSchema = McqsSchema;
+
+export const ExplainScoreSchema = z.object({
+  perCriterion: z
+    .array(
+      z.object({
+        criterionId: str(1, 40),
+        score: z.number().int().min(0).max(10),
+        evidence: z.string().trim().max(400),
+        missing: z.string().trim().max(300),
+      }),
+    )
+    .min(1)
+    .max(6),
+  feedback: str(10, 600),
+});
+
+export const RubricDraftSchema = z
+  .object({
+    prompt: str(10, 300),
+    criteria: z
+      .array(
+        z.object({
+          text: str(3, 300),
+          points: z.number().int().min(1).max(3),
+          keyIdeas: z.array(str(1, 120)).min(1).max(4),
+        }),
+      )
+      .min(2)
+      .max(4),
+    passScore: z.number().int().min(1).max(12),
+  })
+  .refine((r) => r.passScore <= r.criteria.reduce((n, c) => n + c.points, 0), {
+    message: 'passScore cannot exceed the total points',
+    path: ['passScore'],
+  });
+
 export const PyqTagSchema = z.object({
   picks: z
     .array(
@@ -104,4 +142,25 @@ export const PyqTagSchema = z.object({
     )
     .min(1)
     .max(3),
+});
+
+/** subject.overview.v1: the written part of a subject's root page, from the syllabus only. */
+export const SubjectOverviewDraftSchema = z.object({
+  tagline: str(5, 160),
+  why: str(20, 800),
+  prerequisites: z.array(z.object({ title: str(2, 80), why: z.string().trim().max(240) })).max(5),
+  outcomes: z.array(str(5, 200)).min(1).max(6),
+  applications: z
+    .array(z.object({ title: str(2, 80), description: z.string().trim().max(240) }))
+    .max(5),
+  units: z
+    .array(
+      z.object({
+        number: z.number().int().min(1).max(20),
+        summary: z.string().trim().max(300),
+        youWillBeAbleTo: z.string().trim().max(240),
+        leadsTo: z.string().trim().max(240),
+      }),
+    )
+    .max(20),
 });

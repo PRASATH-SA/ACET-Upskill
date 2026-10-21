@@ -7,6 +7,7 @@ import {
   logger,
   sweepOverdue,
   runAiJob,
+  purgeOldAudio,
   scheduleReembedIfStale,
 } from '@acet/api';
 import { defineJobs, scheduleRecurring } from './jobs.js';
@@ -31,7 +32,7 @@ async function main() {
     logger.error({ err: err.message, job: job.attrs.name }, 'job failed'),
   );
 
-  defineJobs(agenda, { sweepOverdue, runAiJob, logger });
+  defineJobs(agenda, { sweepOverdue, runAiJob, purgeOldAudio, logger });
   await agenda.start();
   await scheduleRecurring(agenda);
   logger.info('worker started');

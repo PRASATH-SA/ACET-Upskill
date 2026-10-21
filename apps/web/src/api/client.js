@@ -29,6 +29,9 @@ export class ApiError extends Error {
 
 let accessToken = null;
 let refreshInFlight = null;
+/** Why the last refresh failed: 'auth' (no valid cookie) or 'network' (offline, server down). */
+let refreshFailure = null;
+export const lastRefreshFailure = () => refreshFailure;
 const sessionListeners = new Set();
 
 export function getAccessToken() {
@@ -79,13 +82,17 @@ export function refreshSession() {
         });
         if (!res.ok) {
           setAccessToken(null);
+          // A 5xx (or the service worker's offline 503) is not a verdict on the session.
+          refreshFailure = res.status >= 500 ? 'network' : 'auth';
           return null;
         }
         const { data } = await res.json();
+        refreshFailure = null;
         setAccessToken(data.accessToken);
         emit({ type: 'refreshed', session: data });
         return data;
       } catch {
+        refreshFailure = 'network';
         return null;
       } finally {
         refreshInFlight = null;

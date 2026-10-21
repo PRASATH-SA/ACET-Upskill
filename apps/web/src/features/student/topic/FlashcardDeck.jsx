@@ -48,7 +48,7 @@ export function FlashcardDeck({ topicId, onDone }) {
   if (!card) {
     return (
       <div
-        className="flex flex-col items-center gap-3 rounded-card border border-gold-border bg-gold-tint p-6 text-center"
+        className="flex flex-col items-center gap-3 glass-gold rounded-card p-6 text-center"
         role="status"
       >
         <CheckCircle2 className="h-8 w-8 text-navy" aria-hidden />

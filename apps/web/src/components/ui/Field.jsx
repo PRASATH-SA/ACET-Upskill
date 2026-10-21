@@ -3,7 +3,7 @@ import { ChevronDown } from 'lucide-react';
 import { cn } from '../../lib/cn';
 
 const control =
-  'block w-full rounded-xl border bg-card px-4 text-navy placeholder:text-body/70 transition-colors focus:outline-none focus:ring-2 focus:ring-blue/40 disabled:cursor-not-allowed disabled:bg-surface';
+  'block w-full rounded-xl border bg-white/70 px-4 text-navy shadow-[inset_0_1px_2px_rgb(15_45_92/0.06)] backdrop-blur-md placeholder:text-body/70 transition-[border-color,box-shadow,background-color] focus:border-blue focus:bg-white/90 focus:outline-none focus:ring-4 focus:ring-blue/15 disabled:cursor-not-allowed disabled:bg-navy/5';
 
 /**
  * Label, hint and error around one form control, wired with aria-describedby / aria-invalid.
@@ -59,7 +59,7 @@ export const Input = forwardRef(function Input(
         className={cn(
           control,
           'min-h-[44px]',
-          error ? 'border-red' : 'border-line hover:border-navy/40',
+          error ? 'border-red' : 'border-navy/15 hover:border-navy/35',
           inputClassName,
         )}
         {...rest}
@@ -80,7 +80,7 @@ export const Textarea = forwardRef(function Textarea(
         className={cn(
           control,
           'py-3 leading-body',
-          error ? 'border-red' : 'border-line hover:border-navy/40',
+          error ? 'border-red' : 'border-navy/15 hover:border-navy/35',
         )}
         {...rest}
       />
@@ -117,7 +117,7 @@ const SelectControl = forwardRef(function SelectControl(
         className={cn(
           control,
           'min-h-[44px] appearance-none pr-10',
-          error ? 'border-red' : 'border-line hover:border-navy/40',
+          error ? 'border-red' : 'border-navy/15 hover:border-navy/35',
         )}
         {...rest}
       >

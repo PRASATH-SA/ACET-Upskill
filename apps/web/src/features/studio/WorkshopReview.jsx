@@ -18,6 +18,7 @@ import { downloadAuthFile } from '../../hooks/useAuthFile';
 import { cn } from '../../lib/cn';
 import { skeys } from './api';
 import { SubjectTopicPicker } from './QuestionBank';
+import { QueryError } from '../../components/QueryError';
 
 const fmt = (d) => new Date(d).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
 
@@ -205,6 +206,8 @@ export function WorkshopReview() {
           />
         ) : list.isPending ? (
           <LoadingBlock />
+        ) : list.isError ? (
+          <QueryError query={list} what="workshops" />
         ) : list.data.length === 0 ? (
           <EmptyState
             icon={Wrench}

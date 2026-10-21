@@ -9,3 +9,4 @@ export { sweepOverdue } from './modules/practice/service.js';
 export { runAiJob } from './modules/ai/runner.js';
 export { AI_RUN_JOB } from './modules/ai/queue.js';
 export { scheduleReembedIfStale } from './ai/pipelines/ingest.js';
+export { purgeOldAudio } from './modules/explain/service.js';

@@ -73,7 +73,7 @@ function resolveLinks(raw, keys) {
   return out;
 }
 
-async function sourceText(ctx, subjectId) {
+export async function sourceText(ctx, subjectId) {
   const filter = ctx.input.materialId
     ? { _id: ctx.input.materialId, subjectId }
     : { subjectId, kind: 'syllabusPdf' };

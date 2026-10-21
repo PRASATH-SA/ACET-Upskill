@@ -1,4 +1,6 @@
 import { Router } from 'express';
+import { env } from '../config/env.js';
+import { userLimiter } from '../middleware/rateLimit.js';
 import { requireAuth } from '../middleware/auth.js';
 import { authRoutes } from '../modules/auth/routes.js';
 import { contentRoutes } from '../modules/content/routes.js';
@@ -14,7 +16,12 @@ import { workshopRoutes } from '../modules/workshops/routes.js';
 import { aiRoutes } from '../modules/ai/routes.js';
 import { settingsRoutes } from '../modules/settings/routes.js';
 import { tutorRoutes } from '../modules/tutor/routes.js';
+import { explainRoutes } from '../modules/explain/routes.js';
+import { videoRoutes } from '../modules/video/routes.js';
+import { codeLabRoutes } from '../modules/codelab/routes.js';
+import { overviewRoutes } from '../modules/overview/routes.js';
 import { healthRoutes } from './health.js';
+import { mediaRoutes } from './media.js';
 
 /**
  * Mounts every module under /api/v1.
@@ -25,8 +32,11 @@ export function apiRouter() {
   const r = Router();
   r.use('/health', healthRoutes());
   r.use('/auth', authRoutes());
+  // Signed, short-lived file links for <video>/<track>/<audio> (the token is the permission).
+  r.use('/media', mediaRoutes());
 
   r.use(requireAuth);
+  r.use(userLimiter(env().API_RATE_LIMIT_PER_MIN));
   r.use('/users', userRoutes());
   r.use('/mentor', mentorRoutes());
   r.use('/', orgRoutes());
@@ -39,6 +49,10 @@ export function apiRouter() {
   r.use('/', insightRoutes());
   r.use('/', tutorRoutes());
   r.use('/', settingsRoutes());
+  r.use('/', videoRoutes());
+  r.use('/', explainRoutes());
+  r.use('/', codeLabRoutes());
+  r.use('/', overviewRoutes());
   r.use('/ai', aiRoutes());
   return r;
 }

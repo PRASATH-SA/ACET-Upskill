@@ -18,10 +18,14 @@ const admin = () => import('../features/admin');
 export const appRoutes = {
   shared: [
     { path: 'search', element: page(student, 'SearchPage') },
+    // Subject root page: why, prerequisites, the unit journey and outcomes (staff preview drafts).
+    { path: 'subjects/:subjectId', element: page(student, 'SubjectOverviewPage') },
     // Faculty and admins preview topic pages too; the API returns published content only.
     { path: 'topics/:topicId', element: page(student, 'TopicPage') },
     // Staff can preview a quiz; only students can submit it (enforced by the API).
     { path: 'topics/:topicId/quiz', element: page(student, 'QuizPage') },
+    // Code lab problem; staff see drafts as a preview, and their submissions are not recorded.
+    { path: 'code/:challengeId', element: page(student, 'CodeLabPage') },
   ],
   byRole: {
     student: [
@@ -31,17 +35,32 @@ export const appRoutes = {
       { path: 'exam-prep', element: page(student, 'ExamPrepIndex') },
       { path: 'exam-prep/:subjectId', element: page(student, 'ExamPrepPage') },
       { path: 'me/progress', element: page(student, 'ProgressPage') },
+      { path: 'code-lab', element: page(student, 'CodeLabIndex') },
+      { path: 'code-lab/:subjectId', element: page(student, 'SubjectCodeLabPage') },
     ],
     'faculty,admin': [
       { path: 'studio', element: page(faculty, 'StudioHome') },
       { path: 'studio/subjects/:subjectId', element: page(faculty, 'SubjectBuilder') },
       { path: 'studio/subjects/:subjectId/insights', element: page(faculty, 'InsightsPage') },
+      { path: 'studio/subjects/:subjectId/overview', element: page(faculty, 'OverviewEditor') },
       { path: 'studio/topics/:topicId', element: page(faculty, 'TopicEditor') },
       { path: 'studio/review', element: page(faculty, 'ReviewQueue') },
       { path: 'studio/questions', element: page(faculty, 'QuestionBank') },
       { path: 'studio/workshops', element: page(faculty, 'WorkshopReview') },
     ],
-    mentor: [{ path: 'mentor', element: page(mentor, 'MentorHome') }],
-    admin: [{ path: 'admin', element: page(admin, 'AdminHome') }],
+    // Admins may open a mentor's view of a student too (the API audits it).
+    'mentor,admin': [
+      { path: 'mentor', element: page(mentor, 'MentorHome') },
+      { path: 'mentor/students/:id', element: page(mentor, 'MentorStudent') },
+      { path: 'mentor/follow-ups', element: page(mentor, 'FollowUps') },
+    ],
+    admin: [
+      { path: 'admin', element: page(admin, 'AdminHome') },
+      { path: 'admin/users', element: page(admin, 'UsersPage') },
+      { path: 'admin/syllabus', element: page(admin, 'SyllabusPage') },
+      { path: 'admin/departments', element: page(admin, 'DepartmentsPage') },
+      { path: 'admin/co-po', element: page(admin, 'CoPoPage') },
+      { path: 'admin/ai', element: page(admin, 'AiSettingsPage') },
+    ],
   },
 };

@@ -1,15 +1,18 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import {
+  CreateQuizSessionSchema,
   IdParamsSchema,
   ObjectIdSchema,
   QuizQuerySchema,
   RateReviewSchema,
   SubmitQuizSchema,
+  SubmitQuizSessionSchema,
 } from '@acet/shared';
 import { assertCanAccessUser } from '../../lib/access.js';
-import { asyncHandler as h, ok, validate } from '../../lib/http.js';
+import { asyncHandler as h, created, ok, validate } from '../../lib/http.js';
 import { currentUser, requireRole } from '../../middleware/auth.js';
+import * as qs from './quizSession.js';
 import * as s from './service.js';
 
 const P = { params: IdParamsSchema };
@@ -36,6 +39,34 @@ export function practiceRoutes() {
     student,
     validate({ body: SubmitQuizSchema }),
     h(async (req, res) => ok(res, await s.submitQuiz(currentUser(req), req.body))),
+  );
+
+  // Feature 1: question pools, one variant per concept, options shuffled per student.
+  r.post(
+    '/topics/:id/quiz-sessions',
+    validate({ ...P, body: CreateQuizSessionSchema }),
+    h(async (req, res) =>
+      created(res, await qs.createQuizSession(currentUser(req), req.params.id, req.body)),
+    ),
+  );
+  r.get(
+    '/quiz-sessions/:id',
+    validate(P),
+    h(async (req, res) => ok(res, await qs.getQuizSession(currentUser(req), req.params.id))),
+  );
+  r.post(
+    '/quiz-sessions/:id/submit',
+    student,
+    validate({ ...P, body: SubmitQuizSessionSchema }),
+    h(async (req, res) =>
+      ok(res, await qs.submitQuizSession(currentUser(req), req.params.id, req.body)),
+    ),
+  );
+
+  r.get(
+    '/topics/:id/flashcards/deck',
+    validate(P),
+    h(async (req, res) => ok(res, await s.flashcardDeck(currentUser(req), req.params.id))),
   );
 
   r.get(

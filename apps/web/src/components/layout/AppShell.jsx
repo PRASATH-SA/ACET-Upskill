@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { LogOut, PanelLeftClose, PanelLeftOpen, Search, User } from 'lucide-react';
+import { Download, LogOut, PanelLeftClose, PanelLeftOpen, Search, User } from 'lucide-react';
+import { useInstall } from '../../lib/pwa';
 import { NAV } from '../../app/nav';
 import { logout, useSession } from '../../features/auth/session';
 import { useUi } from '../../lib/uiStore';
@@ -23,7 +24,7 @@ function Logo() {
     >
       <span
         aria-hidden
-        className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-navy font-heading text-sm font-extrabold text-gold"
+        className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-navy font-heading text-sm font-extrabold text-gold shadow-press-navy-sm"
       >
         SU
       </span>
@@ -58,7 +59,7 @@ function SearchBox({ className }) {
         value={q}
         onChange={(e) => setQ(e.target.value)}
         placeholder="Search topics…"
-        className="min-h-[44px] w-full rounded-full border border-line bg-surface pl-10 pr-4 text-sm text-navy placeholder:text-body focus:border-blue focus:outline-none focus:ring-2 focus:ring-blue/30"
+        className="min-h-[44px] w-full rounded-full border border-navy/10 bg-white/60 pl-10 pr-4 text-sm text-navy shadow-[inset_0_1px_2px_rgb(15_45_92/0.06)] placeholder:text-body focus:border-blue focus:bg-white/90 focus:outline-none focus:ring-4 focus:ring-blue/15"
       />
     </form>
   );
@@ -66,9 +67,13 @@ function SearchBox({ className }) {
 
 function TopBar({ user }) {
   const navigate = useNavigate();
+  const canInstall = useInstall((s) => Boolean(s.prompt));
+  const install = useInstall((s) => s.install);
   return (
-    <header className="sticky top-0 z-30 border-b-2 border-red bg-card">
-      <div className="flex h-16 items-center gap-3 px-4 lg:px-6">
+    // Frosted bar; the thin red rule along the bottom edge keeps the ACET brand accent.
+    // 66px tall in total, like the old bar, so sticky offsets elsewhere (top-[66px]) still line up.
+    <header className="glass sticky top-0 z-30 rounded-none border-0 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-red">
+      <div className="flex h-[66px] items-center gap-3 px-4 lg:px-6">
         <Logo />
         <SearchBox className="ml-auto hidden max-w-sm flex-1 sm:block" />
         <IconButton
@@ -90,6 +95,7 @@ function TopBar({ user }) {
           }
           items={[
             { label: 'My profile', icon: User, onSelect: () => navigate('/profile') },
+            ...(canInstall ? [{ label: 'Install app', icon: Download, onSelect: install }] : []),
             {
               label: 'Sign out',
               icon: LogOut,
@@ -112,7 +118,8 @@ function Sidebar({ items }) {
   return (
     <aside
       className={cn(
-        'sticky top-[66px] hidden h-[calc(100vh-66px)] shrink-0 flex-col border-r border-line bg-card transition-[width] md:flex',
+        // A floating glass rail, inset from the edges.
+        'glass sticky top-[78px] my-3 ml-3 hidden h-[calc(100vh-90px)] shrink-0 flex-col rounded-card transition-[width] md:flex',
         collapsed ? 'w-[76px]' : 'w-60',
       )}
     >
@@ -126,9 +133,9 @@ function Sidebar({ items }) {
                 title={collapsed ? item.label : undefined}
                 className={({ isActive }) =>
                   cn(
-                    'relative flex min-h-[44px] items-center gap-3 rounded-xl px-3 text-sm font-semibold text-navy hover:bg-surface hover:no-underline',
+                    'relative flex min-h-[44px] items-center gap-3 rounded-2xl px-3 text-sm font-semibold text-navy transition-[background-color,box-shadow] hover:bg-white/60 hover:no-underline',
                     isActive &&
-                      'bg-surface before:absolute before:inset-y-2 before:left-0 before:w-1 before:rounded-full before:bg-red',
+                      'bg-white shadow-press-glass before:absolute before:inset-y-2.5 before:left-1 before:w-1 before:rounded-full before:bg-red',
                     collapsed && 'justify-center',
                     focusRing,
                   )
@@ -141,7 +148,7 @@ function Sidebar({ items }) {
           ))}
         </ul>
       </nav>
-      <div className="border-t border-line p-3">
+      <div className="border-t border-navy/[0.08] p-3">
         <IconButton
           icon={collapsed ? PanelLeftOpen : PanelLeftClose}
           label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
@@ -154,15 +161,16 @@ function Sidebar({ items }) {
   );
 }
 
+/** Mobile tabs: a floating glass pill above the home indicator. */
 function BottomTabs({ items }) {
   const tabs = items.filter((i) => i.mobile).slice(0, 4);
   return (
     <nav
       aria-label="Main"
-      className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-card pb-[env(safe-area-inset-bottom)] md:hidden"
+      className="fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-30 md:hidden"
     >
       <ul
-        className="grid"
+        className="glass grid rounded-full p-1.5 shadow-glass-lg"
         style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
       >
         {tabs.map((item) => (
@@ -172,8 +180,10 @@ function BottomTabs({ items }) {
               end={item.end}
               className={({ isActive }) =>
                 cn(
-                  'flex min-h-[56px] flex-col items-center justify-center gap-0.5 border-t-2 text-[11px] font-semibold hover:no-underline',
-                  isActive ? 'border-red text-navy' : 'border-transparent text-body',
+                  'relative flex min-h-[52px] flex-col items-center justify-center gap-0.5 rounded-full text-[11px] font-semibold transition-[background-color,box-shadow] hover:no-underline',
+                  isActive
+                    ? 'bg-white text-navy shadow-press-glass after:absolute after:bottom-1 after:h-1 after:w-1 after:rounded-full after:bg-red'
+                    : 'text-body',
                   focusRing,
                   'focus-visible:ring-offset-0',
                 )
@@ -205,7 +215,7 @@ export function AppShell() {
       <OfflineBanner />
       <div className="flex">
         <Sidebar items={items} />
-        <main id="main" tabIndex={-1} className="min-w-0 flex-1 pb-24 focus:outline-none md:pb-10">
+        <main id="main" tabIndex={-1} className="min-w-0 flex-1 pb-28 focus:outline-none md:pb-10">
           <Outlet />
         </main>
       </div>

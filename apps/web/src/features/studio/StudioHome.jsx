@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { BarChart3, Bot, BookOpen, ClipboardCheck, Map as MapIcon } from 'lucide-react';
+import { BarChart3, Bot, BookOpen, ClipboardCheck, Compass, Map as MapIcon } from 'lucide-react';
 import { get } from '../../api/client';
 import { Page } from '../../components/layout/AppShell';
 import {
@@ -15,6 +15,7 @@ import {
 import { useSession } from '../auth/session';
 import { useSubjects } from '../student/api';
 import { aiOffline, useAiHealth, useJobs } from './api';
+import { QueryError } from '../../components/QueryError';
 
 const JOB_LABEL = {
   'syllabus.toMap': 'Draft map',
@@ -97,6 +98,8 @@ export function StudioHome() {
         <h2 id="my-subjects">My subjects</h2>
         {subjects.isPending ? (
           <LoadingBlock className="mt-4" />
+        ) : subjects.isError ? (
+          <QueryError className="mt-4" query={subjects} what="your subjects" />
         ) : subjects.data.length === 0 ? (
           <EmptyState
             className="mt-4"
@@ -140,6 +143,16 @@ export function StudioHome() {
                     </Button>
                     <Button
                       as={Link}
+                      to={`/studio/subjects/${s.id}/overview`}
+                      size="sm"
+                      variant="secondary"
+                      icon={Compass}
+                      className="hover:no-underline"
+                    >
+                      Subject overview
+                    </Button>
+                    <Button
+                      as={Link}
                       to={`/studio/review?subjectId=${s.id}`}
                       size="sm"
                       variant="ghost"
@@ -162,7 +175,7 @@ export function StudioHome() {
         ) : (jobs.data ?? []).length === 0 ? (
           <p className="mt-3 text-sm">No AI jobs yet. Open a subject and draft its map with AI.</p>
         ) : (
-          <ul className="mt-4 divide-y divide-line rounded-card border border-line bg-card">
+          <ul className="mt-4 divide-y divide-line glass rounded-card">
             {jobs.data.map((j) => (
               <li
                 key={j.id}

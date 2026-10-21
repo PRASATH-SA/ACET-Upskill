@@ -29,10 +29,11 @@ toast.error = (title, description) => toast({ title, description, tone: 'error' 
 toast.info = (title, description) => toast({ title, description, tone: 'info' });
 
 const ICONS = { info: Info, success: CheckCircle2, error: AlertCircle };
+// The tone shows in the icon chip; the glass panel itself stays neutral.
 const TONES = {
-  info: 'border-blue/30 text-blue',
-  success: 'border-success/30 text-success',
-  error: 'border-red/30 text-red',
+  info: 'bg-blue/10 text-blue',
+  success: 'bg-success/10 text-success',
+  error: 'bg-red/10 text-red',
 };
 
 function ToastItem({ t }) {
@@ -47,12 +48,16 @@ function ToastItem({ t }) {
   return (
     <div
       role={tone === 'error' ? 'alert' : 'status'}
-      className={cn(
-        'pointer-events-auto flex w-full items-start gap-3 rounded-2xl border bg-card p-4',
-        TONES[tone],
-      )}
+      className="glass-strong pointer-events-auto flex w-full animate-glass-pop items-start gap-3 rounded-2xl p-3.5"
     >
-      <Icon className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
+      <span
+        className={cn(
+          'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full',
+          TONES[tone],
+        )}
+      >
+        <Icon className="h-5 w-5" aria-hidden />
+      </span>
       <div className="min-w-0 flex-1">
         <p className="font-semibold text-navy">{t.title}</p>
         {t.description && <p className="mt-0.5 text-sm text-body">{t.description}</p>}
@@ -73,7 +78,7 @@ export function Toaster() {
   return (
     <div
       aria-live="polite"
-      className="pointer-events-none fixed inset-x-0 bottom-20 z-[60] mx-auto flex max-w-md flex-col gap-2 px-4 md:bottom-6 md:right-6 md:left-auto md:mx-0"
+      className="pointer-events-none fixed inset-x-0 bottom-24 z-[60] mx-auto flex max-w-md flex-col gap-2 px-4 md:bottom-6 md:right-6 md:left-auto md:mx-0"
     >
       {toasts.map((t) => (
         <ToastItem key={t.id} t={t} />

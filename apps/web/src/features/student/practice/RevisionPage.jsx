@@ -217,7 +217,7 @@ export function RevisionPage() {
             {today.data.groups.map((g) => (
               <li
                 key={g.topicId}
-                className="flex items-center justify-between gap-3 rounded-2xl border border-line bg-card p-4"
+                className="flex items-center justify-between gap-3 glass rounded-2xl p-4"
               >
                 <div className="min-w-0">
                   <p className="truncate font-semibold text-navy">{g.title}</p>

@@ -54,7 +54,11 @@ export const useSearch = (q) =>
   });
 
 export const useTopicPage = (topicId) =>
-  useQuery({ queryKey: keys.topicPage(topicId), queryFn: () => get(`/topics/${topicId}/page`) });
+  useQuery({
+    queryKey: keys.topicPage(topicId),
+    queryFn: () => get(`/topics/${topicId}/page`),
+    enabled: Boolean(topicId),
+  });
 
 /** Marks the topic as learning (B4) the first time a student opens it. */
 export function useOpenTopic() {

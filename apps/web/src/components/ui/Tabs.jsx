@@ -35,7 +35,7 @@ export function Tabs({ tabs, value, onChange, label, className }) {
       <div
         role="tablist"
         aria-label={label}
-        className="flex gap-1 overflow-x-auto border-b border-line"
+        className="glass flex w-fit max-w-full gap-1 overflow-x-auto rounded-full p-1"
         onKeyDown={onKeyDown}
       >
         {tabs.map((t, i) => {
@@ -53,8 +53,11 @@ export function Tabs({ tabs, value, onChange, label, className }) {
               tabIndex={selected ? 0 : -1}
               onClick={() => onChange(t.value)}
               className={cn(
-                '-mb-px inline-flex min-h-[44px] shrink-0 items-center gap-2 border-b-2 px-4 text-sm font-semibold transition-colors',
-                selected ? 'border-red text-navy' : 'border-transparent text-body hover:text-navy',
+                // Segmented control: the selected tab is a raised white pill with the A.8 red marker.
+                'relative inline-flex min-h-[44px] shrink-0 items-center gap-2 rounded-full px-4 text-sm font-semibold transition-[background-color,box-shadow,color] duration-200',
+                selected
+                  ? 'bg-white text-navy shadow-press-glass after:absolute after:inset-x-5 after:bottom-1 after:h-0.5 after:rounded-full after:bg-red'
+                  : 'text-body hover:bg-white/50 hover:text-navy',
                 focusRing,
                 'focus-visible:ring-offset-0',
               )}
@@ -62,7 +65,14 @@ export function Tabs({ tabs, value, onChange, label, className }) {
               {Icon && <Icon className="h-4 w-4" aria-hidden />}
               {t.label}
               {t.count !== undefined && (
-                <span className="rounded-full bg-surface px-2 text-xs text-navy">{t.count}</span>
+                <span
+                  className={cn(
+                    'rounded-full px-2 text-xs',
+                    selected ? 'bg-navy text-white' : 'bg-navy/10 text-navy',
+                  )}
+                >
+                  {t.count}
+                </span>
               )}
             </button>
           );

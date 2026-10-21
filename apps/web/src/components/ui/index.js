@@ -8,7 +8,7 @@ export { Input, Select, Textarea } from './Field';
 export { Dialog } from './Dialog';
 export { Drawer } from './Drawer';
 export { Toaster, toast, useToastStore } from './Toast';
-export { Avatar, LoadingBlock, ProgressBar, Skeleton, StatTile } from './Feedback';
+export { Avatar, LoadingBlock, ProgressBar, ProgressRing, Skeleton, StatTile } from './Feedback';
 export { EmptyState } from './EmptyState';
 export { Tooltip } from './Tooltip';
 export { Menu } from './Menu';

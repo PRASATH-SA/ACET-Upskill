@@ -15,14 +15,14 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        'flex flex-col items-center rounded-card border border-dashed px-6 py-10 text-center',
-        tone === 'error' ? 'border-red/40 bg-red/5' : 'border-line bg-card',
+        'glass flex flex-col items-center rounded-card px-6 py-10 text-center',
+        tone === 'error' && 'border-red/30 bg-red/[0.06]',
         className,
       )}
     >
       {Icon && (
-        <span className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full bg-navy text-white">
-          <Icon className="h-6 w-6" aria-hidden />
+        <span className="mb-4 inline-flex h-14 w-14 animate-float items-center justify-center rounded-2xl bg-navy text-gold shadow-press-navy">
+          <Icon className="h-7 w-7" aria-hidden />
         </span>
       )}
       <h3 className="text-lg">{title}</h3>

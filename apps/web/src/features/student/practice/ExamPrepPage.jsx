@@ -50,7 +50,7 @@ export function ExamPrepIndex() {
             <li key={s.id}>
               <Link
                 to={`/exam-prep/${s.id}`}
-                className="block rounded-card border border-line bg-card p-5 hover:border-blue hover:no-underline"
+                className="block glass rounded-card p-5 glass-hover hover:no-underline"
               >
                 <p className="text-xs font-semibold text-body">
                   {s.code} · Semester {s.semester}

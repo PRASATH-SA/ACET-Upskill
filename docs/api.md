@@ -15,6 +15,14 @@ Base path: `/api/v1`. JSON only, except file uploads (multipart) and downloads.
 | Visibility | Students only ever receive `published` content and `approved` topics/links. This is enforced in services |
 | Long work | LLM calls (Phase A) create an `aiJobs` record and return `202 { data: { jobId } }` |
 
+### Rate limits (H1)
+
+- Per signed-in user: `API_RATE_LIMIT_PER_MIN` (default 300) requests per minute on every route after sign-in. A college network puts all students behind one public IP, so limits follow the user, not the address.
+- Per IP: `API_IP_RATE_LIMIT_PER_MIN` (default 20,000), a flood ceiling only.
+- Login: `LOGIN_RATE_LIMIT_PER_MIN` (default 5) per IP + email. Tutor and code lab have their own per-user limits (see their sections).
+- Limits are kept in memory per API process; with `API_WORKERS > 1` each process counts separately.
+- Exceeding a limit returns `429 RATE_LIMITED`.
+
 ### Error codes
 
 | Code | Status | When |
@@ -91,7 +99,7 @@ Unknown routes return 401 to anonymous callers and 404 to signed-in users.
 
 ## Content, materials and review (B3)
 
-`<type>` is `resources`, `flashcards` or `questions`.
+`<type>` is `resources`, `flashcards`, `questions`, `rubrics` (explain-it-back, see below) or `code-challenges` (code lab, see below).
 
 | Method | Path | Roles | Notes |
 |---|---|---|---|
@@ -99,8 +107,9 @@ Unknown routes return 401 to anonymous callers and 404 to signed-in users.
 | POST | `/topics/:id/<type>` | owning faculty, admin | Created as `draft`, `source: faculty` |
 | GET, PATCH, DELETE | `/<type>/:id` | owning faculty, admin | Editing clears a rejection and marks AI drafts as edited |
 | POST | `/<type>/:id/status` | see note | `{ status }`. Approve and publish: owning faculty only. Draft and inReview: owning faculty or admin. `published` from draft steps through approved |
-| POST | `/resources/:id/file` | owning faculty, admin | Multipart video (mp4, webm) for a `video` resource |
+| POST | `/resources/:id/file` | owning faculty, admin | Multipart video (mp4, webm) for a `video` resource. Streamed to disk, up to `VIDEO_MAX_MB` |
 | GET | `/resources/:id/file` | any with access | Students: only when published |
+| GET | `/topics/:id/question-pools` | owning faculty, admin | MCQs grouped by `conceptKey`, with variant and published counts per pool. A pool with one published variant repeats for every student |
 | POST | `/materials` | owning faculty, admin | Multipart `file`, `kind`, `topicId` or `subjectId`. File type is sniffed from bytes. PDF text is extracted on upload. Scanned PDFs return `scanned: true` and a warning |
 | GET | `/materials?topicId=\|subjectId=` | owning faculty, admin | Without the extracted text |
 | GET, DELETE | `/materials/:id` | owning faculty, admin | |
@@ -116,6 +125,10 @@ Unknown routes return 401 to anonymous callers and 404 to signed-in users.
 |---|---|---|---|
 | POST | `/topics/:id/open` | any with access | Students: notStarted → learning |
 | GET | `/topics/:id/quiz?limit=10` | any with access | Random published MCQs with `id, stem, options, difficulty` only. Never answers |
+| POST | `/topics/:id/quiz-sessions` | any with access | `{ limit? }` (1–30, default 10). One published question per concept pool, preferring variants the student has not seen in 30 days, options shuffled per student. `201` with the session and its questions (no answers). Expires after 3 hours |
+| GET | `/quiz-sessions/:id` | the session's owner | Resume a session: the same questions in the same option order |
+| POST | `/quiz-sessions/:id/submit` | student | `{ answers: [{ questionId, selectedIndex }] }`, where `selectedIndex` is the position the student saw. Only questions served in the session are accepted; a session is submitted once. Result as for `/quiz/submit` |
+| GET | `/topics/:id/flashcards/deck` | any with access | Published cards, each with the student's next due date. Staff get the cards without schedules |
 | POST | `/flashcards/:id/rate` | student | `{ rating }` from the topic page deck (F4). Enrols the published card in revision if needed, then reschedules it with FSRS |
 | POST | `/quiz/submit` | student | `SubmitQuizSchema`. Returns score, per-question correctness, explanations, `whyWrong`, the mastery change, and how many items entered revision |
 | GET | `/revision/today` | student | Due items grouped by topic, each with front/back |
@@ -169,13 +182,72 @@ Mastery rules and thresholds (`MASTERY_*` env vars) are documented in `apps/api/
 | GET | `/admin/usage` | admin | Users by role, weekly active students (8 weeks), topics published, AI drafts approved/rejected/edited by prompt version |
 | GET | `/admin/audit-logs` | admin | `?action&actorId&targetId&page&limit` |
 
+## Video learning (feature 3)
+
+Students reach only published videos of topics they can read. Captions are stored as WebVTT.
+
+| Method | Path | Roles | Notes |
+|---|---|---|---|
+| GET | `/resources/:id/playback` | any with access | Signed links for the video and each caption track (see `/media`), plus chapters and duration |
+| POST | `/resources/:id/captions` | owning faculty, admin | Multipart `file` (SRT or WebVTT, under 512 KB), `lang` (`en`, `ta`, …), `label`. Replaces that language's track. SRT is converted to WebVTT; a file with no cues is refused |
+| DELETE | `/resources/:id/captions/:lang` | owning faculty, admin | |
+| PUT | `/resources/:id/chapters` | owning faculty, admin | `{ chapters: [{ startSec, title }] }` in time order (max 50). A chapter may not start after the end of the video |
+| POST | `/resources/:id/progress` | student | Player heartbeat `{ positionSec, seenBuckets, ended }`. Counts 10-second slices played; completed at 90 % of slices or when the player reports the end |
+| GET | `/resources/:id/progress/me` | student | Resume position, share watched, completed |
+
+## Code lab (LeetCode-style SQL practice)
+
+Problems are authored with the content routes (`<type>` = `code-challenges`; body `CreateCodeChallengeSchema`: `title, prompt, difficulty, setupSql, hiddenSql?, starterCode?, solution, checkSql?, orderMatters?, hints?`) and go through the normal draft → published review and the review queue (`kind=challenge`). Saving runs the solution against the sample and hidden data and returns 400 with the SQL error if it fails. Students never receive `solution`, `hiddenSql` or `checkSql`; the generic `GET /topics/:id/code-challenges` is staff-only (403 for students).
+
+SQL runs in a sandbox: SQLite compiled to WebAssembly (sql.js) in worker threads, a fresh in-memory database per run, a 2 s time limit (the worker is killed and replaced), a 64 MB SQLite heap cap and no file-system or network access. Runs and submits share a limit of 40 per user per minute.
+
+| Method | Path | Roles | Notes |
+|---|---|---|---|
+| GET | `/topics/:id/code-lab` | any with access | Published problems of the topic with my `solved` and `attempts` |
+| GET | `/subjects/:id/code-lab` | any with access | All published problems grouped by topic in syllabus order, plus `total` and `solved` |
+| GET | `/code-lab/:id` | any with access | Problem, `tables` (columns, primary keys, first 5 rows, row count), `starterCode`, `hints`, `lastSubmission`. Drafts: subject staff only (`preview: true`) |
+| POST | `/code-lab/:id/run` | any with access | `{ code }` → `{ ok, columns, rows, rowCount, truncated, timeMs }` on the sample data, or `{ ok: false, stage, error }` for SQL errors and timeouts (still 200) |
+| POST | `/code-lab/:id/submit` | any with access | `{ code }` → `{ passed, verdict: accepted|wrongAnswer|hiddenTests|error|timeout, cases, timeMs, firstSolve }`. Compared by value (column names ignored; row order only when `orderMatters`). The sample case shows expected vs actual; the hidden case shows only pass/fail and a reason. Students' submissions are stored (`codeSubmissions`); staff runs are previews and are not stored |
+
+`GET /topics/:id/page` also returns `codeChallengeCount`.
+
+## Subject root page (overview)
+
+Every subject has a root page (`/subjects/:id` in the web app). The unit journey, topic counts, cross-unit links, course outcomes and the student's progress are computed; the written part (tagline, why, prerequisites, outcomes, applications, careers, per-unit summaries) is one `subjectOverviews` document per subject with the usual draft → published review. Students only get a published overview and approved topics and links.
+
+| Method | Path | Roles | Notes |
+|---|---|---|---|
+| GET | `/subjects/:id/overview` | any with access | `{ subject, overview, units: [{ id, number, title, topics, topicCount, summary, youWillBeAbleTo, leadsTo, progress? }], unitLinks: [{ fromUnitId, toUnitId, type: next|prerequisite|related, reasons: [{ fromTopic, toTopic, type, reason }] }], courseOutcomes, progress?, canEdit }`. `overview` is `null` until published (students); staff also see `status`, `source` and the written `units`. Every unit links to the next; topic links that cross units add the reasons |
+| PUT | `/subjects/:id/overview` | owning faculty, admin | `SubjectOverviewSchema`. Creates a draft or updates in place (status unchanged). Unit ids must belong to the subject |
+| POST | `/subject-overviews/:id/status` | see content status rules | `{ status }`. Approve and publish: owning faculty only |
+| POST | `/ai/subjects/:id/draft-overview` | owning faculty, admin | `202 { jobId }` (`subject.overview` job). Drafted from the syllabus PDF and the unit/topic list only; no readable syllabus → `result: "needsMaterial"`. A faculty-written, edited or approved overview is never replaced (`result: "skipped"`) |
+
+## Media links
+
+| Method | Path | Roles | Notes |
+|---|---|---|---|
+| GET | `/media/:token` | the token | **Not behind `requireAuth`**: `<video>`, `<track>` and `<audio>` cannot send a Bearer header. The token is issued only after the normal access checks, names one file and the user it was issued to, is signed with a key derived from (but not usable as) the access-token secret, and expires after `MEDIA_URL_TTL_SEC`. Supports HTTP Range for seeking |
+
+## Explain-it-back (feature 13)
+
+A student explains a topic in their own words (up to 30 seconds of voice, or 80–600 characters of text). The AI marks it against the teacher's published rubric; teachers spot-check flagged answers and their score replaces the AI's. Rubrics use the content routes above (`<type>` = `rubrics`): `{ prompt, criteria: [{ id, text, points, keyIdeas }], passScore }`, with the usual draft → published review. Students never see `keyIdeas`.
+
+| Method | Path | Roles | Notes |
+|---|---|---|---|
+| GET | `/topics/:id/explain` | any with access | The published prompt and criteria, whether voice is available, limits, and the student's last 5 attempts |
+| POST | `/topics/:id/explanations` | student | JSON `{ text }`, or multipart `audio` (type sniffed from bytes, ≤ 1.5 MB) + `durationSec`. `202 { explanationId, jobId }`; scoring runs as an `explain.score` AI job. 422 when no rubric is published, 429 past 5 attempts per topic per day, 503 `AI_OFFLINE` while the circuit is open |
+| GET | `/explanations/:id` | the student, owning faculty, admin | Per-criterion score with evidence quotes and what was missing; the final score is the teacher's when spot-checked |
+| GET | `/explanations/:id/audio-url` | as above | Signed link to the recording while it is kept (`AUDIO_RETENTION_DAYS`). Staff listening is audited |
+| GET | `/explanations` | faculty (own subjects), admin | Teacher queue of scored answers. `?subjectId&topicId&flagged&checked&page&limit` |
+| POST | `/explanations/:id/spot-check` | subject faculty | `{ agree, perCriterion?, note? }`. Disagreeing needs per-criterion scores; the teacher's score becomes final |
+
 ## AI (A1, A2)
 
 Every model call goes through the gateway (`docs/ai.md`). AI endpoints return `503 AI_OFFLINE` when the model server is unreachable; nothing outside `/ai/*` depends on it.
 
 | Method | Path | Roles | Notes |
 |---|---|---|---|
-| GET | `/ai/health` | any | `{ provider, reachable, chatModel, embedModel, models, chatModelPulled, embedModelPulled, modelsPulled, circuit }`. Always 200; `reachable: false` when the server is down |
+| GET | `/ai/health` | any | `{ provider, reachable, chatModel, embedModel, models, chatModelPulled, embedModelPulled, modelsPulled, circuit, stt }` (`stt`: the speech-to-text provider and whether it is reachable). Always 200; `reachable: false` when the server is down |
 | GET | `/ai/jobs?subjectId=&limit=` | faculty, admin | Recent jobs (own jobs, or a subject's jobs for its faculty) |
 | GET | `/ai/jobs/:id` | job owner, subject faculty, admin | `{ id, type, status, progress, step, result, output, error, logs, promptVersions, … }` |
 | GET | `/ai/jobs/:id/events` | as above | **SSE.** `snapshot` once, then `progress` (changed fields and new log lines), then `done`. Comment heartbeats every 15 s. Reconnecting resumes from a fresh snapshot |
@@ -189,13 +261,15 @@ Job statuses: `queued → running → succeeded | failed | cancelled`. A job can
 
 ### AI generation (A3)
 
-All three run as background jobs (`202 { data: { jobId } }`); follow them with `GET /ai/jobs/:id/events`. They return `503 AI_OFFLINE` at once while the circuit breaker is open. Everything they create is `status: draft`, `source: ai` with `aiMeta { model, promptVersion, jobId, sourceChunkIds }`.
+All of these run as background jobs (`202 { data: { jobId } }`); follow them with `GET /ai/jobs/:id/events`. They return `503 AI_OFFLINE` at once while the circuit breaker is open. Everything they create is `status: draft`, `source: ai` with `aiMeta { model, promptVersion, jobId, sourceChunkIds }`.
 
 | Method | Path | Roles | Notes |
 |---|---|---|---|
 | POST | `/ai/subjects/:id/draft-map` | owning faculty, admin | `{ materialId? }` (default: the subject's latest syllabus PDF). Units, topics (with subtopics) and prerequisite/related links as drafts, cycle-free, laid out left to right. No readable syllabus → `result: "needsMaterial"` |
 | POST | `/ai/topics/:id/draft-content` | owning faculty, admin | `{ kinds?: ["easy","tenMark","flashcards","mcq","curiosity","realWorld"] }` (default all). Too little material → `result: "needsMaterial"`, nothing created. MCQs the self-check disagrees with get `needsAttention: true` |
 | POST | `/ai/pyqs/tag` | owning faculty, admin | `{ subjectId }`. Tags untagged **draft** PYQs with 1–3 topics chosen from the 5 nearest by embedding; stores `tagConfidence` per topic |
+| POST | `/ai/questions/:id/variants` | owning faculty, admin | `{ count? }` (1–5, default 3). New MCQs on the same concept (same `conceptKey`), grounded in the topic's material and self-checked. Too little material → `result: "needsMaterial"` |
+| POST | `/ai/topics/:id/draft-rubric` | owning faculty, admin | Drafts an explain-it-back rubric from the topic's material. Too little material → `result: "needsMaterial"` |
 
 Re-running a draft replaces only earlier AI drafts of the same kind that are unapproved and unedited. Approved, published, faculty-written and faculty-edited items are never touched.
 

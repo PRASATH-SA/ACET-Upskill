@@ -108,6 +108,13 @@ upload notes (PDF) ─► text extracted on upload ─► job "material.ingest"
 | `LLM_MAX_CONCURRENCY` | `2` | Parallel call limit |
 | `AI_JOB_RUNNER` | `agenda` | `agenda` (worker runs jobs) or `inline` (this process; tests and e2e) |
 | `PROMPTS_DIR` | `<repo>/prompts` | Prompt templates folder |
+| `STT_PROVIDER` | `none` | Speech-to-text for voice answers: `none` (off), `openai-compatible`, or `mock` (tests only; refused in production) |
+| `STT_BASE_URL` | `http://localhost:8080` | Local Whisper server with `POST /v1/audio/transcriptions` |
+| `STT_MODEL` | `whisper-small` | Speech model name |
+| `STT_LANGUAGE` | `en` | Transcription language hint |
+| `STT_TIMEOUT_MS` | `60000` | Per-recording timeout |
+| `EXPLAIN_SPOT_CHECK_RATE` | `0.1` | Share of AI-scored explanations sent to a teacher at random |
+| `AUDIO_RETENTION_DAYS` | `30` | Voice recordings are deleted after this many days (transcripts stay) |
 
 ## Switching the model server
 
@@ -190,3 +197,25 @@ Thresholds depend on the embedding model: `nomic-embed-text` gives unrelated Eng
 To improve a weak prompt, copy it to `v<n+1>`, change the copy, and compare `npm run ai:eval -- --task <task>` before and after. Never edit a published version.
 
 **Feedback signals.** `GET /admin/usage` reports, per prompt version, how many AI drafts were approved, edited, rejected or are pending. A version with many edits or rejections is a candidate for a new prompt version.
+
+## Question variants and explain-it-back
+
+**Speech-to-text.** `apps/api/src/ai/gateway/speech.js` is the only code that calls a speech model, with the same timeout and circuit-breaker handling as the LLM gateway. Voice answers are student data, so they go **only to a local Whisper server** (whisper.cpp server, speaches/faster-whisper-server, LocalAI). `STT_PROVIDER=none` (the default) turns voice off; text answers keep working. `GET /ai/health` reports it under `stt`.
+
+| Task | Prompt | What it does |
+|---|---|---|
+| `mcq.variants` | `mcq.variants.v1` | From one MCQ, drafts up to 5 new questions on the same concept, grounded in the topic's material. Each is self-checked (`mcq.selfCheck.v1`); disagreements get `needsAttention`. Saved as AI drafts sharing the source's `conceptKey` |
+| `rubric.draft` | `rubric.draft.v1` | Drafts an explain-it-back rubric (prompt, criteria, key ideas, pass score) from the material. Saved as a draft rubric for faculty to edit and publish |
+| `explain.score` | `explain.score.v1` | Transcribes voice (if any), then marks the answer against the rubric snapshot taken at submission |
+
+**Scoring is checked in code** (`modules/explain/scoring.js`, pure functions). Every criterion gets exactly one score, clamped to its points. Credit needs an evidence quote that really appears in the answer (ignoring case and punctuation); credit with an invented quote is removed and the answer is flagged for a teacher. A random `EXPLAIN_SPOT_CHECK_RATE` share, plus every answer the model was less sure about, goes to the teacher queue. The teacher's spot-check score always replaces the AI estimate.
+
+**Privacy (A.7.9).** Only the rubric, the topic's published explanation and the answer text reach the model, never the student's name or id. The worker deletes recordings daily once they are older than `AUDIO_RETENTION_DAYS`.
+
+## Subject overview (subject root page)
+
+| Task | Prompt | What it does |
+|---|---|---|
+| `subject.overview` | `subject.overview.v1` | Drafts the written part of a subject's root page: tagline, why, prerequisites, outcomes, applications and one summary / "you'll be able to" / "leads to" line per unit |
+
+**Grounding.** The input is the subject's latest syllabus PDF (only the course parts: text before the first unit, unit headings and end matter such as course outcomes; `courseContext()` in `ai/syllabusText.js`) and the unit/topic list from the map. The prompt forbids prerequisites or applications the syllabus does not support and asks for empty lists instead. Careers are never AI-drafted; faculty add them. The draft records `aiMeta.sourceMaterialId` (the syllabus PDF) because it is grounded in a whole document, not retrieved chunks. Saved as `status: draft`, `source: ai`; re-running only replaces an unedited AI draft.

@@ -2,14 +2,27 @@ import { forwardRef } from 'react';
 import { Loader2 } from 'lucide-react';
 import { cn } from '../../lib/cn';
 
+// Glossy top sheen shared by the filled pills.
+const SHEEN =
+  'bg-[linear-gradient(180deg,rgb(255_255_255/0.22),rgb(255_255_255/0)_55%)] bg-no-repeat';
+
 const VARIANTS = {
-  // A.8: the red pill is the one primary CTA on a screen.
-  primary: 'bg-red text-white hover:bg-red-dark disabled:bg-red/50',
-  secondary: 'border border-navy bg-card text-navy hover:bg-navy/5 disabled:opacity-50',
-  ghost: 'text-navy hover:bg-navy/5 disabled:opacity-50',
+  // A.8: the red pill is the one primary CTA on a screen. The bottom edge gives a tactile,
+  // game-like press: the button sinks 2px and the edge collapses while it is held.
+  primary: cn(
+    'bg-red text-white shadow-press-red hover:bg-red-dark hover:shadow-glow-red active:translate-y-[3px] active:shadow-press-red-sm disabled:translate-y-0 disabled:bg-red/50 disabled:shadow-none',
+    SHEEN,
+  ),
+  secondary:
+    'glass border-navy/25 text-navy shadow-press-glass hover:border-navy/50 hover:bg-white/80 active:translate-y-[2px] active:shadow-press-glass-sm disabled:translate-y-0 disabled:opacity-50',
+  ghost: 'text-navy hover:bg-white/60 hover:shadow-glass disabled:opacity-50',
   // Navy filled: a strong action that is not the screen's primary CTA, or a CTA on a dark panel.
-  navy: 'bg-navy text-white hover:bg-navy-dark disabled:opacity-50',
-  light: 'bg-white text-navy hover:bg-white/90 disabled:opacity-50',
+  navy: cn(
+    'bg-navy text-white shadow-press-navy hover:bg-navy-dark active:translate-y-[3px] active:shadow-press-navy-sm disabled:translate-y-0 disabled:opacity-50',
+    SHEEN,
+  ),
+  light:
+    'bg-white/90 text-navy shadow-press-glass backdrop-blur hover:bg-white active:translate-y-[2px] active:shadow-press-glass-sm disabled:opacity-50',
 };
 
 const SIZES = {
@@ -54,7 +67,7 @@ export const Button = forwardRef(function Button(
       aria-disabled={!isButton && disabled ? true : undefined}
       aria-busy={loading || undefined}
       className={cn(
-        'inline-flex select-none items-center justify-center gap-2 rounded-full font-semibold transition-colors disabled:cursor-not-allowed',
+        'inline-flex select-none items-center justify-center gap-2 rounded-full font-semibold tracking-[0.01em] transition-[transform,box-shadow,background-color,border-color] duration-150 ease-out disabled:cursor-not-allowed',
         VARIANTS[variant],
         SIZES[size],
         focusRing,

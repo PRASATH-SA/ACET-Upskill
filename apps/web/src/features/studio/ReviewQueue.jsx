@@ -28,6 +28,8 @@ const TYPE_PATH = {
   flashcard: 'flashcards',
   question: 'questions',
   pyq: 'pyqs',
+  rubric: 'rubrics',
+  challenge: 'code-challenges',
 };
 const KIND_OPTIONS = [
   ['easy', 'Easy explanation'],
@@ -39,6 +41,8 @@ const KIND_OPTIONS = [
   ['flashcard', 'Flashcards'],
   ['question', 'Questions'],
   ['pyq', 'PYQs'],
+  ['rubric', 'Explain-it-back rubrics'],
+  ['challenge', 'Code problems'],
 ].map(([value, label]) => ({ value, label }));
 
 function useQueue(filters, page) {
@@ -145,6 +149,40 @@ function ItemView({ row, item }) {
       <div className="space-y-2">
         <p className="font-semibold text-navy">{item.front}</p>
         <p>{item.back}</p>
+      </div>
+    );
+  }
+  if (row.type === 'challenge') {
+    return (
+      <div className="space-y-3">
+        <p className="font-semibold text-navy">
+          {item.title} <span className="text-xs font-normal text-body">({item.difficulty})</span>
+        </p>
+        <Markdown>{item.prompt}</Markdown>
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wider text-navy">Reference solution</p>
+          <pre className="mt-1 overflow-x-auto rounded-xl bg-navy p-3 font-mono text-xs text-white">
+            {item.solution}
+          </pre>
+        </div>
+        <Link to={`/code/${item.id}`} className="text-sm">
+          Try it as a student
+        </Link>
+      </div>
+    );
+  }
+  if (row.type === 'rubric') {
+    return (
+      <div>
+        <p className="font-semibold text-navy">{item.prompt}</p>
+        <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
+          {item.criteria.map((c) => (
+            <li key={c.id}>
+              {c.text} <span className="text-body">({c.points} pts)</span>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-2 text-sm">Pass mark: {item.passScore}</p>
       </div>
     );
   }
@@ -492,7 +530,7 @@ export function ReviewQueue() {
                   >
                     Approve
                   </Button>
-                  {row.type !== 'pyq' && (
+                  {!['pyq', 'challenge', 'rubric'].includes(row.type) && (
                     <Button
                       size="sm"
                       variant="secondary"

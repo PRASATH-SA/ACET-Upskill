@@ -6,3 +6,6 @@ export * from './content.js';
 export * from './practice.js';
 export * from './reports.js';
 export * from './ai.js';
+export * from './explain.js';
+export * from './codelab.js';
+export * from './overview.js';

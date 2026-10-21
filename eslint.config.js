@@ -41,6 +41,38 @@ export default [
     languageOptions: { globals: { ...globals.node, ...globals.browser } },
   },
   {
+    // file-type < 22 has an ASF infinite loop; lib/upload.js wraps it with a guard (H1).
+    files: ['apps/api/src/**/*.js'],
+    ignores: ['apps/api/src/lib/upload.js'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            { name: 'file-type', message: 'Use detectFileType() from lib/upload.js instead.' },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // MongoDB init scripts run in mongosh.
+    files: ['deploy/mongo/**/*.js'],
+    languageOptions: { globals: { db: 'readonly', print: 'readonly' } },
+  },
+  {
+    // k6 scripts run in k6's JavaScript runtime, not Node.
+    files: ['loadtest/k6/**/*.js'],
+    languageOptions: {
+      globals: { open: 'readonly', __VU: 'readonly', __ITER: 'readonly', __ENV: 'readonly' },
+    },
+  },
+  {
+    // The service worker is served as-is from public/ and runs in a worker scope.
+    files: ['apps/web/public/sw.js'],
+    languageOptions: { sourceType: 'script', globals: { ...globals.serviceworker } },
+  },
+  {
     files: ['apps/web/src/**/*.{js,jsx}'],
     languageOptions: {
       ecmaVersion: 2023,

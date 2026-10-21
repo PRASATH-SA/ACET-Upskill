@@ -7,6 +7,7 @@ import { afterAll, beforeAll, inject } from 'vitest';
 import { ApiEnvSchema, setEnv } from '../src/config/env.js';
 import { connectMongo } from '../src/db/connect.js';
 import { setStorage, LocalDiskStorage } from '../src/lib/storage.js';
+import { closeSandbox } from '../src/modules/codelab/sandbox.js';
 
 const baseUri = inject('mongoUri');
 const dbName = `test_${randomUUID().replace(/-/g, '')}`;
@@ -25,6 +26,7 @@ setEnv(
     BCRYPT_ROUNDS: '4',
     UPLOAD_DIR: uploadDir,
     API_RATE_LIMIT_PER_MIN: '100000',
+    API_IP_RATE_LIMIT_PER_MIN: '100000',
     // No real LLM in tests (A1.8): the deterministic mock provider, and jobs run in-process.
     LLM_PROVIDER: 'mock',
     AI_JOB_RUNNER: 'inline',
@@ -38,6 +40,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  await closeSandbox();
   await mongoose.connection.dropDatabase();
   await mongoose.disconnect();
   rmSync(uploadDir, { recursive: true, force: true });

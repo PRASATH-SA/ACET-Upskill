@@ -1,7 +1,8 @@
 import mongoose from 'mongoose';
 import { describe, expect, it } from 'vitest';
 import { api } from '../../test/helpers.js';
-import { Flashcard, Question } from '../modules/content/model.js';
+import { CodeChallenge } from '../modules/codelab/model.js';
+import { Flashcard, Question, Resource } from '../modules/content/model.js';
 import { Topic, TopicLink } from '../modules/syllabus/model.js';
 import { User } from '../modules/users/model.js';
 import { SEED_PASSWORD, seed } from './seed.js';
@@ -21,8 +22,11 @@ describe('seed (A.9)', () => {
     });
     expect(await Topic.countDocuments({ subjectId: r.subject._id })).toBe(8);
     expect(await TopicLink.countDocuments({ subjectId: r.subject._id })).toBe(8);
-    expect(await Flashcard.countDocuments({ status: 'published' })).toBe(5);
-    expect(await Question.countDocuments({ status: 'published', type: 'mcq' })).toBe(5);
+    // Every topic has published content: 5 flashcards, 5 MCQs and 2 code-lab problems each.
+    expect(await Flashcard.countDocuments({ status: 'published' })).toBe(40);
+    expect(await Question.countDocuments({ status: 'published', type: 'mcq' })).toBe(40);
+    expect(await CodeChallenge.countDocuments({ status: 'published' })).toBe(16);
+    expect(await Resource.countDocuments({ status: 'published', kind: 'video' })).toBe(8);
 
     const login = await api()
       .post('/api/v1/auth/login')

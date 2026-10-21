@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { List, ListTree, Map as MapIcon, Search } from 'lucide-react';
+import { List, ListTree, Map as MapIcon, Route, Search, Trophy } from 'lucide-react';
 import { ApiError } from '../../api/client';
 import {
   Button,
@@ -18,10 +18,17 @@ import { useExamPrep, useMyMap, useProgress, useSubjectMap, useSubjects } from '
 import { ConceptMap, Legend } from './map/ConceptMap';
 import { learningOrderIds } from './map/graph';
 import { MapListView } from './map/MapListView';
+import { RoadmapView } from './map/RoadmapView';
 import { SubjectTree } from './map/SubjectTree';
 import { TopicPanel } from './map/TopicPanel';
 
 const EXAM_YEARS = 5;
+
+const VIEWS = [
+  ['path', 'Path', Route],
+  ['map', 'Map', MapIcon],
+  ['list', 'List', List],
+];
 
 function MapSearch({ topics, onFound }) {
   const [q, setQ] = useState('');
@@ -82,7 +89,9 @@ export function SubjectMapPage() {
   // Below lg the tree and panel move into a drawer and a bottom sheet.
   const isDesktop = useMediaQuery('(min-width: 1024px)');
   const [params, setParams] = useSearchParams();
-  const view = params.get('view') === 'list' ? 'list' : 'map';
+  // Students start on the learning path; staff start on the concept map they build.
+  const defaultView = isStudent ? 'path' : 'map';
+  const view = VIEWS.some(([v]) => v === params.get('view')) ? params.get('view') : defaultView;
 
   const subjects = useSubjects();
   const map = useSubjectMap(subjectId);
@@ -91,7 +100,7 @@ export function SubjectMapPage() {
   const exam = useExamPrep(subjectId, { years: EXAM_YEARS });
 
   const [selected, setSelected] = useState(params.get('topic'));
-  const [unitId, setUnitId] = useState(null);
+  const [unitId, setUnitId] = useState(params.get('unit'));
   const [highlightId, setHighlightId] = useState(null);
   const [focusRequest, setFocusRequest] = useState(null);
   const [treeOpen, setTreeOpen] = useState(false);
@@ -122,8 +131,8 @@ export function SubjectMapPage() {
   );
   const setView = (v) => {
     const next = new URLSearchParams(params);
-    if (v === 'list') next.set('view', 'list');
-    else next.delete('view');
+    if (v === defaultView) next.delete('view');
+    else next.set('view', v);
     setParams(next, { replace: true });
   };
 
@@ -201,12 +210,48 @@ export function SubjectMapPage() {
 
   return (
     // Negative margins cancel the shell's bottom padding so the map fills the screen exactly.
-    <div className="-mb-24 flex h-[calc(100dvh-66px-57px)] flex-col md:-mb-10 md:h-[calc(100dvh-66px)] lg:grid lg:grid-cols-[260px_minmax(0,1fr)_360px]">
+    <div className="-mb-28 flex h-[calc(100dvh-66px-80px)] flex-col md:-mb-10 md:h-[calc(100dvh-66px)] lg:grid lg:grid-cols-[260px_minmax(0,1fr)_360px]">
       <aside className="hidden overflow-y-auto border-r border-line bg-card p-4 lg:block">
         {tree}
       </aside>
 
       <section aria-labelledby="map-title" className="flex min-h-0 min-w-0 flex-1 flex-col">
+        {/* Gamified progress bar */}
+        {isStudent && me.data && (
+          <div className="border-b border-line bg-white/50 px-3 py-3 backdrop-blur-md sm:px-4">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <p className="eyebrow tracking-[0.2em]">Progress</p>
+              <p className="inline-flex items-center gap-1 text-xs font-bold text-navy">
+                <Trophy className="h-3.5 w-3.5 text-gold-border" aria-hidden />
+                {me.data.nodes.filter((n) => n.state === 'mastered').length} / {m.topics.length}{' '}
+                mastered
+              </p>
+            </div>
+            {/* One segment per topic, in the A.8 map-node colours. */}
+            <div className="flex h-2.5 gap-1 overflow-hidden rounded-full" aria-hidden>
+              {m.topics.map((t) => {
+                const node = me.data.nodes.find((n) => n.topicId === t.id);
+                const state = node?.state ?? 'locked';
+                const colorClass =
+                  state === 'mastered' || state === 'needsRevision'
+                    ? 'bg-gold'
+                    : state === 'current'
+                      ? 'bg-blue shine'
+                      : state === 'locked'
+                        ? 'bg-navy/10'
+                        : 'bg-blue/30';
+                return (
+                  <div
+                    key={t.id}
+                    className={`flex-1 rounded-full transition-colors duration-300 ${colorClass}`}
+                    title={t.title}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <div className="flex items-center gap-2 border-b border-line bg-card px-3 py-2 sm:px-4 sm:py-3">
           <IconButton
             icon={ListTree}
@@ -219,18 +264,13 @@ export function SubjectMapPage() {
               {m.subject.code} · Semester {m.subject.semester}
             </p>
             <h1 id="map-title" className="truncate text-lg sm:text-xl">
-              {m.subject.name}
+              <Link to={`/subjects/${subjectId}`} className="text-navy hover:underline">
+                {m.subject.name}
+              </Link>
             </h1>
           </div>
-          <div
-            role="group"
-            aria-label="View"
-            className="flex rounded-full border border-line p-0.5"
-          >
-            {[
-              ['map', 'Map', MapIcon],
-              ['list', 'List', List],
-            ].map(([v, label, Icon]) => (
+          <div role="group" aria-label="View" className="glass flex rounded-full p-1">
+            {VIEWS.map(([v, label, Icon]) => (
               <button
                 key={v}
                 type="button"
@@ -238,7 +278,9 @@ export function SubjectMapPage() {
                 onClick={() => setView(v)}
                 className={cn(
                   'inline-flex min-h-[40px] min-w-[44px] items-center justify-center gap-1.5 rounded-full px-3 text-sm font-semibold',
-                  view === v ? 'bg-navy text-white' : 'text-navy hover:bg-surface',
+                  view === v
+                    ? 'bg-navy text-white shadow-press-navy-sm'
+                    : 'text-navy hover:bg-white/60',
                 )}
               >
                 <Icon className="h-4 w-4" aria-hidden />
@@ -247,7 +289,7 @@ export function SubjectMapPage() {
             ))}
           </div>
         </div>
-        <div className="flex items-center gap-2 border-b border-line bg-surface px-3 py-2 sm:px-4">
+        <div className="flex items-center gap-2 border-b border-line bg-white/40 px-3 py-2 backdrop-blur-md sm:px-4">
           <MapSearch
             topics={m.topics}
             onFound={(id) => {
@@ -268,7 +310,24 @@ export function SubjectMapPage() {
           />
         </div>
 
-        {view === 'map' ? (
+        {view === 'path' ? (
+          <div className="relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
+            {/* The path shows its own card under a tapped node, so phones skip the sheet. */}
+            <RoadmapView
+              map={m}
+              me={me.data}
+              order={order}
+              unitId={unitId}
+              highlightId={highlightId}
+              onSelect={setSelected}
+              onDetails={select}
+              onOpenMap={(id) => {
+                setUnitId(id);
+                setView('map');
+              }}
+            />
+          </div>
+        ) : view === 'map' ? (
           <div className="relative min-h-0 flex-1">
             <ConceptMap
               map={m}
@@ -327,7 +386,9 @@ export function SubjectMapPage() {
       >
         {panel}
       </Drawer>
-      <div className="border-t border-line bg-card p-3 lg:hidden">
+      <div
+        className={cn('border-t border-line bg-card p-3 lg:hidden', view === 'path' && 'hidden')}
+      >
         <Button className="w-full" variant="secondary" onClick={() => setSheetOpen(true)}>
           {selectedId
             ? `View ${m.topics.find((t) => t.id === selectedId)?.title ?? 'topic'}`

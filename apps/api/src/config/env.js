@@ -7,12 +7,17 @@ import { ServerEnvSchema, parseEnv } from '@acet/shared';
  */
 const ApiEnvBase = ServerEnvSchema.extend({
   APP_VERSION: z.string().default('0.1.0'),
+  /** API processes: 1 = single, 0 = one per CPU core (production), n = n (H1 load). */
+  API_WORKERS: z.coerce.number().int().min(0).max(64).default(1),
   COOKIE_SECURE: z
     .enum(['true', 'false'])
     .default('true')
     .transform((v) => v === 'true'),
   LOGIN_RATE_LIMIT_PER_MIN: z.coerce.number().int().min(1).default(5),
+  /** Requests per minute per signed-in user. */
   API_RATE_LIMIT_PER_MIN: z.coerce.number().int().min(10).default(300),
+  /** Requests per minute per IP. High on purpose: campus NAT shares one IP across students. */
+  API_IP_RATE_LIMIT_PER_MIN: z.coerce.number().int().min(10).default(20_000),
   BCRYPT_ROUNDS: z.coerce.number().int().min(4).max(15).default(12),
   /** B4 mastery thresholds */
   MASTERY_CONFIDENT_SCORE: z.coerce.number().min(1).max(100).default(80),
@@ -38,12 +43,23 @@ const ApiEnvBase = ServerEnvSchema.extend({
   TUTOR_MIN_RELEVANCE: z.coerce.number().min(0).max(1).default(0.35),
   /** Passages at or above this similarity count as grounding for an answer. */
   TUTOR_MIN_PASSAGE_SCORE: z.coerce.number().min(0).max(1).default(0.3),
+  /** Signed media links (video, captions, voice answers) stay valid this long. */
+  MEDIA_URL_TTL_SEC: z.coerce
+    .number()
+    .int()
+    .min(60)
+    .max(24 * 3600)
+    .default(900),
+  /** Explain-it-back: voice recordings are deleted after this many days (transcripts stay). */
+  AUDIO_RETENTION_DAYS: z.coerce.number().int().min(1).max(365).default(30),
+  /** Share of AI-scored answers sent to the teacher at random for a spot-check (0–1). */
+  EXPLAIN_SPOT_CHECK_RATE: z.coerce.number().min(0).max(1).default(0.1),
 });
 
 const noMockInProduction = [
-  (e) => !(e.NODE_ENV === 'production' && e.LLM_PROVIDER === 'mock'),
+  (e) => !(e.NODE_ENV === 'production' && (e.LLM_PROVIDER === 'mock' || e.STT_PROVIDER === 'mock')),
   {
-    message: 'LLM_PROVIDER=mock is for tests only and cannot be used in production',
+    message: 'mock AI providers are for tests only and cannot be used in production',
     path: ['LLM_PROVIDER'],
   },
 ];

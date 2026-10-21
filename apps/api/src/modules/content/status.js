@@ -1,9 +1,12 @@
-import { canTransition } from '@acet/shared';
+import { canTransition, questionPublishProblem } from '@acet/shared';
 import { withTransaction } from '../../db/connect.js';
 import { canWriteSubject } from '../../lib/access.js';
 import { AppError, forbidden, notFound } from '../../lib/errors.js';
 import { auditMany } from '../audit/service.js';
 import { Pyq } from '../exam/model.js';
+import { Rubric } from '../explain/model.js';
+import { CodeChallenge } from '../codelab/model.js';
+import { SubjectOverview } from '../overview/model.js';
 import { Subject } from '../syllabus/model.js';
 import { Flashcard, Question, Resource } from './model.js';
 
@@ -16,7 +19,13 @@ export const CONTENT_MODELS = {
   flashcard: Flashcard,
   question: Question,
   pyq: Pyq,
+  rubric: Rubric,
+  challenge: CodeChallenge,
+  overview: SubjectOverview,
 };
+
+/** Extra fields read per type to check publish rules. */
+const PUBLISH_FIELDS = { question: ' type options explanation optionExplanations' };
 
 /**
  * Steps needed to move from `from` to `to`, following only allowed transitions.
@@ -68,7 +77,9 @@ export async function changeStatus(user, items, { to, reject = false, reason }) 
 
   for (const item of items) {
     const Model = CONTENT_MODELS[item.type];
-    const doc = await Model.findById(item.id).select('status subjectId source').lean();
+    const doc = await Model.findById(item.id)
+      .select(`status subjectId source${PUBLISH_FIELDS[item.type] ?? ''}`)
+      .lean();
     if (!doc) {
       failures.push({ ...item, message: 'not found' });
       continue;
@@ -91,6 +102,14 @@ export async function changeStatus(user, items, { to, reject = false, reason }) 
     if (!path) {
       failures.push({ ...item, message: `cannot move from ${doc.status} to ${to}` });
       continue;
+    }
+    // Feature 1: every quiz answer a student can pick must come with an explanation.
+    if (item.type === 'question' && doc.type === 'mcq' && path.includes('published')) {
+      const problem = questionPublishProblem(doc);
+      if (problem) {
+        failures.push({ ...item, message: problem });
+        continue;
+      }
     }
     loaded.push({ ...item, from: doc.status, path, source: doc.source });
   }

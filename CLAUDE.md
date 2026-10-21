@@ -12,10 +12,14 @@ Repo-specific notes (added on top of Part A):
   pagination schemas (A.6), design tokens (A.8), env-variable names (A.3, A.7) and collection names (A.5).
   Import from `@acet/shared`; extend these files rather than redefining values elsewhere.
 - `docs/requirements.md` is a placeholder until the real requirements document is added.
-- **Backend status (2026-10-14):** Phase 0 (api, worker, infra) and B1–B5 are built and tested. Next in Part C order: F1.
-  Track A (AI) is not started; `aiJobs` has no model yet.
+- **Status (2026-10-21):** Phase 0, B1–B5, A1–A5 and F1–F7 are built and tested, plus extras outside Part B
+  (question variants/quiz sessions, video learning, explain-it-back, liquid-glass UI — ADR 0004, and the
+  LeetCode-style SQL code lab — ADR 0005). H1 is in progress: the route audit test is done.
+- Every seeded DBMS topic has full content (`apps/api/src/db/dbmsContent.js`). `npm run seed:content` adds
+  any missing content to an existing database without touching faculty edits.
+- E2E: `npm run e2e` (Playwright starts its own API on :4100, dev web on :5174 and preview on :5175).
 - Run tests with `npm test`. API tests use an in-memory MongoDB replica set (no Docker needed).
-  Local dev without Docker: `npm run db:dev`, then `npm run seed`, then `npm run dev`. Seed password `Acet`.
+  Local dev without Docker: `npm run db:dev`, then `npm run seed`, then `npm run dev`. Seed password `Acet@2025`.
 - Deviations from Part A (pdfjs-dist instead of pdf-parse, bcryptjs, opaque refresh tokens, etc.) are listed in
   `docs/decisions/0003-backend-deviations.md`.
 

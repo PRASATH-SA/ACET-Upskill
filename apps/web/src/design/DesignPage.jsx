@@ -70,7 +70,7 @@ export function DesignPage() {
       <Section id="ds-colors" title="Colour tokens">
         <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
           {Object.entries(swatches).map(([name, hex]) => (
-            <li key={name} className="overflow-hidden rounded-xl border border-line bg-card">
+            <li key={name} className="overflow-hidden glass rounded-xl">
               <div className="h-14" style={{ background: hex }} />
               <div className="p-2 text-xs">
                 <p className="font-semibold text-navy">{name}</p>

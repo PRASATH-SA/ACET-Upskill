@@ -5,8 +5,9 @@ Each semester's syllabus becomes an interactive concept map. Every topic has a s
 quizzes and spaced revision. A local LLM drafts content and faculty approve it.
 
 - Product and phase plan: `ACET_SkillUp_Master_Prompt.md`, `CLAUDE.md`
-- API reference: `docs/api.md`
-- Decisions: `docs/decisions/`
+- API reference: `docs/api.md` · AI: `docs/ai.md` · Decisions: `docs/decisions/`
+- **Deploying to a server (HTTPS, backups):** `docs/deploy.md`
+- User guides: `docs/user-guide-student.md`, `docs/user-guide-faculty.md`
 
 ## Stack
 
@@ -51,7 +52,7 @@ All use the password `Acet@2025`.
 
 Run `npm run seed -- --reset` to wipe and reseed a development database.
 
-## Run it with Docker
+## Run it with Docker (development)
 
 ```bash
 cp .env.example .env                          # set JWT_ACCESS_SECRET and JWT_REFRESH_SECRET
@@ -68,8 +69,8 @@ Ollama is the default provider (`LLM_PROVIDER=ollama`). Pull the models with `np
 (Ollama running locally) or the `ollama-pull` compose service.
 
 Hardware: a 7–8B model such as `qwen2.5:7b-instruct` needs roughly 8 GB of RAM or VRAM.
-CPU-only works but is slow; expect tens of seconds per generation. The app works without the LLM;
-AI features arrive in Phase A1 onwards.
+CPU-only works but is slow; expect tens of seconds per generation. The app works without the LLM:
+AI buttons show "AI service offline" and everything else keeps working.
 
 ## Commands
 
@@ -82,5 +83,17 @@ AI features arrive in Phase A1 onwards.
 | `npm run db:dev` | Local MongoDB without Docker |
 | `npm run seed` | Demo data (A.9) |
 | `npm run ai:pull` | Pull the chat and embedding models into Ollama |
+| `npm run seed:content` | Add any missing DBMS demo content (videos, notes, quizzes, code problems) to an existing database |
+| `npm run e2e` | Playwright end-to-end journeys (mock LLM). First run: `npm run e2e:install` |
+| `npm run e2e:local-ai` | The same journeys against your real local LLM (Ollama running) |
+| `npm run load` | Load test: 500 students, p95 targets (see `loadtest/`) |
+| `npm run check:secrets` | Fails if a tracked file looks like it contains a secret |
 
 The first `npm test` downloads a MongoDB binary (about 100 MB) into `.cache/`.
+
+## Production
+
+`docker-compose.prod.yml` runs nginx (HTTPS), the API (one process per CPU core), the worker,
+MongoDB with authentication, Ollama and daily backups with 30-day retention. Follow
+`docs/deploy.md` from a fresh server. The web app alone can also be hosted on Vercel
+(`apps/web/vercel.json`).

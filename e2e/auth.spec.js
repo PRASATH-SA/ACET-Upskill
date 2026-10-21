@@ -4,7 +4,7 @@ import { login, SEED_PASSWORD } from './helpers.js';
 test.describe('F2 login and role routing', () => {
   for (const [role, email, home, heading] of [
     ['student', 'student01@acet.test', '/learn', /Hello/],
-    ['faculty', 'faculty1@acet.test', '/studio', /Your subjects|Studio/],
+    ['faculty', 'faculty1@acet.test', '/studio', /Welcome/],
     ['mentor', 'mentor@acet.test', '/mentor', /My students/],
     ['admin', 'admin@acet.test', '/admin', /Department overview|Overview/],
   ]) {

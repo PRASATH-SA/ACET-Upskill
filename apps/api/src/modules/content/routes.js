@@ -6,6 +6,9 @@ import {
   CreateFlashcardSchema,
   CreateQuestionSchema,
   CreateResourceSchema,
+  CreateRubricSchema,
+  CreateCodeChallengeSchema,
+  UpdateCodeChallengeSchema,
   IdParamsSchema,
   ListMaterialsQuerySchema,
   ResourceKindSchema,
@@ -14,10 +17,12 @@ import {
   UpdateFlashcardSchema,
   UpdateQuestionSchema,
   UpdateResourceSchema,
+  UpdateRubricSchema,
 } from '@acet/shared';
-import { requireRole } from '../../middleware/auth.js';
-import { asyncHandler as h, validate } from '../../lib/http.js';
-import { memoryUpload } from '../../lib/upload.js';
+import { currentUser, requireRole } from '../../middleware/auth.js';
+import { asyncHandler as h, ok, validate } from '../../lib/http.js';
+import { diskUpload, memoryUpload } from '../../lib/upload.js';
+import { questionPools } from './service.js';
 import * as c from './controller.js';
 
 const P = { params: IdParamsSchema };
@@ -50,12 +55,29 @@ export function contentRoutes() {
   itemRoutes(r, 'resource', 'resources', CreateResourceSchema, UpdateResourceSchema);
   itemRoutes(r, 'flashcard', 'flashcards', CreateFlashcardSchema, UpdateFlashcardSchema);
   itemRoutes(r, 'question', 'questions', CreateQuestionSchema, UpdateQuestionSchema);
+  // Explain-it-back rubrics follow the same draft → published review (feature 13).
+  itemRoutes(r, 'rubric', 'rubrics', CreateRubricSchema, UpdateRubricSchema);
+  // Code-lab challenges (LeetCode-style SQL practice); students use /code-lab routes.
+  itemRoutes(
+    r,
+    'challenge',
+    'code-challenges',
+    CreateCodeChallengeSchema,
+    UpdateCodeChallengeSchema,
+  );
+
+  r.get(
+    '/topics/:id/question-pools',
+    staff,
+    validate(P),
+    h(async (req, res) => ok(res, await questionPools(currentUser(req), req.params.id))),
+  );
 
   r.post(
     '/resources/:id/file',
     staff,
     validate(P),
-    memoryUpload().single('file'),
+    diskUpload().single('file'),
     h(c.uploadResourceFile),
   );
   r.get('/resources/:id/file', validate(P), h(c.getResourceFile));

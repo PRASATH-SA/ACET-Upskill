@@ -6,6 +6,7 @@ import {
   Brain,
   Building2,
   ClipboardCheck,
+  Code2,
   FileQuestion,
   GraduationCap,
   LayoutDashboard,
@@ -26,6 +27,7 @@ export const NAV = {
     { to: '/revision', label: 'Revision', icon: Brain, mobile: true },
     { to: '/exam-prep', label: 'Exam prep', icon: Target, mobile: true },
     { to: '/me/progress', label: 'Progress', icon: Activity, mobile: true },
+    { to: '/code-lab', label: 'Code lab', icon: Code2 },
   ],
   faculty: [
     { to: '/studio', label: 'Studio', icon: LayoutDashboard, mobile: true, end: true },

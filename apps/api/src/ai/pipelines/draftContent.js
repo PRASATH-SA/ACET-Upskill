@@ -49,7 +49,7 @@ export function renderTenMark(d) {
 }
 
 /** Retrieval for drafting: the best-matching chunks, or the topic's chunks in order as a fallback. */
-async function materialFor(topic) {
+export async function materialFor(topic) {
   const hit = await retrieve({
     query: `${topic.title}. ${topic.summary ?? ''}`,
     topicId: String(topic._id),
@@ -64,7 +64,13 @@ async function materialFor(topic) {
   return formatMaterial(chunks.map((c) => ({ ...c, id: c._id })));
 }
 
-const optionsList = (opts) => opts.map((o, i) => `${i}. ${o}`).join('\n');
+export const optionsList = (opts) => opts.map((o, i) => `${i}. ${o}`).join('\n');
+
+/** "Unit 3 (Database Design): Normalization: summary" — the syllabus line for grounding. */
+export async function syllabusLineFor(topic) {
+  const unit = await Unit.findById(topic.unitId).lean();
+  return `${unit ? `Unit ${unit.number} (${unit.title}): ` : ''}${topic.title}${topic.summary ? `: ${topic.summary}` : ''}`;
+}
 
 registerPipeline(DRAFT_CONTENT_JOB, async (ctx) => {
   const topic = await Topic.findById(ctx.input.topicId).lean();

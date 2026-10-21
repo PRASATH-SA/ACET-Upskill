@@ -1,15 +1,13 @@
 import { expect, test } from '@playwright/test';
-import { login } from './helpers.js';
+import { login, openSubjectPath } from './helpers.js';
 
 /** Opens the seeded Normalization topic page (it has published demo content). */
 async function openNormalization(page, email) {
   await login(page, email);
-  await page
-    .getByRole('link', { name: /Database Management Systems/ })
-    .first()
-    .click();
-  const node = page.locator('[data-topic-id]', { hasText: 'Normalization' }).first();
-  const id = await node.getAttribute('data-topic-id');
+  await openSubjectPath(page);
+  // Students land on the learning path; each topic there is a button named "<title>. <state>…".
+  const node = page.getByRole('button', { name: /^Normalization\./ }).first();
+  const id = await node.getAttribute('data-path-topic');
   await page.goto(`/topics/${id}`);
   await expect(page.getByRole('heading', { level: 1, name: 'Normalization' })).toBeVisible();
   return id;

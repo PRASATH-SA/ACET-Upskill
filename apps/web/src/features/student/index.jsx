@@ -6,3 +6,6 @@ export { QuizPage } from './practice/QuizPage';
 export { RevisionPage } from './practice/RevisionPage';
 export { ExamPrepIndex, ExamPrepPage } from './practice/ExamPrepPage';
 export { ProgressPage } from './practice/ProgressPage';
+export { CodeLabPage } from './codelab/CodeLabPage';
+export { SubjectOverviewPage } from './overview/SubjectOverviewPage';
+export { CodeLabIndex, SubjectCodeLabPage } from './codelab/CodeLabList';

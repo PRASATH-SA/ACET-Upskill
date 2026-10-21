@@ -16,7 +16,11 @@ export function Dialog({ open, onClose, title, description, footer, size = 'md',
   if (!open) return null;
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4">
-      <div className="absolute inset-0 bg-navy/50" aria-hidden onClick={onClose} />
+      <div
+        className="absolute inset-0 bg-navy/40 backdrop-blur-[6px]"
+        aria-hidden
+        onClick={onClose}
+      />
       <div
         ref={panelRef}
         role="dialog"
@@ -25,14 +29,14 @@ export function Dialog({ open, onClose, title, description, footer, size = 'md',
         aria-describedby={description ? descId : undefined}
         tabIndex={-1}
         className={cn(
-          'relative flex max-h-[90vh] w-full flex-col rounded-t-card border border-line bg-card focus:outline-none sm:rounded-card',
+          'glass-strong flex max-h-[90vh] w-full animate-glass-pop flex-col rounded-t-sheet focus:outline-none sm:rounded-sheet',
           size === 'sm' && 'sm:max-w-sm',
           size === 'md' && 'sm:max-w-lg',
           size === 'lg' && 'sm:max-w-3xl',
           size === 'xl' && 'sm:max-w-5xl',
         )}
       >
-        <div className="flex items-start justify-between gap-4 border-b border-line px-5 py-4 sm:px-6">
+        <div className="flex items-start justify-between gap-4 border-b border-navy/[0.08] px-5 py-4 sm:px-6">
           <div>
             <h2 id={titleId} className="text-lg">
               {title}
@@ -47,7 +51,7 @@ export function Dialog({ open, onClose, title, description, footer, size = 'md',
         </div>
         <div className="overflow-y-auto px-5 py-5 sm:px-6">{children}</div>
         {footer && (
-          <div className="flex flex-wrap justify-end gap-3 border-t border-line px-5 py-4 sm:px-6">
+          <div className="flex flex-wrap justify-end gap-3 border-t border-navy/[0.08] px-5 py-4 sm:px-6">
             {footer}
           </div>
         )}

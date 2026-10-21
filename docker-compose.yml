@@ -16,6 +16,11 @@ x-node-env: &node-env
   LLM_EMBED_MODEL: ${LLM_EMBED_MODEL:-nomic-embed-text}
   LLM_TIMEOUT_MS: ${LLM_TIMEOUT_MS:-120000}
   LLM_MAX_CONCURRENCY: ${LLM_MAX_CONCURRENCY:-2}
+  STT_PROVIDER: ${STT_PROVIDER:-none}
+  STT_BASE_URL: ${STT_BASE_URL:-http://host.docker.internal:8080}
+  STT_MODEL: ${STT_MODEL:-whisper-small}
+  STT_LANGUAGE: ${STT_LANGUAGE:-en}
+  STT_TIMEOUT_MS: ${STT_TIMEOUT_MS:-60000}
 
 services:
   mongo:

@@ -1,16 +1,57 @@
 import { expect, test } from '@playwright/test';
-import { login } from './helpers.js';
+import { login, openSubjectPath } from './helpers.js';
 
-async function openDbmsMap(page) {
+async function openDbmsSubject(page) {
   await login(page, 'student04@acet.test');
-  await page
-    .getByRole('link', { name: /Database Management Systems/ })
-    .first()
-    .click();
+  await openSubjectPath(page);
   await expect(
     page.getByRole('heading', { level: 1, name: 'Database Management Systems' }),
   ).toBeVisible();
 }
+
+/** Students land on the learning path; these tests are about the concept map. */
+async function openDbmsMap(page) {
+  await openDbmsSubject(page);
+  await page.getByRole('button', { name: 'Map', exact: true }).click();
+}
+
+test.describe('learning path (roadmap view)', () => {
+  test('is the student default: units in order, one current topic, a card with the next step', async ({
+    page,
+  }) => {
+    await openDbmsSubject(page);
+    await expect(page.locator('[data-path-topic]')).toHaveCount(8);
+    await expect(page.getByRole('list', { name: /^Unit 3/ })).toBeVisible();
+    const current = page.locator('[data-path-current]');
+    await expect(current).toHaveCount(1);
+    await current.click();
+    await expect(
+      page
+        .getByRole('group', { name: /details$/ })
+        .getByRole('link', { name: /^(Start|Continue)/ }),
+    ).toBeVisible();
+    // The card overlaps the next coin, as on Duolingo; close it before tapping on.
+    await page
+      .getByRole('group', { name: /details$/ })
+      .getByRole('button', { name: 'Close' })
+      .click();
+
+    await page.locator('[data-path-state="locked"]').first().click();
+    await expect(
+      page.getByRole('group', { name: /details$/ }).getByText(/Finish .* first/),
+    ).toBeVisible();
+  });
+
+  test('works at 360px without horizontal scroll @mobile', async ({ page }) => {
+    await page.setViewportSize({ width: 360, height: 740 });
+    await openDbmsSubject(page);
+    await expect(page.locator('[data-path-current]')).toBeVisible();
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth > window.innerWidth,
+    );
+    expect(overflow).toBe(false);
+  });
+});
 
 test.describe('F3 concept map', () => {
   test('renders every seeded topic with a state, and the current topic is marked', async ({

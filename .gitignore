@@ -4,6 +4,7 @@ coverage/
 .env
 .env.*
 !.env.example
+!.env.prod.example
 uploads/
 *.log
 .DS_Store
@@ -13,3 +14,9 @@ test-results/
 .tmp/
 .data/
 *.tsbuildinfo
+
+# Production: TLS keys and database backups never belong in git (H1).
+deploy/certs/
+backups/
+*.pem
+*.archive.gz

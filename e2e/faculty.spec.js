@@ -14,7 +14,12 @@ test('faculty: syllabus PDF to an approved map and published AI content, no manu
   const started = Date.now();
   await login(page, 'faculty1@acet.test');
   await expect(page).toHaveURL(/\/studio$/);
-  await page.getByRole('link', { name: 'Build the map' }).first().click();
+  // The empty sandbox subject (E2E01) from apps/api/scripts/e2e-server.js, not the seeded map.
+  await page
+    .getByRole('listitem')
+    .filter({ hasText: 'E2E01' })
+    .getByRole('link', { name: 'Build the map' })
+    .click();
   await expect(
     page.getByRole('heading', { level: 1, name: 'Database Management Systems' }),
   ).toBeVisible();

@@ -82,3 +82,22 @@ export function splitForContext(text, maxTokens = 1800) {
   if (buf.length) parts.push(buf.join('\n'));
   return parts;
 }
+
+/**
+ * The parts of a syllabus that describe the course rather than a unit (objectives,
+ * prerequisites, outcomes): the text before the first unit and the end matter after the
+ * units, then unit headings. Falls back to the start of the text. Cut to `maxChars`.
+ * @param {string} raw
+ * @param {number} [maxChars]
+ */
+export function courseContext(raw, maxChars = 7000) {
+  const lines = cleanText(raw).split('\n');
+  const firstUnit = lines.findIndex((l) => UNIT_RE.test(l));
+  const preamble = firstUnit > 0 ? lines.slice(0, firstUnit) : [];
+  const endAt = lines.findIndex((l, i) => i > firstUnit && firstUnit >= 0 && END_RE.test(l));
+  const tail = endAt > 0 ? lines.slice(endAt) : [];
+  const headings = lines.filter((l) => UNIT_RE.test(l));
+  const picked = [...preamble, ...headings, ...tail].join('\n').trim();
+  const text = picked.length >= 200 ? picked : cleanText(raw);
+  return text.length > maxChars ? `${text.slice(0, maxChars)}\n…` : text;
+}

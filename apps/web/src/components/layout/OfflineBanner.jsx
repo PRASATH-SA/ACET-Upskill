@@ -26,7 +26,7 @@ export function OfflineBanner() {
   return (
     <div
       role="status"
-      className="flex items-center justify-center gap-2 bg-navy px-4 py-2 text-sm text-white"
+      className="glass-navy mx-3 mt-3 flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm"
     >
       <WifiOff className="h-4 w-4" aria-hidden />
       You are offline. Showing saved content; changes sync when you reconnect.

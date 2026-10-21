@@ -14,6 +14,7 @@ import { OpenAICompatibleProvider } from './providers/openaiCompatible.js';
 import { createResilience } from './resilience.js';
 
 export { AIOfflineError, AIValidationError, AIProviderError } from './errors.js';
+export { speech, setSpeech } from './speech.js';
 
 /** Picks the provider from env (A1.1): switching servers needs zero code changes. */
 export function createProvider(cfg) {

@@ -14,7 +14,7 @@ export function Curiosity({ curiosity, onDone }) {
   const [revealed, setRevealed] = useState(false);
 
   return (
-    <div className="rounded-card bg-navy p-5 text-white sm:p-7">
+    <div className="glass-navy rounded-card p-5 sm:p-7">
       <EyebrowHeading
         eyebrow="Curiosity challenge"
         title={curiosity.title ?? 'What would you do?'}

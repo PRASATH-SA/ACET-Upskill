@@ -3,6 +3,7 @@ import { z } from 'zod';
 import {
   DraftContentSchema,
   DraftMapSchema,
+  GenerateVariantsSchema,
   IdParamsSchema,
   ObjectIdSchema,
   TagPyqsSchema,
@@ -10,11 +11,15 @@ import {
 import { AIOfflineError } from '../../ai/gateway/errors.js';
 import { DRAFT_CONTENT_JOB } from '../../ai/pipelines/draftContent.js';
 import { DRAFT_MAP_JOB } from '../../ai/pipelines/draftMap.js';
+import { DRAFT_OVERVIEW_JOB } from '../../ai/pipelines/overview.js';
 import { TAG_PYQS_JOB } from '../../ai/pipelines/tagPyqs.js';
+import { RUBRIC_DRAFT_JOB } from '../../ai/pipelines/explain.js';
+import { VARIANTS_JOB } from '../../ai/pipelines/variants.js';
+import { notFound } from '../../lib/errors.js';
 import { audit } from '../audit/service.js';
 import { Chunk } from '../../ai/rag/model.js';
-import { Material } from '../content/model.js';
-import { gateway } from '../../ai/gateway/index.js';
+import { Material, Question } from '../content/model.js';
+import { gateway, speech } from '../../ai/gateway/index.js';
 import { asyncHandler as h, ok, validate } from '../../lib/http.js';
 import { openSse } from '../../lib/sse.js';
 import { currentUser, requireRole } from '../../middleware/auth.js';
@@ -45,7 +50,10 @@ export function aiRoutes() {
   // Any signed-in user: the UI shows "AI service offline" from this (A.7.8).
   r.get(
     '/health',
-    h(async (_req, res) => ok(res, await gateway().health())),
+    h(async (_req, res) => {
+      const [llm, stt] = await Promise.all([gateway().health(), speech().health()]);
+      ok(res, { ...llm, stt });
+    }),
   );
 
   r.get(
@@ -99,6 +107,25 @@ export function aiRoutes() {
     }),
   );
 
+  // Subject root page: AI draft of the overview from the syllabus PDF.
+  r.post(
+    '/subjects/:id/draft-overview',
+    requireRole('faculty', 'admin'),
+    validate(P),
+    h(async (req, res) => {
+      const user = currentUser(req);
+      const subject = await loadSubject(user, req.params.id, 'write');
+      assertOnline();
+      const job = await createJob({
+        type: DRAFT_OVERVIEW_JOB,
+        input: { subjectId: req.params.id },
+        createdBy: user.id,
+        subjectId: subject._id,
+      });
+      accepted(res, job);
+    }),
+  );
+
   r.post(
     '/topics/:id/draft-content',
     requireRole('faculty', 'admin'),
@@ -119,6 +146,48 @@ export function aiRoutes() {
         action: 'ai.draftContent',
         target: { type: 'topic', id: req.params.id },
         meta: { kinds: req.body.kinds },
+      });
+      accepted(res, job);
+    }),
+  );
+
+  // Feature 1: AI variants of one question (same concept) for the question pool.
+  r.post(
+    '/questions/:id/variants',
+    requireRole('faculty', 'admin'),
+    validate({ ...P, body: GenerateVariantsSchema }),
+    h(async (req, res) => {
+      const user = currentUser(req);
+      const q = await Question.findById(req.params.id).select('topicId subjectId type').lean();
+      if (!q || q.type !== 'mcq') throw notFound('Question');
+      await loadTopic(user, String(q.topicId), 'write');
+      assertOnline();
+      const job = await createJob({
+        type: VARIANTS_JOB,
+        input: { questionId: req.params.id, count: req.body.count },
+        createdBy: user.id,
+        subjectId: q.subjectId,
+        topicId: q.topicId,
+      });
+      accepted(res, job);
+    }),
+  );
+
+  // Feature 13: AI draft of an explain-it-back rubric from the topic's material.
+  r.post(
+    '/topics/:id/draft-rubric',
+    requireRole('faculty', 'admin'),
+    validate(P),
+    h(async (req, res) => {
+      const user = currentUser(req);
+      const { topic } = await loadTopic(user, req.params.id, 'write');
+      assertOnline();
+      const job = await createJob({
+        type: RUBRIC_DRAFT_JOB,
+        input: { topicId: req.params.id },
+        createdBy: user.id,
+        subjectId: topic.subjectId,
+        topicId: topic._id,
       });
       accepted(res, job);
     }),

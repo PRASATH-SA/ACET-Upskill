@@ -42,6 +42,26 @@ export async function dbmsFixture(status = 'approved') {
   };
 }
 
+/** Uploads the Normalization notes PDF to a topic and waits for ingestion (grounding for AI jobs). */
+export async function uploadTopicNotes(f, topicKey = 'normalization') {
+  const [{ api }, { queue }, { NORMALIZATION_NOTES }] = await Promise.all([
+    import('./helpers.js'),
+    import('../src/modules/ai/queue.js'),
+    import('./fixtures/notes.js'),
+  ]);
+  const res = await api()
+    .post('/api/v1/materials')
+    .set(f.faculty.auth)
+    .field('kind', 'notes')
+    .field('topicId', f.id(topicKey))
+    .attach('file', await makePdf(NORMALIZATION_NOTES), {
+      filename: 'notes.pdf',
+      contentType: 'application/pdf',
+    });
+  if (res.status !== 201) throw new Error(`notes upload failed: ${res.status}`);
+  await queue().drain();
+}
+
 /** Renders a PDF in memory. With `text`, the PDF has real text; without, only a filled box (like a scan). */
 export function makePdf(text) {
   return new Promise((resolve) => {

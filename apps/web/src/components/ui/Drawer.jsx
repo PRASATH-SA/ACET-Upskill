@@ -6,10 +6,11 @@ import { cn } from '../../lib/cn';
 import { IconButton } from './IconButton';
 
 const SIDES = {
-  right: 'inset-y-0 right-0 w-full max-w-md border-l',
-  left: 'inset-y-0 left-0 w-full max-w-xs border-r',
+  // Side panels float off the edge with a gap so the glass reads as a separate sheet.
+  right: 'inset-y-2 right-2 w-[calc(100%-1rem)] max-w-md rounded-sheet',
+  left: 'inset-y-2 left-2 w-[calc(100%-1rem)] max-w-xs rounded-sheet',
   // Bottom sheet for mobile: the map's topic panel and the tutor use it.
-  bottom: 'inset-x-0 bottom-0 max-h-[85vh] rounded-t-card border-t',
+  bottom: 'inset-x-0 bottom-0 max-h-[85vh] rounded-t-sheet',
 };
 
 /** Side panel or bottom sheet with the same modal behaviour as Dialog. */
@@ -19,7 +20,11 @@ export function Drawer({ open, onClose, title, side = 'right', footer, className
   if (!open) return null;
   return createPortal(
     <div className="fixed inset-0 z-50">
-      <div className="absolute inset-0 bg-navy/40" aria-hidden onClick={onClose} />
+      <div
+        className="absolute inset-0 bg-navy/30 backdrop-blur-[4px]"
+        aria-hidden
+        onClick={onClose}
+      />
       <div
         ref={panelRef}
         role="dialog"
@@ -27,22 +32,22 @@ export function Drawer({ open, onClose, title, side = 'right', footer, className
         aria-labelledby={titleId}
         tabIndex={-1}
         className={cn(
-          'absolute flex flex-col border-line bg-card focus:outline-none',
+          'glass-strong absolute flex animate-glass-pop flex-col overflow-hidden focus:outline-none',
           SIDES[side],
           className,
         )}
       >
         {side === 'bottom' && (
-          <div className="mx-auto mt-2 h-1.5 w-12 rounded-full bg-line" aria-hidden />
+          <div className="mx-auto mt-2 h-1.5 w-12 rounded-full bg-navy/15" aria-hidden />
         )}
-        <div className="flex items-center justify-between gap-4 border-b border-line px-5 py-3">
+        <div className="flex items-center justify-between gap-4 border-b border-navy/[0.08] px-5 py-3">
           <h2 id={titleId} className="text-lg">
             {title}
           </h2>
           <IconButton icon={X} label="Close" onClick={onClose} className="-mr-2" />
         </div>
         <div className="flex-1 overflow-y-auto px-5 py-5">{children}</div>
-        {footer && <div className="border-t border-line px-5 py-4">{footer}</div>}
+        {footer && <div className="border-t border-navy/[0.08] px-5 py-4">{footer}</div>}
       </div>
     </div>,
     document.body,

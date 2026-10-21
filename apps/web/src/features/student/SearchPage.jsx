@@ -5,6 +5,7 @@ import { Page } from '../../components/layout/AppShell';
 import { Button, EmptyState, EyebrowHeading, Input, LoadingBlock } from '../../components/ui';
 import { useSession } from '../auth/session';
 import { useSearch } from './api';
+import { QueryError } from '../../components/QueryError';
 
 /** Where a topic result opens for each role. */
 function topicHref(role, t) {
@@ -59,6 +60,8 @@ export function SearchPage() {
       <div className="mt-6" aria-live="polite">
         {!q ? null : results.isPending ? (
           <LoadingBlock label="Searching" />
+        ) : results.isError ? (
+          <QueryError query={results} what="search results" />
         ) : results.data.topics.length + results.data.subjects.length === 0 ? (
           <EmptyState
             icon={Search}
@@ -82,7 +85,7 @@ export function SearchPage() {
                     <li key={s.id}>
                       <Link
                         to={subjectHref(role, s)}
-                        className="flex min-h-[44px] items-center gap-3 rounded-2xl border border-line bg-card p-4 hover:border-blue hover:no-underline"
+                        className="flex min-h-[44px] items-center gap-3 glass rounded-2xl p-4 glass-hover hover:no-underline"
                       >
                         <BookOpen className="h-5 w-5 text-navy" aria-hidden />
                         <span>
@@ -106,7 +109,7 @@ export function SearchPage() {
                   <li key={t.id}>
                     <Link
                       to={topicHref(role, t)}
-                      className="block min-h-[44px] rounded-2xl border border-line bg-card p-4 hover:border-blue hover:no-underline"
+                      className="block min-h-[44px] glass rounded-2xl p-4 glass-hover hover:no-underline"
                     >
                       <span className="block font-semibold text-navy">{t.title}</span>
                       <span className="block text-xs">

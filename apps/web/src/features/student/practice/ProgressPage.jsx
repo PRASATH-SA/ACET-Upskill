@@ -23,7 +23,7 @@ const STATE_COLOR = {
 };
 
 /** A stacked bar of mastery states for one subject, with the numbers spelled out. */
-function MasteryBar({ counts, total }) {
+export function MasteryBar({ counts, total }) {
   const order = ['confident', 'practicing', 'learning', 'needsRevision', 'notStarted'];
   return (
     <div>
@@ -111,7 +111,7 @@ export function ProgressPage() {
                   <Card>
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
                       <h3>
-                        <Link to={`/learn/${s.subjectId}`}>{s.name}</Link>
+                        <Link to={`/subjects/${s.subjectId}`}>{s.name}</Link>
                       </h3>
                       <span className="text-xs">
                         {s.code} · {s.totalTopics} topics
@@ -140,7 +140,7 @@ export function ProgressPage() {
                   <li key={t.topicId}>
                     <Link
                       to={`/topics/${t.topicId}`}
-                      className="flex min-h-[44px] items-center justify-between gap-2 rounded-xl border border-line p-3 hover:border-blue hover:no-underline"
+                      className="flex min-h-[44px] items-center justify-between gap-2 rounded-xl border border-line p-3 glass-hover hover:no-underline"
                     >
                       <span className="font-semibold text-navy">{t.title}</span>
                       <Badge tone={t.state === 'needsRevision' ? 'orange' : 'neutral'}>

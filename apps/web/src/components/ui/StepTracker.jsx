@@ -24,32 +24,43 @@ export const STEP_META = {
 export function StepTracker({ current, done = [], available, onSelect, className }) {
   return (
     <nav aria-label="Learning steps" className={className}>
-      <ol className="flex gap-1 overflow-x-auto pb-1 sm:gap-2">
+      {/* A quest path: steps are joined by a track that turns gold as steps are finished. */}
+      <ol className="flex overflow-x-auto pb-1">
         {LEARNING_STEPS.map((step, i) => {
           const meta = STEP_META[step];
           const isDone = done.includes(step);
           const isCurrent = step === current;
           const enabled = !available || available.includes(step);
           const Icon = isDone ? Check : meta.icon;
+          const nextDone = done.includes(LEARNING_STEPS[i + 1]);
           return (
-            <li key={step} className="flex min-w-[4.5rem] flex-1 items-center">
+            <li key={step} className="relative flex min-w-[4.5rem] flex-1 items-start">
+              {i < LEARNING_STEPS.length - 1 && (
+                <span
+                  aria-hidden
+                  className={cn(
+                    'absolute left-[calc(50%+1.5rem)] right-[calc(-50%+1.5rem)] top-[1.75rem] h-1 rounded-full',
+                    isDone && nextDone ? 'bg-gold' : isDone ? 'bg-gold/40' : 'bg-navy/10',
+                  )}
+                />
+              )}
               <button
                 type="button"
                 disabled={!enabled}
                 onClick={() => onSelect?.(step)}
                 aria-current={isCurrent ? 'step' : undefined}
                 className={cn(
-                  'flex w-full min-h-[44px] flex-col items-center gap-1 rounded-xl px-1 py-2 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40',
-                  isCurrent ? 'text-blue' : 'text-navy hover:bg-navy/5',
+                  'group flex w-full min-h-[44px] flex-col items-center gap-1.5 rounded-2xl px-1 py-2 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40',
+                  isCurrent ? 'text-blue-dark' : 'text-navy',
                   focusRing,
                 )}
               >
                 <span
                   className={cn(
-                    'inline-flex h-9 w-9 items-center justify-center rounded-full border-2',
-                    isDone && 'border-gold-border bg-gold text-navy',
-                    isCurrent && !isDone && 'border-blue bg-blue text-white',
-                    !isDone && !isCurrent && 'border-line bg-card text-navy',
+                    'relative inline-flex h-11 w-11 items-center justify-center rounded-full border transition-transform duration-200 group-enabled:group-hover:-translate-y-0.5',
+                    isDone && 'border-gold-border bg-gold text-navy shadow-[0_3px_0_0_#C9A100]',
+                    isCurrent && !isDone && 'animate-glow-pulse border-blue bg-blue text-white',
+                    !isDone && !isCurrent && 'glass border-white/80 text-navy',
                   )}
                 >
                   <Icon className="h-4 w-4" aria-hidden />

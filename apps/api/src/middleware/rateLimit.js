@@ -19,13 +19,29 @@ export function loginLimiter(perMinute) {
   });
 }
 
-/** General API limit per IP. */
-export function apiLimiter(perMinute) {
+/**
+ * Ceiling per IP for the whole API (H1). Set high: a college network puts every student
+ * behind one public (NAT) address, so a low per-IP limit would block a whole lab. It only
+ * stops floods; fairness comes from userLimiter.
+ */
+export function ipLimiter(perMinute) {
   return rateLimit({
     windowMs: 60_000,
     limit: perMinute,
     standardHeaders: 'draft-7',
     legacyHeaders: false,
+    handler: (req, res, next) => handler(req, res, next),
+  });
+}
+
+/** Per signed-in user (mounted after requireAuth): every student gets their own budget. */
+export function userLimiter(perMinute) {
+  return rateLimit({
+    windowMs: 60_000,
+    limit: perMinute,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    keyGenerator: (req) => `user:${req.user.id}`,
     handler: (req, res, next) => handler(req, res, next),
   });
 }

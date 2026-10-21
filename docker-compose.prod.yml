@@ -1,0 +1,179 @@
+# ACET SkillUp — production stack (H1). Standalone (not an override), so no dev port leaks in.
+#
+#   cp deploy/.env.prod.example .env.prod      # fill in every value
+#   docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build
+#   docker compose --env-file .env.prod -f docker-compose.prod.yml run --rm ollama-pull
+#
+# Only nginx (web) publishes ports: 80 (ACME + redirect) and 443. Full guide: docs/deploy.md.
+
+name: acet-skillup-prod
+
+x-node-env: &node-env
+  NODE_ENV: production
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  MONGO_URI: mongodb://${MONGO_APP_USER:?}:${MONGO_APP_PASSWORD:?}@mongo:27017/acet_skillup?replicaSet=rs0&authSource=acet_skillup
+  LLM_PROVIDER: ${LLM_PROVIDER:-ollama}
+  LLM_BASE_URL: ${LLM_BASE_URL:-http://ollama:11434}
+  LLM_CHAT_MODEL: ${LLM_CHAT_MODEL:-qwen2.5:7b-instruct}
+  LLM_EMBED_MODEL: ${LLM_EMBED_MODEL:-nomic-embed-text}
+  LLM_TIMEOUT_MS: ${LLM_TIMEOUT_MS:-120000}
+  LLM_MAX_CONCURRENCY: ${LLM_MAX_CONCURRENCY:-2}
+  STT_PROVIDER: ${STT_PROVIDER:-none}
+  STT_BASE_URL: ${STT_BASE_URL:-http://whisper:8000}
+  STT_MODEL: ${STT_MODEL:-whisper-small}
+  STT_LANGUAGE: ${STT_LANGUAGE:-en}
+  UPLOAD_DIR: /data/uploads
+  AUDIO_RETENTION_DAYS: ${AUDIO_RETENTION_DAYS:-30}
+
+services:
+  # One-shot: creates the replica-set key file that authenticated mongod members need.
+  mongo-keyfile:
+    image: alpine:3.20
+    command:
+      - /bin/sh
+      - -c
+      - '[ -f /keys/keyfile ] || (head -c 756 /dev/urandom | base64 > /keys/keyfile && chmod 400 /keys/keyfile && chown 999:999 /keys/keyfile)'
+    volumes: ['mongo-keys:/keys']
+    restart: 'no'
+
+  mongo:
+    image: mongo:7
+    command: ['--replSet', 'rs0', '--bind_ip_all', '--auth', '--keyFile', '/keys/keyfile']
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:?}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?}
+      MONGO_APP_DB: acet_skillup
+      MONGO_APP_USER: ${MONGO_APP_USER:?}
+      MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD:?}
+      MONGO_BACKUP_USER: ${MONGO_BACKUP_USER:?}
+      MONGO_BACKUP_PASSWORD: ${MONGO_BACKUP_PASSWORD:?}
+    volumes:
+      - mongo-data:/data/db
+      - mongo-keys:/keys:ro
+      - ./deploy/mongo/create-users.js:/docker-entrypoint-initdb.d/create-users.js:ro
+    depends_on:
+      mongo-keyfile: { condition: service_completed_successfully }
+    healthcheck:
+      # Initiates the replica set on first start, then reports healthy once it is primary.
+      test:
+        - CMD-SHELL
+        - >-
+          mongosh --quiet -u "$$MONGO_INITDB_ROOT_USERNAME" -p "$$MONGO_INITDB_ROOT_PASSWORD"
+          --authenticationDatabase admin --eval
+          "try { rs.status().ok } catch (e) { rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'mongo:27017' }] }).ok }"
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 20s
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    volumes: ['ollama-data:/root/.ollama']
+    restart: unless-stopped
+    # GPU (strongly recommended for 7B models; CPU-only drafting takes minutes per topic).
+    # Needs the NVIDIA driver + NVIDIA Container Toolkit on the host. Uncomment:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  ollama-pull:
+    image: ollama/ollama:latest
+    depends_on: [ollama]
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: ['/bin/sh', '-c']
+    command:
+      - 'ollama pull ${LLM_CHAT_MODEL:-qwen2.5:7b-instruct} && ollama pull ${LLM_EMBED_MODEL:-nomic-embed-text} && ollama list'
+    profiles: ['setup']
+    restart: 'no'
+
+  api:
+    build: { context: ., dockerfile: apps/api/Dockerfile }
+    environment:
+      <<: *node-env
+      API_PORT: 4000
+      # One API process per CPU core (H1 load test: 500 students need several).
+      API_WORKERS: ${API_WORKERS:-0}
+      WEB_ORIGIN: https://${SERVER_NAME:?}
+      COOKIE_SECURE: 'true'
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?}
+      APP_VERSION: ${APP_VERSION:-1.0.0}
+    volumes: ['uploads:/data/uploads']
+    depends_on:
+      mongo: { condition: service_healthy }
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://localhost:4000/api/v1/health']
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  worker:
+    build: { context: ., dockerfile: apps/worker/Dockerfile }
+    environment:
+      <<: *node-env
+    volumes: ['uploads:/data/uploads']
+    depends_on:
+      mongo: { condition: service_healthy }
+    restart: unless-stopped
+
+  web:
+    build: { context: ., dockerfile: apps/web/Dockerfile }
+    environment:
+      SERVER_NAME: ${SERVER_NAME:?}
+      API_UPSTREAM: api:4000
+      # Certificate paths inside the container; the host folder is mounted below.
+      TLS_CERT: ${TLS_CERT:-/etc/nginx/certs/fullchain.pem}
+      TLS_KEY: ${TLS_KEY:-/etc/nginx/certs/privkey.pem}
+    ports: ['80:80', '443:443']
+    volumes:
+      - ${CERTS_DIR:-./deploy/certs}:/etc/nginx/certs:ro
+      - certbot-webroot:/var/www/certbot:ro
+    depends_on:
+      api: { condition: service_healthy }
+    restart: unless-stopped
+
+  # Let's Encrypt renewal (optional). First certificate: see docs/deploy.md.
+  certbot:
+    image: certbot/certbot:latest
+    volumes:
+      - ${CERTS_DIR:-./deploy/certs}:/etc/letsencrypt/live/${SERVER_NAME:?}
+      - certbot-webroot:/var/www/certbot
+    entrypoint:
+      [
+        '/bin/sh',
+        '-c',
+        'trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot; sleep 12h; done',
+      ]
+    profiles: ['letsencrypt']
+    restart: unless-stopped
+
+  # Daily mongodump + uploads archive, 30-day retention (deploy/backup/backup.sh).
+  backup:
+    image: mongo:7
+    entrypoint: ['/bin/sh', '/scripts/backup.sh']
+    environment:
+      MONGO_BACKUP_URI: mongodb://${MONGO_BACKUP_USER:?}:${MONGO_BACKUP_PASSWORD:?}@mongo:27017/?replicaSet=rs0&authSource=admin
+      BACKUP_TIME: ${BACKUP_TIME:-02:30}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-30}
+      TZ: ${TZ:-Asia/Kolkata}
+    volumes:
+      - ./deploy/backup:/scripts:ro
+      - ${BACKUP_DIR:-./backups}:/backups
+      - uploads:/data/uploads
+    depends_on:
+      mongo: { condition: service_healthy }
+    restart: unless-stopped
+
+volumes:
+  mongo-data:
+  mongo-keys:
+  ollama-data:
+  uploads:
+  certbot-webroot:

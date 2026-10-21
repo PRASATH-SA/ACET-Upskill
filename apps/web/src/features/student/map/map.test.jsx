@@ -5,6 +5,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { MAP_NODE_STYLE } from '@acet/shared';
 import { buildFlow, edgeKind, learningOrderIds, neighboursOf, positionsFor } from './graph';
 import { MapListView } from './MapListView';
+import { RoadmapView } from './RoadmapView';
 import { TopicPanel } from './TopicPanel';
 
 const map = {
@@ -246,5 +247,52 @@ describe('list view', () => {
       'href',
       '/topics/keys',
     );
+  });
+});
+
+describe('learning path (roadmap view)', () => {
+  const renderPath = (onSelect = () => {}) =>
+    render(
+      <MemoryRouter>
+        <RoadmapView
+          map={map}
+          me={me}
+          order={learningOrderIds(map, me)}
+          onSelect={onSelect}
+          onDetails={() => {}}
+          onOpenMap={() => {}}
+        />
+      </MemoryRouter>,
+    );
+
+  it('groups topics by unit in learning order and names each state', () => {
+    renderPath();
+    const unit3 = screen.getByRole('list', { name: 'Unit 3: Database Design' });
+    const nodes = within(unit3).getAllByRole('button', { name: /Unit 3$/ });
+    expect(nodes.map((b) => b.getAttribute('aria-label'))).toEqual([
+      'Relational Model. Mastered. Unit 3',
+      'Keys. You are here. Unit 3',
+      'Normalization. Locked. Unit 3',
+    ]);
+    expect(nodes[1]).toHaveAttribute('aria-current', 'step');
+    expect(screen.getByRole('list', { name: 'Unit 4: Indexing' })).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: /Unit 3 reward: 1 of 3/ })).toBeInTheDocument();
+  });
+
+  it('opens a card with the next action; a locked topic says what to finish first', async () => {
+    const user = userEvent.setup();
+    const onSelect = vi.fn();
+    renderPath(onSelect);
+    await user.click(screen.getByRole('button', { name: /^Keys\./ }));
+    expect(onSelect).toHaveBeenCalledWith('keys');
+    // Keys is in progress ("learning"), so the action is Continue.
+    expect(screen.getByRole('link', { name: 'Continue Keys' })).toHaveAttribute(
+      'href',
+      '/topics/keys',
+    );
+
+    await user.click(screen.getByRole('button', { name: /^Normalization\./ }));
+    expect(screen.queryByRole('link', { name: /Keys/ })).not.toBeInTheDocument();
+    expect(screen.getByText('Finish Keys first')).toBeInTheDocument();
   });
 });

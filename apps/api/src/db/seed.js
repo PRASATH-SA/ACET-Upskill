@@ -1,7 +1,8 @@
 /**
  * npm run seed (A.9): 1 admin, 2 faculty, 1 mentor, 10 students, the CSE Sem 5 syllabus version,
  * and the DBMS subject (Unit 3 Database Design + Indexing in Unit 4) with links.
- * Also publishes demo content for "Normalization" so the student flow can be tried at once.
+ * Also publishes demo content for every topic (seedContent.js: video, notes, flashcards, MCQs,
+ * code-lab problems) so the student flow can be tried at once.
  *
  *   npm run seed            refuses to run if users already exist
  *   npm run seed -- --reset drops the database first (never allowed in production)
@@ -19,6 +20,7 @@ import { User } from '../modules/users/model.js';
 import { Workshop } from '../modules/workshops/model.js';
 import { connectMongo, disconnectMongo } from './connect.js';
 import { createDbmsSubject } from './dbmsSyllabus.js';
+import { seedDbmsContent } from './seedContent.js';
 
 export const SEED_PASSWORD = 'Acet@2025';
 const DOMAIN = 'acet.test';
@@ -315,6 +317,8 @@ export async function seed() {
       topicId: topics[k]._id,
     })),
   ]);
+
+  await seedDbmsContent({ subjectId: subject._id, facultyId: faculty1._id, now });
 
   return { admin, faculty: [faculty1, faculty2], mentor, students, subject, version };
 }

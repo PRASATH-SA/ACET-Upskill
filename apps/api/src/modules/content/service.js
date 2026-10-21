@@ -1,3 +1,4 @@
+import { rm } from 'node:fs/promises';
 import { RESOURCE_KINDS, STUDENT_VISIBLE_STATUS } from '@acet/shared';
 import { oid } from '../../db/mongoose.js';
 import { facultySubjectIds, isStaff, loadSubject, loadTopic } from '../../lib/access.js';
@@ -6,11 +7,14 @@ import { storage } from '../../lib/storage.js';
 import { INGEST_JOB, INGESTIBLE_KINDS } from '../../ai/pipelines/ingest.js';
 import { vectorStore } from '../../ai/rag/vectorStore.js';
 import { createJob } from '../ai/jobs.js';
-import { sniffFile } from '../../lib/upload.js';
+import { sniffDiskFile, sniffFile } from '../../lib/upload.js';
 import { audit } from '../audit/service.js';
 import { Pyq } from '../exam/model.js';
 import { Unit } from '../syllabus/model.js';
 import { prerequisitesOf, unlocks } from '../syllabus/service.js';
+import { Rubric } from '../explain/model.js';
+import { CodeChallenge } from '../codelab/model.js';
+import { assertChallengeWorks, publishedCount as codeLabCount } from '../codelab/service.js';
 import { Workshop } from '../workshops/model.js';
 import { Flashcard, Material, Question, Resource } from './model.js';
 import { extractPdfText } from './pdf.js';
@@ -31,6 +35,9 @@ export async function listTopicItems(user, type, topicId, filter = {}) {
   const staffView = isStaff(user) && (await canWrite(user, subject));
   if (type === 'question' && !staffView)
     throw forbidden('Questions are available through the quiz');
+  if (type === 'rubric' && !staffView) throw forbidden('The rubric is shown on the topic page');
+  if (type === 'challenge' && !staffView)
+    throw forbidden('Challenges are available through the code lab');
   const query = { topicId, ...filter, ...(staffView ? {} : { status: PUBLISHED }) };
   return Model.find(query).sort({ createdAt: 1 });
 }
@@ -46,6 +53,7 @@ async function canWrite(user, subject) {
 
 export async function createTopicItem(user, type, topicId, input) {
   const { topic } = await loadTopic(user, topicId, 'write');
+  if (type === 'challenge') await assertChallengeWorks(input);
   const doc = await CONTENT_MODELS[type].create({
     ...input,
     topicId: topic._id,
@@ -85,6 +93,13 @@ export async function updateItem(user, type, id, input) {
       throw badRequest('optionExplanations must match options');
     }
   }
+  if (type === 'rubric') {
+    const criteria = input.criteria ?? doc.criteria;
+    const passScore = input.passScore ?? doc.passScore;
+    const max = criteria.reduce((n, c) => n + c.points, 0);
+    if (passScore > max) throw badRequest(`passScore cannot exceed the total points (${max})`);
+  }
+  if (type === 'challenge') await assertChallengeWorks({ ...doc.toObject(), ...input });
   doc.set(input);
   if (doc.source === 'ai') doc.editedAfterAi = true;
   doc.rejectedAt = undefined;
@@ -103,23 +118,40 @@ export async function updateItem(user, type, id, input) {
 export async function deleteItem(user, type, id) {
   const doc = await loadItem(user, type, id);
   if (doc.fileKey) await storage().remove(doc.fileKey);
+  for (const c of doc.captions ?? []) await storage().remove(c.fileKey);
   await doc.deleteOne();
   await audit({ actorId: user.id, action: `${type}.delete`, target: { type, id } });
 }
 
 // ---------- resource files (uploaded videos) ----------
 
+/**
+ * POST /resources/:id/file — the upload arrives as a temp file on disk (videos can be large),
+ * is checked by its bytes, then moved into storage. MP4 (H.264) plays everywhere; there is no
+ * transcoding in v1.
+ */
 export async function attachResourceFile(user, id, file) {
-  const doc = await loadItem(user, 'resource', id);
-  if (doc.kind !== 'video') throw badRequest('Only video resources accept an uploaded file');
-  const { ext, mime } = await sniffFile(file.buffer, ['mp4', 'webm']);
-  if (doc.fileKey) await storage().remove(doc.fileKey);
-  doc.fileKey = await storage().save(file.buffer, { folder: 'videos', ext });
-  doc.fileName = file.originalname;
-  doc.mimeType = mime;
-  doc.size = file.size;
-  await doc.save();
-  return doc;
+  try {
+    const doc = await loadItem(user, 'resource', id);
+    if (doc.kind !== 'video') throw badRequest('Only video resources accept an uploaded file');
+    const { ext, mime } = await sniffDiskFile(file.path, ['mp4', 'webm']);
+    if (doc.fileKey) await storage().remove(doc.fileKey);
+    doc.fileKey = await storage().saveFile(file.path, { folder: 'videos', ext });
+    doc.fileName = file.originalname;
+    doc.mimeType = mime;
+    doc.size = file.size;
+    doc.durationSec = null; // measured again by the browser for the new file
+    await doc.save();
+    await audit({
+      actorId: user.id,
+      action: 'resource.file',
+      target: { type: 'resource', id },
+      meta: { size: file.size, mime },
+    });
+    return doc;
+  } finally {
+    await rm(file.path, { force: true }).catch(() => {});
+  }
 }
 
 /** Streams a resource file. Students may only fetch published resources of visible topics. */
@@ -267,6 +299,8 @@ const PREVIEW = {
   flashcard: '$front',
   question: '$stem',
   pyq: { $substrCP: ['$text', 0, 160] },
+  rubric: '$prompt',
+  challenge: '$title',
 };
 
 const COLLECTION = {
@@ -274,6 +308,8 @@ const COLLECTION = {
   flashcard: 'flashcards',
   question: 'questions',
   pyq: 'pyqs',
+  rubric: Rubric.collection.collectionName,
+  challenge: CodeChallenge.collection.collectionName,
 };
 
 /**
@@ -296,7 +332,7 @@ export async function reviewQueue(user, query) {
   if (!query.includeRejected) match.rejectedAt = { $exists: false };
   if (query.needsAttention !== undefined) match.needsAttention = query.needsAttention;
 
-  let types = ['resource', 'flashcard', 'question', 'pyq'];
+  let types = ['resource', 'flashcard', 'question', 'pyq', 'rubric', 'challenge'];
   let kindMatch = {};
   if (query.kind) {
     if (RESOURCE_KINDS.includes(query.kind)) {
@@ -365,7 +401,67 @@ const resourceView = (d) => ({
   ...(d.body ? { body: d.body } : {}),
   ...(d.url ? { url: d.url } : {}),
   ...(d.fileKey ? { fileUrl: `/api/v1/resources/${d._id}/file`, mimeType: d.mimeType } : {}),
+  // Uploaded videos play through GET /resources/:id/playback (signed, seekable links).
+  ...(d.kind === 'video' && d.fileKey
+    ? {
+        uploaded: true,
+        durationSec: d.durationSec ?? null,
+        chapters: d.chapters ?? [],
+        captionLangs: (d.captions ?? []).map((c) => c.lang),
+      }
+    : {}),
 });
+
+/** The latest published rubric for a topic, as students see it (no scorer key ideas). */
+async function publishedRubric(topicId) {
+  const r = await Rubric.findOne({ topicId, status: PUBLISHED }).sort({ publishedAt: -1 }).lean();
+  if (!r) return null;
+  return {
+    rubricId: String(r._id),
+    prompt: r.prompt,
+    criteria: r.criteria.map((c) => ({ id: c.id, text: c.text, points: c.points })),
+    maxScore: r.maxScore,
+    passScore: r.passScore,
+  };
+}
+
+// ---------- question pools (feature 1) ----------
+
+/**
+ * GET /topics/:id/question-pools — MCQs grouped by concept, with how many variants each pool
+ * has and how many are published. A pool with one published variant repeats for every student.
+ */
+export async function questionPools(user, topicId) {
+  await loadTopic(user, topicId, 'write');
+  const qs = await Question.find({ topicId, type: 'mcq' })
+    .select('stem status conceptKey variantOf createdAt')
+    .sort({ createdAt: 1 })
+    .lean();
+  const pools = new Map();
+  for (const q of qs) {
+    const key = q.conceptKey || String(q._id);
+    if (!pools.has(key))
+      pools.set(key, {
+        conceptKey: key,
+        named: Boolean(q.conceptKey),
+        label: q.stem.slice(0, 120),
+        total: 0,
+        published: 0,
+        questionIds: [],
+      });
+    const p = pools.get(key);
+    p.total += 1;
+    if (q.status === PUBLISHED) p.published += 1;
+    p.questionIds.push(String(q._id));
+  }
+  const list = [...pools.values()];
+  return {
+    pools: list,
+    concepts: list.length,
+    publishedConcepts: list.filter((p) => p.published > 0).length,
+    singleVariant: list.filter((p) => p.published === 1).length,
+  };
+}
 
 /**
  * GET /topics/:id/page — everything a student needs for the six-step page, published only.
@@ -383,6 +479,8 @@ export async function topicPage(user, topicId) {
     unlocksList,
     unit,
     workshops,
+    rubric,
+    codeChallengeCount,
   ] = await Promise.all([
     publishedResources(topicId),
     Flashcard.countDocuments({ topicId, status: PUBLISHED }),
@@ -395,6 +493,8 @@ export async function topicPage(user, topicId) {
     unlocks(user, topicId),
     Unit.findById(topic.unitId).lean(),
     Workshop.find({ topicId }).sort({ dueAt: 1 }).lean(),
+    publishedRubric(topicId),
+    codeLabCount(topicId),
   ]);
 
   const page = {
@@ -407,6 +507,7 @@ export async function topicPage(user, topicId) {
     },
     flashcardCount,
     questionCount,
+    codeChallengeCount,
     prerequisites,
     unlocks: unlocksList,
   };
@@ -435,6 +536,7 @@ export async function topicPage(user, topicId) {
   if (workshops.length) {
     page.workshops = workshops.map((w) => ({ id: String(w._id), brief: w.brief, dueAt: w.dueAt }));
   }
+  if (rubric) page.explainItBack = rubric;
   if (pyqs.length) {
     page.pyqs = pyqs.map((p) => ({
       id: String(p._id),

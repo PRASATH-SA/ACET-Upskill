@@ -36,6 +36,9 @@ export function createQueryClient() {
         staleTime: 30_000,
         gcTime: 10 * 60_000,
         refetchOnWindowFocus: false,
+        // Offline, still fetch once so the service worker can answer from its cache (F7);
+        // the default 'online' mode would pause every query and show nothing.
+        networkMode: 'offlineFirst',
         retry: (count, err) => {
           if (err instanceof ApiError && err.status < 500) return false;
           return count < 2;

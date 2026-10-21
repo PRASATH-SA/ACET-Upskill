@@ -119,22 +119,52 @@ export async function submitQuiz(user, { topicId, answers }) {
   if (questions.length !== ids.length)
     throw badRequest('Some questions are not part of this topic quiz');
   const byId = new Map(questions.map((q) => [String(q._id), q]));
-
-  const quizId = randomUUID();
-  const now = new Date();
-  const results = answers.map((a) => {
-    const q = byId.get(a.questionId);
-    if (a.selectedIndex >= q.options.length)
+  for (const a of answers) {
+    if (a.selectedIndex >= byId.get(a.questionId).options.length)
       throw badRequest(`selectedIndex out of range for question ${a.questionId}`);
-    const correct = a.selectedIndex === q.correctIndex;
+  }
+  const graded = answers.map((a) => ({
+    question: byId.get(a.questionId),
+    selectedIndex: a.selectedIndex,
+    optionOrder: null,
+  }));
+  const quizId = randomUUID();
+  return { quizId, ...(await recordQuiz(user, topic, graded, { quizId })) };
+}
+
+/**
+ * Grades answers and records them: attempts, mastery, and revision enrolment of the topic's
+ * flashcards plus the missed questions. Shared by the legacy quiz and quiz sessions.
+ *
+ * Each graded item has the question, the canonical `selectedIndex`, and the `optionOrder` the
+ * student saw (null = faculty order). Results are reported in the order the student saw, so
+ * every option's explanation lines up with what was on screen.
+ * @param {object} user
+ * @param {object} topic
+ * @param {{ question: object, selectedIndex: number, optionOrder: number[] | null }[]} graded
+ * @param {{ quizId?: string, sessionId?: object, now?: Date }} [opts]
+ */
+export async function recordQuiz(
+  user,
+  topic,
+  graded,
+  { quizId, sessionId, now = new Date() } = {},
+) {
+  const results = graded.map(({ question: q, selectedIndex, optionOrder }) => {
+    const order = optionOrder ?? q.options.map((_, i) => i);
+    const shown = (canonical) => order.indexOf(canonical);
+    const correct = selectedIndex === q.correctIndex;
     return {
-      questionId: a.questionId,
-      selectedIndex: a.selectedIndex,
-      correctIndex: q.correctIndex,
+      questionId: String(q._id),
+      selectedIndex: shown(selectedIndex),
+      correctIndex: shown(q.correctIndex),
       correct,
       explanation: q.explanation,
-      optionExplanations: q.optionExplanations,
-      ...(correct ? {} : { whyWrong: q.optionExplanations?.[a.selectedIndex] ?? '' }),
+      optionExplanations: q.optionExplanations?.length
+        ? order.map((i) => q.optionExplanations[i] ?? '')
+        : [],
+      ...(correct ? {} : { whyWrong: q.optionExplanations?.[selectedIndex] ?? '' }),
+      canonicalIndex: selectedIndex,
     };
   });
   const correctCount = results.filter((r) => r.correct).length;
@@ -146,8 +176,10 @@ export async function submitQuiz(user, { topicId, answers }) {
       questionId: r.questionId,
       topicId: topic._id,
       subjectId: topic.subjectId,
-      quizId,
-      selectedIndex: r.selectedIndex,
+      quizId: quizId ?? (sessionId ? String(sessionId) : undefined),
+      sessionId: sessionId ?? null,
+      selectedIndex: r.canonicalIndex,
+      displayedIndex: r.selectedIndex,
       correct: r.correct,
       answeredAt: now,
     })),
@@ -159,7 +191,9 @@ export async function submitQuiz(user, { topicId, answers }) {
     masteryChange = await updateMastery(user.id, topic, (m) =>
       onQuizSubmitted(m, score, masteryConfig()),
     );
-    const flashcards = await Flashcard.find({ topicId, status: PUBLISHED }).select('_id').lean();
+    const flashcards = await Flashcard.find({ topicId: topic._id, status: PUBLISHED })
+      .select('_id')
+      .lean();
     const missed = results.filter((r) => !r.correct).map((r) => r.questionId);
     enrolled = {
       flashcards: await enrol(
@@ -173,11 +207,10 @@ export async function submitQuiz(user, { topicId, answers }) {
     };
   }
   return {
-    quizId,
     score,
     correct: correctCount,
     total: results.length,
-    results,
+    results: results.map(({ canonicalIndex: _c, ...r }) => r),
     mastery: masteryChange,
     enrolled,
   };
@@ -280,7 +313,7 @@ export async function revisionToday(user, now = new Date()) {
 }
 
 /** POST /revision/:itemId/rate — reschedules with FSRS and updates topic mastery. */
-export async function rateReview(user, reviewId, rating, now = new Date()) {
+export async function rateReview(user, reviewId, rating, now = new Date(), source = 'revision') {
   const review = await Review.findOne({ _id: reviewId, userId: user.id });
   if (!review) throw notFound('Revision item');
   const next = scheduler().rate(
@@ -305,6 +338,7 @@ export async function rateReview(user, reviewId, rating, now = new Date()) {
     reviewId: review._id,
     topicId: review.topicId,
     rating,
+    source,
     at: now,
   });
 
@@ -331,7 +365,45 @@ export async function rateFlashcard(user, flashcardId, rating, now = new Date())
     itemType: 'flashcard',
     itemId: card._id,
   }).lean();
-  return rateReview(user, String(review._id), rating, now);
+  return rateReview(user, String(review._id), rating, now, 'topicPage');
+}
+
+/**
+ * GET /topics/:id/flashcards/deck — published cards with the student's next due date per card,
+ * so the deck can say "back tomorrow". Staff previewing get the cards without schedules.
+ */
+export async function flashcardDeck(user, topicId, now = new Date()) {
+  await loadTopic(user, topicId, 'read');
+  const cards = await Flashcard.find({ topicId, status: PUBLISHED })
+    .sort({ createdAt: 1 })
+    .select('front back')
+    .lean();
+  const reviews =
+    user.role === 'student'
+      ? await Review.find({
+          userId: user.id,
+          itemType: 'flashcard',
+          itemId: { $in: cards.map((c) => c._id) },
+        })
+          .select('itemId due reps')
+          .lean()
+      : [];
+  const byCard = new Map(reviews.map((r) => [String(r.itemId), r]));
+  const list = cards.map((c) => {
+    const r = byCard.get(String(c._id));
+    return {
+      id: String(c._id),
+      front: c.front,
+      back: c.back,
+      due: r?.due ?? null,
+      reps: r?.reps ?? 0,
+    };
+  });
+  return {
+    topicId,
+    cards: list,
+    dueNow: list.filter((c) => c.due && new Date(c.due) <= now).length,
+  };
 }
 
 // ---------- overdue sweep ----------

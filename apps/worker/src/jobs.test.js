@@ -39,9 +39,23 @@ describe('worker jobs', () => {
     expect(runAiJob).toHaveBeenCalledWith('job-123');
   });
 
-  it('schedules the sweep daily', async () => {
+  it('schedules the sweep and the voice-recording purge daily', async () => {
     const agenda = fakeAgenda();
     await scheduleRecurring(agenda);
     expect(agenda.every).toHaveBeenCalledWith('0 2 * * *', JOB_NAMES.masteryOverdueSweep);
+    expect(agenda.every).toHaveBeenCalledWith('30 2 * * *', JOB_NAMES.audioPurge);
+  });
+
+  it('the purge job removes old recordings through the explain service', async () => {
+    const agenda = fakeAgenda();
+    const purgeOldAudio = vi.fn(async () => 2);
+    const logger = { info: vi.fn() };
+    defineJobs(agenda, { sweepOverdue: vi.fn(), purgeOldAudio, logger });
+    await agenda.jobs.get(JOB_NAMES.audioPurge)({ attrs: {} });
+    expect(purgeOldAudio).toHaveBeenCalledOnce();
+    expect(logger.info).toHaveBeenCalledWith(
+      expect.objectContaining({ removed: 2 }),
+      expect.any(String),
+    );
   });
 });

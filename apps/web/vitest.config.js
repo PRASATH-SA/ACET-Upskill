@@ -15,5 +15,7 @@ export default defineConfig({
     setupFiles: ['./src/test/setup.js'],
     include: ['src/**/*.test.{js,jsx}'],
     css: false,
+    // Tests mock relative /api/v1 URLs; a developer's apps/web/.env must not change that.
+    env: { VITE_API_BASE_URL: '/api/v1' },
   },
 });

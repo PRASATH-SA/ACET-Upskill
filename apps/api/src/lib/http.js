@@ -19,7 +19,7 @@ export function asyncHandler(fn) {
  * so handlers receive coerced, defaulted data. Validation errors go to the error handler.
  */
 export function validate(schemas) {
-  return (req, _res, next) => {
+  const mw = (req, _res, next) => {
     try {
       if (schemas.params) req.params = schemas.params.parse(req.params);
       if (schemas.query) {
@@ -32,6 +32,9 @@ export function validate(schemas) {
       next(err);
     }
   };
+  // Read by the route audit test (routes/routeAudit.test.js) to check validation coverage.
+  mw.validates = Object.keys(schemas);
+  return mw;
 }
 
 /** Typed accessor for validated query values. */

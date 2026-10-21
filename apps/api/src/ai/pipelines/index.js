@@ -6,3 +6,6 @@ import './ingest.js';
 import './draftMap.js';
 import './draftContent.js';
 import './tagPyqs.js';
+import './variants.js';
+import './explain.js';
+import './overview.js';

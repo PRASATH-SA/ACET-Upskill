@@ -1,10 +1,5 @@
-import { Page } from '../../components/layout/AppShell';
-import { EyebrowHeading } from '../../components/ui';
-
-export function AdminHome() {
-  return (
-    <Page>
-      <EyebrowHeading eyebrow="HOD" title="Department overview" level={1} />
-    </Page>
-  );
-}
+export { AdminHome } from './AdminHome';
+export { UsersPage } from './UsersPage';
+export { SyllabusPage, DepartmentsPage } from './SyllabusPage';
+export { CoPoPage } from './CoPoPage';
+export { AiSettingsPage } from './AiSettingsPage';

@@ -39,8 +39,36 @@ export const EYEBROW = {
   color: COLORS.red,
 };
 
+/**
+ * Radius scale (2026-10-16 "liquid glass" refresh). Large, soft corners: cards 28px, inner
+ * tiles 22px, controls 16px, buttons and chips stay pills. Nested surfaces step down one size
+ * so the corners stay concentric.
+ */
+export const RADIUS = {
+  sm: 10,
+  md: 12,
+  lg: 14,
+  xl: 16,
+  '2xl': 22,
+  card: 28,
+  sheet: 32,
+};
+
+/**
+ * Liquid-glass surfaces. Translucent white over a soft ambient backdrop, blurred and saturated,
+ * with a bright top rim. Colours are the A.8 palette at reduced alpha; nothing new is introduced.
+ */
+export const GLASS = {
+  blurPx: 20,
+  saturate: 1.8,
+  fill: 'rgb(255 255 255 / 0.58)',
+  fillStrong: 'rgb(255 255 255 / 0.82)',
+  fillNavy: 'rgb(15 45 92 / 0.86)',
+  rim: 'rgb(255 255 255 / 0.75)',
+};
+
 export const SHAPE = {
-  cardRadiusPx: 20,
+  cardRadiusPx: RADIUS.card,
   borderWidthPx: 1,
   minTouchTargetPx: 44,
   mobileMinWidthPx: 360,

@@ -17,6 +17,16 @@ const resourceSchema = new Schema(
     body: String,
     url: String,
     ...fileFields,
+    /** Uploaded videos: length in seconds, WebVTT caption tracks and chapter marks. */
+    durationSec: { type: Number, default: null },
+    captions: {
+      type: [new Schema({ lang: String, label: String, fileKey: String }, { _id: false })],
+      default: undefined,
+    },
+    chapters: {
+      type: [new Schema({ startSec: Number, title: String }, { _id: false })],
+      default: undefined,
+    },
     ...reviewFields,
   },
   { timestamps: true },
@@ -48,11 +58,21 @@ const questionSchema = new Schema(
     explanation: { type: String, default: '' },
     optionExplanations: { type: [String], default: [] },
     difficulty: { type: String, enum: ['easy', 'medium', 'hard'], default: 'medium' },
+    /**
+     * Questions sharing a concept key are variants of one idea (a question pool). A quiz
+     * uses one variant per concept. No key means the question is its own pool.
+     */
+    conceptKey: { type: String, default: null },
+    /** The question an AI variant was drafted from. */
+    variantOf: { type: ObjectId, ref: 'Question', default: null },
+    /** Off when option order matters (e.g. "both A and B"). */
+    shuffleOptions: { type: Boolean, default: true },
     ...reviewFields,
   },
   { timestamps: true },
 );
 questionSchema.index({ topicId: 1, type: 1, status: 1 });
+questionSchema.index({ topicId: 1, conceptKey: 1 });
 export const Question = mongoose.model('Question', questionSchema);
 
 const materialSchema = new Schema(

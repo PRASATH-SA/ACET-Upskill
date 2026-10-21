@@ -1,4 +1,10 @@
-import { MASTERY_STATES, REVIEW_ITEM_TYPES, REVIEW_RATINGS } from '@acet/shared';
+import {
+  COLLECTIONS,
+  MASTERY_STATES,
+  REVIEW_ITEM_TYPES,
+  REVIEW_RATINGS,
+  REVIEW_SOURCES,
+} from '@acet/shared';
 import { mongoose, ObjectId, ref, Schema } from '../../db/mongoose.js';
 
 const attemptSchema = new Schema(
@@ -8,8 +14,15 @@ const attemptSchema = new Schema(
     topicId: ref('Topic'),
     subjectId: ref('Subject'),
     quizId: { type: String, index: true },
+    /** The quiz session that served this question (null for the legacy quiz endpoint). */
+    sessionId: { type: ObjectId, ref: 'QuizSession', default: null },
+    /** Canonical option index (the order faculty wrote), whatever order the student saw. */
     selectedIndex: { type: Number, required: true },
+    /** Position of the picked option on the student's screen (options are shuffled). */
+    displayedIndex: { type: Number, default: null },
     correct: { type: Boolean, required: true },
+    /** Reserved for the confidence rating feature (#15). */
+    confidence: { type: Number, default: null },
     answeredAt: { type: Date, default: () => new Date() },
   },
   { timestamps: true },
@@ -73,9 +86,44 @@ const reviewLogSchema = new Schema(
     reviewId: ref('Review'),
     topicId: ref('Topic'),
     rating: { type: String, enum: REVIEW_RATINGS, required: true },
+    /** topicPage = the inline deck on a topic; revision = the daily revision session. */
+    source: { type: String, enum: REVIEW_SOURCES, default: 'revision' },
     at: { type: Date, default: () => new Date() },
   },
   { timestamps: true },
 );
 reviewLogSchema.index({ userId: 1, at: -1 });
 export const ReviewLog = mongoose.model('ReviewLog', reviewLogSchema);
+
+/**
+ * One quiz as served to one student: which question was picked from each concept pool and
+ * the option order they saw, so grading maps their picks back to the canonical answer.
+ */
+const quizSessionSchema = new Schema(
+  {
+    userId: ref('User'),
+    topicId: ref('Topic'),
+    subjectId: ref('Subject'),
+    mode: { type: String, enum: ['practice'], default: 'practice' },
+    items: {
+      type: [
+        new Schema(
+          {
+            questionId: { type: ObjectId, ref: 'Question', required: true },
+            /** optionOrder[displayed] = canonical option index. */
+            optionOrder: { type: [Number], required: true },
+          },
+          { _id: false },
+        ),
+      ],
+      required: true,
+    },
+    startedAt: { type: Date, default: () => new Date() },
+    expiresAt: { type: Date, required: true },
+    submittedAt: { type: Date, default: null },
+    score: { type: Number, default: null },
+  },
+  { timestamps: true, collection: COLLECTIONS.quizSessions },
+);
+quizSessionSchema.index({ userId: 1, topicId: 1, startedAt: -1 });
+export const QuizSession = mongoose.model('QuizSession', quizSessionSchema);

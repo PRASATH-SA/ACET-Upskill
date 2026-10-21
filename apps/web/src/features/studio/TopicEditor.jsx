@@ -17,6 +17,7 @@ import {
 } from '../../components/ui';
 import { aiOffline, skeys, useAiHealth, useMaterials, useStartJob, useUploadMaterial } from './api';
 import { FlashcardsTab, QuestionsTab, ResourceTab } from './content/editors';
+import { CodeChallengesTab } from './content/CodeChallengesTab';
 import { JobProgress } from './JobProgress';
 import { AiStatus } from './StudioHome';
 
@@ -280,6 +281,11 @@ export function TopicEditor() {
               content: <FlashcardsTab topicId={topicId} />,
             },
             { value: 'questions', label: 'Quiz', content: <QuestionsTab topicId={topicId} /> },
+            {
+              value: 'code',
+              label: 'Code lab',
+              content: <CodeChallengesTab topicId={topicId} />,
+            },
             {
               value: 'realWorld',
               label: 'Real world',

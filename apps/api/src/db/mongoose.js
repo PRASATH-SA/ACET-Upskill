@@ -45,6 +45,8 @@ export const reviewFields = {
         promptVersion: String,
         jobId: { type: ObjectId, ref: 'AiJob' },
         sourceChunkIds: [{ type: ObjectId, ref: 'Chunk' }],
+        /** Drafts grounded in a whole document (the syllabus PDF) rather than retrieved chunks. */
+        sourceMaterialId: { type: ObjectId, ref: 'Material' },
       },
       { _id: false },
     ),

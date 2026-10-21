@@ -68,6 +68,30 @@ export const ReviewItemTypeSchema = z.enum(REVIEW_ITEM_TYPES);
 export const REVIEW_RATINGS = ['again', 'hard', 'good', 'easy'];
 export const ReviewRatingSchema = z.enum(REVIEW_RATINGS);
 
+/**
+ * The two-button flashcard rating ("knew it" / "didn't") and the FSRS rating each maps to.
+ * Students see two buttons; the scheduler keeps its four levels.
+ */
+export const FLASHCARD_RESULTS = ['knew', 'didnt'];
+export const FlashcardResultSchema = z.enum(FLASHCARD_RESULTS);
+export const SIMPLE_RATINGS = { knew: 'good', didnt: 'again' };
+
+/** Where a revision rating came from (reviewLogs.source). */
+export const REVIEW_SOURCES = ['topicPage', 'revision'];
+
+/** Explain-it-back: how the student answered, and where scoring is. */
+export const EXPLANATION_MODES = ['text', 'voice'];
+export const ExplanationModeSchema = z.enum(EXPLANATION_MODES);
+export const EXPLANATION_STATUSES = ['scoring', 'scored', 'failed'];
+
+/**
+ * Local speech-to-text for voice answers. `none` turns voice off (text answers still work);
+ * `openai-compatible` is any local Whisper server with /v1/audio/transcriptions;
+ * `mock` is for tests and is refused in production.
+ */
+export const STT_PROVIDERS = ['none', 'openai-compatible', 'mock'];
+export const SttProviderSchema = z.enum(STT_PROVIDERS);
+
 /** A.5 aiJobs.status */
 export const JOB_STATUSES = ['queued', 'running', 'succeeded', 'failed', 'cancelled'];
 export const JobStatusSchema = z.enum(JOB_STATUSES);

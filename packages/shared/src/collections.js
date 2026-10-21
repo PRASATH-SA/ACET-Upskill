@@ -23,4 +23,11 @@ export const COLLECTIONS = {
   mentorNotes: 'mentorNotes',
   aiJobs: 'aiJobs',
   auditLogs: 'auditLogs',
+  quizSessions: 'quizSessions',
+  videoProgress: 'videoProgress',
+  rubrics: 'rubrics',
+  explanations: 'explanations',
+  codeChallenges: 'codeChallenges',
+  codeSubmissions: 'codeSubmissions',
+  subjectOverviews: 'subjectOverviews',
 };

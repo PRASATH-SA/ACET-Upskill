@@ -8,7 +8,14 @@ import {
 import { PaginationQuerySchema } from '../api.js';
 import { ObjectIdSchema, QueryBoolSchema } from './common.js';
 
-export const CONTENT_ITEM_TYPES = ['resource', 'flashcard', 'question', 'pyq'];
+export const CONTENT_ITEM_TYPES = [
+  'resource',
+  'flashcard',
+  'question',
+  'pyq',
+  'rubric',
+  'challenge',
+];
 export const ContentItemTypeSchema = z.enum(CONTENT_ITEM_TYPES);
 
 const markdown = z.string().trim().min(1).max(20_000);
@@ -30,8 +37,62 @@ export const UpdateResourceSchema = z
     title: z.string().trim().max(160),
     body: markdown,
     url: z.string().trim().url().max(500),
+    /** Video length, measured by the browser when faculty preview the upload. */
+    durationSec: z
+      .number()
+      .positive()
+      .max(4 * 3600),
   })
   .partial();
+
+// ---------- video: captions, chapters, watch progress ----------
+
+/** Watch progress is counted per slice of this many seconds (videoProgress.buckets). */
+export const VIDEO_BUCKET_SEC = 10;
+
+export const CaptionUploadSchema = z.object({
+  lang: z
+    .string()
+    .trim()
+    .regex(/^[a-z]{2,3}(-[A-Za-z]{2,4})?$/, 'use a language code such as en or ta'),
+  label: z.string().trim().min(1).max(40),
+});
+
+export const ChapterSchema = z.object({
+  startSec: z
+    .number()
+    .min(0)
+    .max(4 * 3600),
+  title: z.string().trim().min(1).max(80),
+});
+
+export const ChaptersSchema = z.object({
+  chapters: z
+    .array(ChapterSchema)
+    .max(50)
+    .refine((cs) => cs.every((c, i) => i === 0 || c.startSec > cs[i - 1].startSec), {
+      message: 'chapters must be in time order with different start times',
+    }),
+});
+
+export const VideoProgressSchema = z.object({
+  positionSec: z
+    .number()
+    .min(0)
+    .max(4 * 3600),
+  /** Bucket indexes (positionSec / VIDEO_BUCKET_SEC) played since the last heartbeat. */
+  seenBuckets: z
+    .array(
+      z
+        .number()
+        .int()
+        .min(0)
+        .max((4 * 3600) / VIDEO_BUCKET_SEC),
+    )
+    .max(400)
+    .default([]),
+  ended: z.boolean().default(false),
+});
 
 export const CreateFlashcardSchema = z.object({
   front: z.string().trim().min(1).max(500),
@@ -49,6 +110,10 @@ const questionShape = z.object({
   explanation: z.string().trim().max(2000).default(''),
   optionExplanations: z.array(z.string().trim().max(1000)).max(6).default([]),
   difficulty: QuestionDifficultySchema.default('medium'),
+  /** Questions sharing a concept key are variants of one idea; a quiz uses one per concept. */
+  conceptKey: z.string().trim().min(1).max(80).optional(),
+  /** Off for questions whose options must stay in order (e.g. "both A and B"). */
+  shuffleOptions: z.boolean().default(true),
 });
 export const CreateQuestionSchema = questionShape
   .refine((q) => q.correctIndex < q.options.length, {
@@ -63,6 +128,23 @@ export const CreateQuestionSchema = questionShape
     },
   );
 export const UpdateQuestionSchema = questionShape.partial();
+
+/**
+ * The publish rule for questions: an explanation, and one explanation per option, so every
+ * answer a student picks can be explained. Returns a problem message or null.
+ */
+export function questionPublishProblem(q) {
+  if (!q.explanation?.trim()) return 'needs an explanation before it can be published';
+  const per = q.optionExplanations ?? [];
+  if (per.length !== q.options.length || per.some((e) => !e?.trim()))
+    return 'needs an explanation for every option before it can be published';
+  return null;
+}
+
+/** POST /ai/questions/:id/variants — AI drafts new questions on the same concept. */
+export const GenerateVariantsSchema = z.object({
+  count: z.number().int().min(1).max(5).default(3),
+});
 
 export const SetStatusSchema = z.object({
   status: ContentStatusSchema,
@@ -83,7 +165,7 @@ export const ListMaterialsQuerySchema = z
 /** Review-queue `kind` filter: a resource kind, or flashcard / question / pyq. */
 export const ReviewKindSchema = z.union([
   ResourceKindSchema,
-  z.enum(['flashcard', 'question', 'pyq']),
+  z.enum(['flashcard', 'question', 'pyq', 'rubric', 'challenge']),
 ]);
 
 export const ReviewQueueQuerySchema = PaginationQuerySchema.extend({
