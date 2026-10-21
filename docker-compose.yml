@@ -1,0 +1,85 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ddos-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ddos_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_ddos_password_9823}
+      POSTGRES_DB: ${POSTGRES_DB:-ddos_defense}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - ddos-internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ddos_admin -d ddos_defense"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  local-evm-node:
+    image: trufflesuite/ganache-cli:latest
+    container_name: ddos-evm-node
+    restart: unless-stopped
+    command: ["--networkId", "31337", "--gasLimit", "8000000", "--host", "0.0.0.0"]
+    networks:
+      - ddos-internal
+    ports:
+      - "127.0.0.1:8545:8545"
+
+  backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    container_name: ddos-backend
+    restart: unless-stopped
+    environment:
+      - ENV=production
+      - DATABASE_URL=postgresql://ddos_admin:secure_ddos_password_9823@postgres:5432/ddos_defense
+      - BLOCKCHAIN_RPC_URL=http://local-evm-node:8545
+      - CONTRACT_ADDRESS=0x5FbDB2315678afecb367f032d93F642f64180aa3
+      - SECRET_KEY=${SECRET_KEY:-super-secret-dev-key-change-in-production-128472918}
+      - QML_ENABLED=true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      local-evm-node:
+        condition: service_started
+    networks:
+      - ddos-internal
+    ports:
+      - "127.0.0.1:8000:8000"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.frontend
+    container_name: ddos-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    networks:
+      - ddos-internal
+
+  nginx:
+    image: nginx:alpine
+    container_name: ddos-gateway
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - ddos-internal
+
+networks:
+  ddos-internal:
+    driver: bridge
+
+volumes:
+  pgdata:
