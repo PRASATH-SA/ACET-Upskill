@@ -166,7 +166,7 @@ The root `vercel.json` deploys one Vercel project with three services on one dom
 
 | Service | Root | Public path | Notes |
 |---|---|---|---|
-| `web` | `apps/web` | `/*` | Vite static build |
+| `web` | `apps/web` | `/*` | Vite static build. Its own `rewrites` send every path that is not a real file to `/index.html` (SPA fallback), so a refresh on `/me/progress` loads the app instead of Vercel's 404. Routing into a service is final, so this fallback must live inside the service, not at the top level |
 | `api` | `apps/api` | `/api/*` | Express as a function; entry `src/vercel.js` exports the app and connects MongoDB once per instance |
 | `worker` | `.` (repo root) | none (internal) | Agenda jobs in a container built from the root `Dockerfile`, which needs the whole monorepo as context |
 
