@@ -4,7 +4,7 @@
  * using server.js.
  */
 import { loadEnv } from './config/env.js';
-import { connectMongo } from './db/connect.js';
+import { connectMongo, mongoStatus } from './db/connect.js';
 import { createApp } from './app.js';
 import { logger } from './lib/logger.js';
 
@@ -40,6 +40,8 @@ export default async function handler(req, res) {
   if (startupError) {
     return unavailable(res, 'The server is not configured yet. See the deployment runtime logs.');
   }
+  // A warm instance can outlive its connection (Atlas drops idle ones): connect again.
+  if (mongoStatus() === 'disconnected') ready = undefined;
   // Few retries: a function has seconds, not minutes, to answer.
   ready ??= connectMongo(loadEnv().MONGO_URI, { retries: 2 }).catch((err) => {
     ready = undefined; // retry on the next request
