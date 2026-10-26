@@ -12,7 +12,7 @@ import {
 } from '../../../components/ui';
 import { theoryOnly, useSubjects } from '../api';
 import { SubjectTabs } from '../SubjectTabs';
-import { useSubjectCodeLab, useTopicCodeLab } from './api';
+import { useCodingSubjects, useSubjectCodeLab, useTopicCodeLab } from './api';
 import { DIFFICULTY_TONE } from './CodeLabPage';
 
 function StatusIcon({ c }) {
@@ -82,13 +82,16 @@ export function CodeLabIndex() {
   const { subjectId } = useParams();
   const navigate = useNavigate();
   const subjects = useSubjects();
-  if (subjects.isPending)
+  const coding = useCodingSubjects();
+  if (subjects.isPending || coding.isPending)
     return (
       <Page>
         <LoadingBlock label="Loading subjects" />
       </Page>
     );
-  const list = theoryOnly(subjects.data);
+  // Only subjects with published code problems: non-coding subjects get no tab.
+  const withCode = new Set((coding.data ?? []).map((c) => c.subjectId));
+  const list = theoryOnly(subjects.data).filter((s) => withCode.has(s.id));
   const current = list.find((s) => s.id === subjectId) ?? list[0];
   return (
     <Page>
@@ -101,8 +104,8 @@ export function CodeLabIndex() {
         <EmptyState
           className="mt-6"
           icon={BookOpen}
-          title="No subjects yet"
-          description="Problems appear once your subjects are published."
+          title="No coding subjects yet"
+          description="Problems appear here once your faculty publish code problems for a subject."
           action={
             <Button as={Link} to="/learn">
               Go to Learn

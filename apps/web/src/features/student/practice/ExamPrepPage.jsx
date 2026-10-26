@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { BookOpen, CalendarDays, FileText, Target, Trophy } from 'lucide-react';
+import { BookOpen, CalendarDays, FileText, Target } from 'lucide-react';
 import { Page } from '../../../components/layout/AppShell';
 import {
   Badge,
@@ -35,8 +35,8 @@ export function ExamPrepPage() {
   const current = list.find((s) => s.id === subjectId) ?? list[0];
   return (
     <Page>
-      <EyebrowHeading eyebrow="Exam prep" title="Previous-year questions" level={1}>
-        <p>Each subject has its own tab: the most asked topics, then every question by unit.</p>
+      <EyebrowHeading eyebrow="Exam prep" title="Prepare for your exams" level={1}>
+        <p>Each subject has its own tab: every topic by unit, with its exam study material.</p>
       </EyebrowHeading>
       {list.length === 0 ? (
         <EmptyState
@@ -69,26 +69,23 @@ export function ExamPrepPage() {
 /** Kept as a route name: the index is the same page with the first subject open. */
 export const ExamPrepIndex = ExamPrepPage;
 
-/** One subject's exam prep: PYQs by unit with marks and frequency filters (F5). */
+/** One subject's exam prep: topics by unit with their questions and study material (F5). */
 function SubjectExamPrep({ subject }) {
   const subjectId = subject.id;
   const [unitId, setUnitId] = useState('');
   const [marks, setMarks] = useState('');
-  const [minFrequency, setMinFrequency] = useState('');
   const filters = useMemo(
     () => ({
       years: 5,
       unitId: unitId || undefined,
       marks: marks || undefined,
-      minFrequency: minFrequency || undefined,
     }),
-    [unitId, marks, minFrequency],
+    [unitId, marks],
   );
   const prep = useExamPrep(subjectId, filters);
   const map = useSubjectMap(subjectId);
   const units = map.data?.units ?? [];
   const rows = prep.data?.topics ?? [];
-  const asked = rows.filter((r) => r.frequency > 0);
   const byUnit = new Map();
   for (const r of rows) {
     const key = r.unit?.id ?? 'none';
@@ -104,9 +101,8 @@ function SubjectExamPrep({ subject }) {
       <h2 id={`prep-${subjectId}`} className="mt-1 text-xl">
         {subject.name}
       </h2>
-      <p className="mt-1 text-sm">Questions from the last 5 years, most asked first.</p>
 
-      <div className="mt-5 grid gap-3 sm:grid-cols-3">
+      <div className="mt-5 grid gap-3 sm:grid-cols-2">
         <Select
           label="Unit"
           value={unitId}
@@ -121,17 +117,10 @@ function SubjectExamPrep({ subject }) {
           placeholder="Any marks"
           options={[2, 5, 10, 15, 16].map((m) => ({ value: String(m), label: `${m} marks` }))}
         />
-        <Select
-          label="Asked at least"
-          value={minFrequency}
-          onChange={(e) => setMinFrequency(e.target.value)}
-          placeholder="Any number of times"
-          options={[1, 2, 3, 4].map((n) => ({ value: String(n), label: `${n}× or more` }))}
-        />
       </div>
 
       {prep.isPending ? (
-        <LoadingBlock className="mt-6" label="Loading previous-year questions" lines={5} />
+        <LoadingBlock className="mt-6" label="Loading exam prep" lines={5} />
       ) : prep.isError ? (
         <EmptyState
           className="mt-6"
@@ -141,14 +130,13 @@ function SubjectExamPrep({ subject }) {
           description={prep.error.message}
           action={<Button onClick={() => prep.refetch()}>Try again</Button>}
         />
-      ) : rows.length === 0 && !(unitId || marks || minFrequency) ? (
-        <Card className="mt-6" tone="surface">
-          <p className="font-semibold text-navy">No previous-year questions added yet</p>
-          <p className="mt-1 text-sm">
-            Your faculty hasn&apos;t added past papers for this subject. Meanwhile, prepare each
-            topic with its 10-mark answer from the subject&apos;s topic pages.
-          </p>
-        </Card>
+      ) : rows.length === 0 && !(unitId || marks) ? (
+        <EmptyState
+          className="mt-6"
+          icon={BookOpen}
+          title="No topics yet"
+          description="Topics appear here once your faculty publish this subject's map."
+        />
       ) : rows.length === 0 ? (
         <EmptyState
           className="mt-6"
@@ -161,7 +149,6 @@ function SubjectExamPrep({ subject }) {
               onClick={() => {
                 setUnitId('');
                 setMarks('');
-                setMinFrequency('');
               }}
             >
               Clear filters
@@ -170,36 +157,6 @@ function SubjectExamPrep({ subject }) {
         />
       ) : (
         <>
-          {asked.length === 0 && !marks && !minFrequency && (
-            <Card className="mt-6" tone="surface">
-              <p className="font-semibold text-navy">No previous-year questions added yet</p>
-              <p className="mt-1 text-sm">
-                Your faculty hasn&apos;t added past papers for this subject. Meanwhile, prepare each
-                topic with its 10-mark answer below.
-              </p>
-            </Card>
-          )}
-          {asked.length > 0 && (
-            <Card tone="navy" className="mt-6">
-              <p className="eyebrow text-gold">Most asked</p>
-              <ol className="mt-3 grid gap-2 sm:grid-cols-3">
-                {asked.slice(0, 3).map((r, i) => (
-                  <li
-                    key={r.topicId}
-                    className="flex items-center gap-3 rounded-2xl bg-white/10 p-3"
-                  >
-                    <Trophy className="h-5 w-5 shrink-0 text-gold" aria-hidden />
-                    <span className="min-w-0">
-                      <span className="sr-only">Rank {i + 1}: </span>
-                      <span className="block truncate font-semibold text-white">{r.title}</span>
-                      <span className="text-xs text-white/80">Asked {r.frequency}×</span>
-                    </span>
-                  </li>
-                ))}
-              </ol>
-            </Card>
-          )}
-
           {[...byUnit.values()].map(({ unit, rows: unitRows }) => (
             <section
               key={unit?.id ?? 'none'}
@@ -217,9 +174,6 @@ function SubjectExamPrep({ subject }) {
                         <div>
                           <h4>{r.title}</h4>
                           <div className="mt-1 flex flex-wrap gap-1.5">
-                            <Badge tone={r.frequency > 0 ? 'navy' : 'neutral'}>
-                              Asked {r.frequency}×
-                            </Badge>
                             {Object.entries(r.marksBreakdown).map(([m, n]) => (
                               <Badge key={m}>
                                 {m} marks × {n}
@@ -235,7 +189,7 @@ function SubjectExamPrep({ subject }) {
                           icon={FileText}
                           className="hover:no-underline"
                         >
-                          10-mark answer
+                          Study material
                         </Button>
                       </div>
                       {r.pyqs.length > 0 && (

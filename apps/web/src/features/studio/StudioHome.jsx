@@ -26,6 +26,7 @@ import { useSession } from '../auth/session';
 import { useSubjects } from '../student/api';
 import { aiOffline, useAiHealth, useJobs } from './api';
 import { QueryError } from '../../components/QueryError';
+import { CohortProgressPanel } from '../progress/CohortWidgets';
 
 const JOB_LABEL = {
   'syllabus.toMap': 'Draft map',
@@ -103,6 +104,13 @@ export function StudioHome() {
           icon={Bot}
         />
       </div>
+
+      <CohortProgressPanel
+        title="Student progress"
+        role={user.role}
+        to="/studio/students"
+        linkLabel="All students"
+      />
 
       <section className="mt-8" aria-labelledby="my-subjects">
         <h2 id="my-subjects">My subjects</h2>

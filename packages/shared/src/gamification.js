@@ -13,6 +13,13 @@ export const XP_PER_STATE = {
   confident: 50,
 };
 
+/** XP for a set of mastery state counts, e.g. `{ confident: 2, learning: 1 }` → 110. */
+export function xpForCounts(counts = {}) {
+  let xp = 0;
+  for (const [state, n] of Object.entries(counts)) xp += (XP_PER_STATE[state] ?? 0) * (n ?? 0);
+  return xp;
+}
+
 /** Level titles, from level 1 upwards. Past the last title the level number keeps climbing. */
 export const LEVEL_TITLES = [
   'Explorer',
@@ -143,7 +150,7 @@ export function gamify(progress) {
   let subjectsComplete = 0;
   for (const s of subjects) {
     const c = s.counts ?? {};
-    for (const [state, n] of Object.entries(c)) xp += (XP_PER_STATE[state] ?? 0) * (n ?? 0);
+    xp += xpForCounts(c);
     started += (s.totalTopics ?? 0) - (c.notStarted ?? 0);
     mastered += c.confident ?? 0;
     if (s.totalTopics > 0 && (c.confident ?? 0) === s.totalTopics) subjectsComplete += 1;

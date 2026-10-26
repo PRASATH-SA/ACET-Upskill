@@ -64,3 +64,17 @@ export const SetCoTopicsSchema = z.object({ topicIds: z.array(ObjectIdSchema).ma
 export const AttainmentQuerySchema = z.object({
   threshold: z.coerce.number().min(1).max(100).optional(),
 });
+
+/**
+ * GET /leaderboard and GET /reports/progress (ADR 0013). The API scopes the cohort by role:
+ * a student always sees their own class; `departmentId` is honoured for the coordinator only.
+ */
+export const CohortQuerySchema = z.object({
+  subjectId: ObjectIdSchema.optional(),
+  departmentId: ObjectIdSchema.optional(),
+  semester: z.coerce.number().int().min(1).max(8).optional(),
+  batch: z.string().trim().min(1).max(40).optional(),
+});
+export const LeaderboardQuerySchema = CohortQuerySchema.extend({
+  limit: z.coerce.number().int().min(1).max(200).default(50),
+});

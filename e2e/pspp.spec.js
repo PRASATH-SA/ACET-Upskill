@@ -47,8 +47,7 @@ test('PSPP: open the subject, solve a Python problem, exam prep by subject', asy
     'Problem Solving and Python Programming',
     'Database Management Systems',
   ]);
-  await expect(page.getByText('No previous-year questions added yet')).toBeVisible();
   await page.getByRole('tab', { name: 'Database Management Systems' }).click();
   await expect(page).toHaveURL(/\/exam-prep\/[a-f0-9]{24}$/);
-  await expect(page.getByText('Most asked', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Prepare for your exams' })).toBeVisible();
 });

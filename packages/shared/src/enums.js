@@ -31,6 +31,19 @@ export const SEMESTERS = [1, 2, 3, 4, 5, 6, 7, 8];
 export const semestersOfYear = (year) => [2 * year - 1, 2 * year];
 export const yearOfSemester = (semester) => Math.ceil(semester / 2);
 
+/**
+ * Year of study from a batch like "2023-27", for students whose HOD has not set a year or
+ * semester. The academic year starts in June, so batch 2023-27 is in year IV from June 2026.
+ * Null when the batch does not start with a year or the result is outside I–IV.
+ */
+export function yearOfBatch(batch, now = new Date()) {
+  const m = /^(\d{4})/.exec(String(batch ?? '').trim());
+  if (!m) return null;
+  const academicYear = now.getMonth() >= 5 ? now.getFullYear() : now.getFullYear() - 1;
+  const year = academicYear - Number(m[1]) + 1;
+  return YEARS_OF_STUDY.includes(year) ? year : null;
+}
+
 /** A.5 — content status lifecycle: draft → inReview → approved → published. */
 export const CONTENT_STATUSES = ['draft', 'inReview', 'approved', 'published'];
 export const ContentStatusSchema = z.enum(CONTENT_STATUSES);

@@ -78,9 +78,31 @@ describe('code lab API', () => {
     expect(page.video.url).toMatch(/^https:\/\/www\.youtube\.com\/watch\?v=/);
     for (const k of ['curiosity', 'easy', 'tenMark', 'realWorld']) expect(page[k]).toBeDefined();
     expect(page).toMatchObject({ flashcardCount: 5, questionCount: 5, codeChallengeCount: 2 });
+    // Exam study material: published flashcards double as quick questions with answers.
+    expect(page.shortAnswers).toHaveLength(5);
+    expect(page.shortAnswers[0]).toEqual({
+      id: expect.any(String),
+      question: expect.any(String),
+      answer: expect.any(String),
+    });
     // Idempotent: a second run adds nothing.
     const again = await seedDbmsContent({ subjectId: f.subject._id, facultyId: f.faculty.id });
     expect(Object.values(again).every((n) => n === 0)).toBe(true);
+  });
+
+  it('lists only subjects with published problems, so non-coding subjects get no code lab', async () => {
+    const { f } = await setup();
+    const { Subject } = await import('../syllabus/model.js');
+    await Subject.create({
+      syllabusVersionId: f.version._id,
+      semester: 1,
+      code: `BIO${Date.now()}`,
+      name: 'Biology for Computer Engineers',
+    });
+    const res = await api().get('/api/v1/code-lab/subjects').set(f.student.auth);
+    expect(res.status).toBe(200);
+    expect(res.body.data).toEqual([{ subjectId: f.sid, total: expect.any(Number) }]);
+    await api().get('/api/v1/code-lab/subjects').set(f.faculty.auth).expect(403);
   });
 
   it('shows the problem and its tables but never the solution, hidden rows or check query', async () => {

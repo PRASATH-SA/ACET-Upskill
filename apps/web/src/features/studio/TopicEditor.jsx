@@ -23,7 +23,7 @@ import { AiStatus } from './StudioHome';
 
 const KIND_LABEL = {
   easy: 'Easy explanation',
-  tenMark: '10-mark answer',
+  tenMark: 'Exam study material',
   flashcards: 'Flashcards (up to 15)',
   mcq: 'Quiz MCQs (10, self-checked)',
   curiosity: 'Curiosity question',
@@ -272,8 +272,8 @@ export function TopicEditor() {
             },
             {
               value: 'tenMark',
-              label: '10-mark',
-              content: <ResourceTab topicId={topicId} kind="tenMark" label="10-mark answer" />,
+              label: 'Exam material',
+              content: <ResourceTab topicId={topicId} kind="tenMark" label="Exam study material" />,
             },
             {
               value: 'flashcards',

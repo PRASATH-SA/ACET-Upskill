@@ -173,6 +173,8 @@ Design choices for 7–8B models:
 
 Prompts: `prompts/syllabus.{topics,prereqs,crossLinks}.v1`, `prompts/topic.{easy,tenMark,flashcards,mcqs,curiosity,realWorld}.v1`, `prompts/mcq.selfCheck.v1`, `prompts/pyq.tag.v1`, each with a JSON schema. The matching zod schemas are in `apps/api/src/ai/schemas.js`.
 
+`topic.tenMark` (kind `tenMark`, shown to students as **Exam study material**) is at **v2**: definition, need, key terms, explanation points, example/diagram, advantages, conclusion, 2-mark short answers and exam tips. v1 outputs still validate (the v2 fields are optional in `TenMarkSchema`).
+
 Tests (`ai/pipelines/pipelines.test.js`) script the mock model and compare each pipeline's saved result with golden files in `apps/api/test/fixtures/ai/`. Regenerate them after an intended change with `UPDATE_GOLDEN=1 npx vitest run src/ai/pipelines` and review the diff.
 
 ## Tutor (A4)

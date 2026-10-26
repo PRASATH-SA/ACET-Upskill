@@ -184,7 +184,7 @@ export function DesignPage() {
           onChange={setTab}
           tabs={[
             { value: 'one', label: 'Easy', content: <p>Panel one. Use arrow keys on the tabs.</p> },
-            { value: 'two', label: '10-mark', count: 2, content: <p>Panel two.</p> },
+            { value: 'two', label: 'Exam material', count: 2, content: <p>Panel two.</p> },
             { value: 'three', label: 'Flashcards', icon: Brain, content: <p>Panel three.</p> },
           ]}
         />

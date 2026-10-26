@@ -252,9 +252,12 @@ describe('exam prep (F5)', () => {
     });
     renderApp('/exam-prep/s1');
     const user = userEvent.setup();
-    expect(await screen.findByText('Most asked')).toBeInTheDocument();
-    expect(screen.getAllByText('Asked 4×').length).toBeGreaterThan(0);
-    expect(screen.getAllByRole('link', { name: '10-mark answer' })[0]).toHaveAttribute(
+    expect(await screen.findByText('Explain 3NF.')).toBeInTheDocument();
+    // No previous-year wording and no "asked N×" counts.
+    expect(screen.queryByText(/Asked d+×/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Most asked')).not.toBeInTheDocument();
+    expect(screen.queryByText(/previous-year/i)).not.toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: 'Study material' })[0]).toHaveAttribute(
       'href',
       '/topics/t1#step-prepare',
     );
@@ -282,7 +285,6 @@ describe('exam prep (F5)', () => {
         name: 'Problem Solving and Python Programming',
       }),
     ).toBeInTheDocument();
-    expect(await screen.findByText('No previous-year questions added yet')).toBeInTheDocument();
-    expect(screen.queryByText('Most asked')).not.toBeInTheDocument();
+    expect(screen.queryByText(/previous-year/i)).not.toBeInTheDocument();
   }, 20_000);
 });

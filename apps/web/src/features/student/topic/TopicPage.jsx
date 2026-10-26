@@ -50,7 +50,7 @@ export function availableSteps(page) {
   const steps = [];
   if (page.curiosity) steps.push('curiosity');
   if (page.video || page.easy) steps.push('understand');
-  if (page.tenMark) steps.push('prepare');
+  if (page.tenMark || page.shortAnswers) steps.push('prepare');
   if (page.flashcardCount > 0) steps.push('remember');
   if (page.questionCount > 0 || page.codeChallengeCount > 0) steps.push('practice');
   if (page.realWorld || page.workshop || page.workshops?.length) steps.push('apply');
@@ -111,12 +111,37 @@ function Connections({ page }) {
   );
 }
 
+/** Quick questions with answers for exam revision; each answer opens on demand. */
+function ShortAnswers({ items }) {
+  return (
+    <section aria-labelledby="short-answers-h" className="mt-6">
+      <h3 id="short-answers-h" className="text-base">
+        Quick questions ({items.length})
+      </h3>
+      <ul className="mt-3 space-y-2">
+        {items.map((q) => (
+          <li key={q.id}>
+            <details className="group rounded-xl border border-line bg-card p-3">
+              <summary className="min-h-[28px] cursor-pointer font-semibold text-navy">
+                {q.question}
+              </summary>
+              <div className="mt-2 text-sm">
+                <Markdown>{q.answer}</Markdown>
+              </div>
+            </details>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 function Pyqs({ pyqs }) {
   if (!pyqs?.length) return null;
   return (
     <Card tone="navy">
-      <p className="eyebrow text-gold">Previous-year questions</p>
-      <h2 className="mt-1 text-lg text-white">Asked {pyqs.length}× in exams</h2>
+      <p className="eyebrow text-gold">Exam prep</p>
+      <h2 className="mt-1 text-lg text-white">Exam questions on this topic</h2>
       <ul className="mt-4 space-y-3">
         {pyqs.map((p) => (
           <li key={p.id} className="rounded-xl bg-white/10 p-3 text-sm text-white">
@@ -544,11 +569,11 @@ export function TopicPage() {
                 </StepSection>
               )}
 
-              {p.tenMark && (
+              {(p.tenMark || p.shortAnswers) && (
                 <StepSection
                   id="prepare"
                   eyebrow="Prepare"
-                  title={p.tenMark.title ?? '10-mark answer'}
+                  title="Exam study material"
                   actions={
                     <Button
                       variant="secondary"
@@ -561,7 +586,15 @@ export function TopicPage() {
                     </Button>
                   }
                 >
-                  <Markdown>{p.tenMark.body}</Markdown>
+                  <p className="text-sm">
+                    Notes for short and long answers: read them, then try the quick questions below.
+                  </p>
+                  {p.tenMark && (
+                    <div className="mt-4">
+                      <Markdown>{p.tenMark.body}</Markdown>
+                    </div>
+                  )}
+                  {p.shortAnswers && <ShortAnswers items={p.shortAnswers} />}
                   <Button
                     variant="ghost"
                     size="sm"

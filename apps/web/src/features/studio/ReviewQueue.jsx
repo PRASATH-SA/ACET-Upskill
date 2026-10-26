@@ -33,7 +33,7 @@ const TYPE_PATH = {
 };
 const KIND_OPTIONS = [
   ['easy', 'Easy explanation'],
-  ['tenMark', '10-mark answer'],
+  ['tenMark', 'Exam study material'],
   ['curiosity', 'Curiosity'],
   ['realWorld', 'Real world'],
   ['workshop', 'Workshop brief'],

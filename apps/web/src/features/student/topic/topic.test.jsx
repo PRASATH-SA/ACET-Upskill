@@ -201,11 +201,11 @@ describe('topic page (F4)', () => {
     expect(await within(dialog).findByText(/Because each fact lives once\./)).toBeInTheDocument();
     await act(async () => {
       push(
-        'event: done\ndata: {"grounded":true,"citations":[{"kind":"resource","id":"tm1","title":"10-mark answer","section":"prepare"}]}\n\n',
+        'event: done\ndata: {"grounded":true,"citations":[{"kind":"resource","id":"tm1","title":"Exam study material","section":"prepare"}]}\n\n',
       );
       push.close();
     });
-    const chip = await within(dialog).findByRole('button', { name: '10-mark answer' });
+    const chip = await within(dialog).findByRole('button', { name: 'Exam study material' });
     await user.click(chip);
     expect(scroll).toHaveBeenCalled();
   });

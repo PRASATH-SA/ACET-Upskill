@@ -121,7 +121,7 @@ Roles: `admin` is a department's HOD; `coordinator` (Academic Coordinator) passe
 | POST | `/materials/:id/ingest` | owning faculty, admin | Re-run chunking and embedding (A2). Materials also carry `ingestStatus` (`queued`, `running`, `done`, `failed`, `skipped`), `chunkCount` and `ingestJobId` |
 | GET | `/review-queue` | faculty (own subjects), admin | Drafts across resources, flashcards, questions and PYQs. `?subjectId&topicId&kind&source&status&needsAttention&includeRejected&page&limit` |
 | POST | `/review-queue/bulk` | faculty, admin | `{ action: approve\|publish\|reject, reason?, items: [{ type, id }] }`. All-or-nothing; every change is audited |
-| GET | `/topics/:id/page` | any with access | Student topic page: `topic`, `curiosity`, `video`, `easy`, `tenMark`, `realWorld`, `workshop`, `workshops`, `pyqs`, `flashcardCount`, `questionCount`, `prerequisites`, `unlocks`. Published only; missing kinds are omitted |
+| GET | `/topics/:id/page` | any with access | Student topic page: `topic`, `curiosity`, `video`, `easy`, `tenMark` (exam study material), `shortAnswers` (published flashcards as quick Q&A, up to 10), `realWorld`, `workshop`, `workshops`, `pyqs`, `flashcardCount`, `questionCount`, `prerequisites`, `unlocks`. Published only; missing kinds are omitted |
 
 ### Content & quiz CSV (per unit, separated by topics)
 
@@ -195,6 +195,9 @@ Mastery rules and thresholds (`MASTERY_*` env vars) are documented in `apps/api/
 | GET | `/subjects/:id/co-attainment/export?format=csv\|pdf` | owning faculty, admin | File download, audited |
 | GET | `/admin/usage` | admin | Users by role, weekly active students (8 weeks), topics published, AI drafts approved/rejected/edited by prompt version |
 | GET | `/admin/audit-logs` | admin | `?action&actorId&targetId&page&limit` |
+| GET | `/leaderboard?subjectId&semester&batch&departmentId&limit` | student, faculty, mentor, admin | Cohort ranked by mastery XP (ADR 0013). Student: own class (same version, semester, department); rows show rank, name, department, year, batch, XP, level, mastered, plus `me`. Faculty: students of their subjects (403 for a subject they don't teach). Mentor: mentees. HOD: own department; coordinator: all or `departmentId`. Staff rows add email, progress %, quiz average, code solved, last active, risk |
+| GET | `/reports/progress?subjectId&semester&batch&departmentId` | faculty, admin | Same cohort rules. `summary` (students, active this week, average XP / mastery % / progress % / quiz score, at risk, state totals), `bySubject`, `bySemester`, `byBatch`, ranked `students` |
+| GET | `/reports/students/:id` | faculty, mentor, admin | One student: profile, `/me/progress` payload, `standing` (rank in the viewer's cohort, XP, quiz average, code solved, risk), `mySubjectIds`. HOD only for their department. Audited |
 
 ## Video learning (feature 3)
 
@@ -233,6 +236,7 @@ Python runs in Pyodide (CPython compiled to WebAssembly) inside a separate Node 
 |---|---|---|---|
 | GET | `/topics/:id/code-lab` | any with access | Published problems of the topic with my `solved` and `attempts` |
 | GET | `/subjects/:id/code-lab` | any with access | All published problems grouped by topic in syllabus order, plus `total` and `solved` |
+| GET | `/code-lab/subjects` | student | `[{ subjectId, total }]` for the student's subjects that have published problems; the code lab shows tabs only for these (non-coding subjects such as Biology get none) |
 | GET | `/code-lab/:id` | any with access | Problem, `language`, `starterCode`, `hints`, `lastSubmission`. SQL: `tables` (columns, primary keys, first 5 rows, row count). Python: `examples` (visible inputs with expected output) and `hiddenTestCount`. Drafts: subject staff only (`preview: true`) |
 | POST | `/code-lab/:id/run` | any with access | SQL: `{ code }` → `{ ok, columns, rows, rowCount, truncated, timeMs }` on the sample data. Python: `{ code, input? }` → `{ ok, stdout, truncated, timeMs }` with `input` as stdin. Errors and timeouts → `{ ok: false, stage, error }` (still 200) |
 | POST | `/code-lab/:id/submit` | any with access | `{ code }` → `{ passed, verdict: accepted|wrongAnswer|hiddenTests|error|timeout, cases, timeMs, firstSolve }`. SQL is compared by value (column names ignored; row order only when `orderMatters`). Python compares stdout with the solution's output after normalising line endings, trailing spaces and trailing blank lines. Visible cases show expected vs actual; hidden cases show only pass/fail and a reason. Students' submissions are stored (`codeSubmissions`); staff runs are previews and are not stored |

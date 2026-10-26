@@ -3,7 +3,7 @@ import { rateLimit } from 'express-rate-limit';
 import { CODE_LAB_LIMITS, IdParamsSchema, RunCodeSchema, SubmitCodeSchema } from '@acet/shared';
 import { asyncHandler as h, ok, validate } from '../../lib/http.js';
 import { AppError } from '../../lib/errors.js';
-import { currentUser } from '../../middleware/auth.js';
+import { currentUser, requireRole } from '../../middleware/auth.js';
 import * as s from './service.js';
 
 const P = { params: IdParamsSchema };
@@ -36,6 +36,12 @@ export function codeLabRoutes() {
     '/subjects/:id/code-lab',
     validate(P),
     h(async (req, res) => ok(res, await s.listForSubject(currentUser(req), req.params.id))),
+  );
+  // Before /code-lab/:id so "subjects" is not read as an id.
+  r.get(
+    '/code-lab/subjects',
+    requireRole('student'),
+    h(async (req, res) => ok(res, await s.codingSubjects(currentUser(req)))),
   );
   r.get(
     '/code-lab/:id',

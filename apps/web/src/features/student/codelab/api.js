@@ -5,7 +5,12 @@ export const codeLabKeys = {
   topic: (id) => ['topics', id, 'code-lab'],
   subject: (id) => ['subjects', id, 'code-lab'],
   challenge: (id) => ['code-lab', id],
+  subjects: ['code-lab', 'subjects'],
 };
+
+/** Subjects with published code problems: [{ subjectId, total }]. */
+export const useCodingSubjects = () =>
+  useQuery({ queryKey: codeLabKeys.subjects, queryFn: () => get('/code-lab/subjects') });
 
 export const useTopicCodeLab = (topicId, enabled = true) =>
   useQuery({

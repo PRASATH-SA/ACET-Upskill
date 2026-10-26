@@ -80,7 +80,7 @@ test('tutor: a question about the topic streams an answer with a citation that j
   await drawer.getByRole('button', { name: 'Ask' }).click();
   await expect(drawer.getByText(/Check:/)).toBeVisible();
   const chip = drawer
-    .getByRole('button', { name: /In simple words|10-mark|Curiosity|Real-world/ })
+    .getByRole('button', { name: /In simple words|Exam study material|Curiosity|Real-world/ })
     .first();
   await expect(chip).toBeVisible();
   await chip.click();

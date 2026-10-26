@@ -32,7 +32,7 @@ topics. Tap a line to see why two topics are connected.
 
 1. **Curiosity:** a real-life question to get you thinking. Pick an answer, then reveal it.
 2. **Understand:** a short video and an easy explanation.
-3. **Prepare:** a 10-mark exam answer you can print.
+3. **Prepare:** exam study material for the topic — notes for short and long answers, quick questions with answers, and a print button.
 4. **Remember:** flashcards. Tap to flip; say whether you knew it.
 5. **Practice:** a quiz with an explanation for every option, and **Code lab** SQL problems.
 6. **Apply:** where it is used in real life, and workshop tasks from your faculty.

@@ -200,7 +200,7 @@
     background: #fff;
     box-shadow: none;
   }
-  /* "Print" on the 10-mark answer prints only that section. */
+  /* "Print" on the exam study material prints only that section. */
   body[data-print] * {
     visibility: hidden;
   }

@@ -278,7 +278,7 @@ describe('draft-content pipeline (A3.2, A3.3)', () => {
     expect(items.length).toBeGreaterThan(0);
     for (const it of items) {
       expect(it).toMatchObject({ status: 'draft', source: 'ai' });
-      expect(it.aiMeta.promptVersion).toMatch(/^topic\.\w+\.v1$/);
+      expect(it.aiMeta.promptVersion).toMatch(/^topic\.\w+\.v\d+$/);
       expect(it.aiMeta.sourceChunkIds.length).toBeGreaterThan(0);
       expect(String(it.aiMeta.jobId)).toBe(String(job._id));
     }

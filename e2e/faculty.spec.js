@@ -66,7 +66,7 @@ test('faculty: syllabus PDF to an approved map and published AI content, no manu
   // 6. Draft only the easy explanation with AI.
   await page.reload(); // refresh coverage after ingestion
   for (const label of [
-    '10-mark answer',
+    'Exam study material',
     'Flashcards (up to 15)',
     'Quiz MCQs (10, self-checked)',
     'Curiosity question',

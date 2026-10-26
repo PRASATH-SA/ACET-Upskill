@@ -10,6 +10,7 @@ const student = () => import('../features/student');
 const faculty = () => import('../features/studio');
 const mentor = () => import('../features/mentor');
 const admin = () => import('../features/admin');
+const progress = () => import('../features/progress');
 
 /**
  * Screens by role. Keys are comma-separated role lists for RequireRole.
@@ -28,6 +29,8 @@ export const appRoutes = {
     { path: 'code/:challengeId', element: page(student, 'CodeLabPage') },
     // Practical (lab) subject on its theory roadmap (ADR 0012); staff preview it as students see it.
     { path: 'labs/:subjectId', element: page(student, 'LabPage') },
+    // Every role; the API ranks only the viewer's own cohort (ADR 0013).
+    { path: 'leaderboard', element: page(progress, 'LeaderboardPage') },
   ],
   byRole: {
     student: [
@@ -51,6 +54,8 @@ export const appRoutes = {
       { path: 'studio/review', element: page(faculty, 'ReviewQueue') },
       { path: 'studio/questions', element: page(faculty, 'QuestionBank') },
       { path: 'studio/workshops', element: page(faculty, 'WorkshopReview') },
+      { path: 'studio/students', element: page(progress, 'ClassProgressPage') },
+      { path: 'studio/students/:id', element: page(progress, 'StudentReportPage') },
     ],
     // Admins may open a mentor's view of a student too (the API audits it).
     'mentor,admin': [
@@ -62,6 +67,7 @@ export const appRoutes = {
       { path: 'admin', element: page(admin, 'AdminHome') },
       { path: 'admin/users', element: page(admin, 'UsersPage') },
       { path: 'admin/syllabus', element: page(admin, 'SyllabusPage') },
+      { path: 'admin/progress', element: page(progress, 'DepartmentProgressPage') },
       { path: 'admin/co-po', element: page(admin, 'CoPoPage') },
       { path: 'admin/ai', element: page(admin, 'AiSettingsPage') },
     ],

@@ -37,15 +37,23 @@ const replaceable = (topicId) => ({
   editedAfterAi: { $ne: true },
 });
 
+/** Exam study material as markdown: notes for long answers, then short answers and exam tips. */
 export function renderTenMark(d) {
   return [
     `**Definition.** ${d.definition}`,
     `**Need.** ${d.need}`,
+    d.keyTerms?.length &&
+      `**Key terms**\n\n${d.keyTerms.map((k) => `- **${k.term}**: ${k.meaning}`).join('\n')}`,
     `**Explanation**\n\n${d.points.map((p, i) => `${i + 1}. **${p.heading}**: ${p.text}`).join('\n')}`,
     `**Example / diagram.** ${d.example}`,
     `**Advantages**\n\n${d.advantages.map((a) => `- ${a}`).join('\n')}`,
     `**Conclusion.** ${d.conclusion}`,
-  ].join('\n\n');
+    d.shortAnswers?.length &&
+      `**Short answers (2 marks)**\n\n${d.shortAnswers.map((q) => `- **${q.question}** ${q.answer}`).join('\n')}`,
+    d.examTips?.length && `**Exam tips**\n\n${d.examTips.map((t) => `- ${t}`).join('\n')}`,
+  ]
+    .filter(Boolean)
+    .join('\n\n');
 }
 
 /** Retrieval for drafting: the best-matching chunks, or the topic's chunks in order as a fallback. */
@@ -125,7 +133,7 @@ registerPipeline(DRAFT_CONTENT_JOB, async (ctx) => {
         const r = await Resource.create({
           ...base,
           kind: 'tenMark',
-          title: `10-mark answer: ${topic.title}`.slice(0, 160),
+          title: `Exam study material: ${topic.title}`.slice(0, 160),
           body: renderTenMark(gen.data),
           aiMeta: aiMeta(gen, ctx, material.chunkIds),
         });

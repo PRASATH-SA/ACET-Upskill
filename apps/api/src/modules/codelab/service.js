@@ -10,7 +10,7 @@ import { STUDENT_VISIBLE_STATUS } from '@acet/shared';
 import { oid } from '../../db/mongoose.js';
 import { isStaff, loadSubject, loadTopic } from '../../lib/access.js';
 import { AppError, badRequest, notFound } from '../../lib/errors.js';
-import { Topic, Unit } from '../syllabus/model.js';
+import { Subject, Topic, Unit } from '../syllabus/model.js';
 import { CodeChallenge, CodeSubmission } from './model.js';
 import { runPython } from './pySandbox.js';
 import { runSql } from './sandbox.js';
@@ -317,6 +317,20 @@ export async function listForTopic(user, topicId) {
 }
 
 /** GET /subjects/:id/code-lab — every published challenge of a subject, by unit and topic. */
+/**
+ * GET /code-lab/subjects — the student's subjects that have published code problems, with
+ * counts. The code lab lists only these, so non-coding subjects (e.g. Biology) get no tab.
+ */
+export async function codingSubjects(user) {
+  if (!user.syllabusVersionId) return [];
+  const subjectIds = await Subject.distinct('_id', { syllabusVersionId: user.syllabusVersionId });
+  const rows = await CodeChallenge.aggregate([
+    { $match: { subjectId: { $in: subjectIds }, status: PUBLISHED } },
+    { $group: { _id: '$subjectId', total: { $sum: 1 } } },
+  ]);
+  return rows.map((r) => ({ subjectId: String(r._id), total: r.total }));
+}
+
 export async function listForSubject(user, subjectId) {
   await loadSubject(user, subjectId, 'read');
   const [items, topics, units] = await Promise.all([

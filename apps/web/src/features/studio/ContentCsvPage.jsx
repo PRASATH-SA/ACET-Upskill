@@ -24,7 +24,7 @@ const ROW_TYPES = [
   ['curiosity', 'Lesson', 'body — the curiosity hook'],
   ['video', 'Lesson', 'url (YouTube or any link), title'],
   ['easy', 'Lesson', 'body — easy explanation (markdown)'],
-  ['tenMark', 'Lesson', 'body — 10-mark answer (markdown)'],
+  ['tenMark', 'Lesson', 'body — exam study material: notes for short and long answers (markdown)'],
   ['realWorld', 'Lesson', 'body — real-world uses'],
   ['workshop', 'Lesson', 'body — workshop brief'],
   ['curiosity_question', 'Quiz', 'question, option_a…, correct, explanation'],

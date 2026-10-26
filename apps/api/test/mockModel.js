@@ -92,6 +92,9 @@ export function scriptContentModel({ selfCheckAgrees = true, provider } = {}) {
         'Split Student(Roll, Name, Dept, HOD) into Student(Roll, Name, Dept) and Dept(Dept, HOD).',
       advantages: ['Less redundancy', 'No anomalies'],
       conclusion: 'Normalization keeps data consistent through lossless decomposition.',
+      keyTerms: [{ term: 'Anomaly', meaning: 'An error caused by storing a fact twice.' }],
+      shortAnswers: [{ question: 'Define 1NF.', answer: 'Every attribute holds an atomic value.' }],
+      examTips: ['Draw the table before and after each normal form.'],
     })
     .on('topic.flashcards', (_req, n) => ({
       cards: Array.from({ length: 5 }, (_, i) => ({

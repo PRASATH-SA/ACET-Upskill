@@ -33,9 +33,22 @@ export const CrossLinksSchema = z.object({ links: z.array(linkItem).max(8) });
 
 export const EasySchema = z.object({ text: str(40, 1600), analogy: str(10, 400) });
 
+/**
+ * Exam study material (kind `tenMark`). v2 adds key terms, short answers and exam tips; they are
+ * optional here so v1 outputs still validate.
+ */
 export const TenMarkSchema = z.object({
   definition: str(10, 600),
   need: str(10, 800),
+  keyTerms: z
+    .array(z.object({ term: str(2, 300), meaning: str(2, 800) }))
+    .max(10)
+    .optional(),
+  shortAnswers: z
+    .array(z.object({ question: str(2, 300), answer: str(2, 800) }))
+    .max(6)
+    .optional(),
+  examTips: z.array(str(5, 300)).max(5).optional(),
   points: z
     .array(z.object({ heading: str(2, 100), text: str(10, 800) }))
     .min(3)

@@ -17,8 +17,8 @@
     },
     {
       "kind": "tenMark",
-      "title": "10-mark answer: Normalization",
-      "body": "**Definition.** Normalization organises tables to reduce redundancy.\n\n**Need.** Redundant data causes update, insertion and deletion anomalies.\n\n**Explanation**\n\n1. **1NF**: Atomic values and no repeating groups.\n2. **2NF**: No partial dependency on a composite key.\n3. **3NF**: No transitive dependency between non-key attributes.\n\n**Example / diagram.** Split Student(Roll, Name, Dept, HOD) into Student(Roll, Name, Dept) and Dept(Dept, HOD).\n\n**Advantages**\n\n- Less redundancy\n- No anomalies\n\n**Conclusion.** Normalization keeps data consistent through lossless decomposition."
+      "title": "Exam study material: Normalization",
+      "body": "**Definition.** Normalization organises tables to reduce redundancy.\n\n**Need.** Redundant data causes update, insertion and deletion anomalies.\n\n**Key terms**\n\n- **Anomaly**: An error caused by storing a fact twice.\n\n**Explanation**\n\n1. **1NF**: Atomic values and no repeating groups.\n2. **2NF**: No partial dependency on a composite key.\n3. **3NF**: No transitive dependency between non-key attributes.\n\n**Example / diagram.** Split Student(Roll, Name, Dept, HOD) into Student(Roll, Name, Dept) and Dept(Dept, HOD).\n\n**Advantages**\n\n- Less redundancy\n- No anomalies\n\n**Conclusion.** Normalization keeps data consistent through lossless decomposition.\n\n**Short answers (2 marks)**\n\n- **Define 1NF.** Every attribute holds an atomic value.\n\n**Exam tips**\n\n- Draw the table before and after each normal form."
     },
     {
       "kind": "workshop",

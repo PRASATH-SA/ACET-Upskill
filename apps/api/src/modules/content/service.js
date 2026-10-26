@@ -491,6 +491,7 @@ export async function topicPage(user, topicId) {
     workshops,
     rubric,
     codeChallengeCount,
+    shortAnswers,
   ] = await Promise.all([
     publishedResources(topicId),
     Flashcard.countDocuments({ topicId, status: PUBLISHED }),
@@ -505,6 +506,12 @@ export async function topicPage(user, topicId) {
     Workshop.find({ topicId }).sort({ dueAt: 1 }).lean(),
     publishedRubric(topicId),
     codeLabCount(topicId),
+    // Quick question-and-answer revision for the exam study material (Prepare step).
+    Flashcard.find({ topicId, status: PUBLISHED })
+      .select('front back')
+      .sort({ createdAt: 1 })
+      .limit(10)
+      .lean(),
   ]);
 
   const page = {
@@ -547,6 +554,13 @@ export async function topicPage(user, topicId) {
     page.workshops = workshops.map((w) => ({ id: String(w._id), brief: w.brief, dueAt: w.dueAt }));
   }
   if (rubric) page.explainItBack = rubric;
+  if (shortAnswers.length) {
+    page.shortAnswers = shortAnswers.map((c) => ({
+      id: String(c._id),
+      question: c.front,
+      answer: c.back,
+    }));
+  }
   if (pyqs.length) {
     page.pyqs = pyqs.map((p) => ({
       id: String(p._id),

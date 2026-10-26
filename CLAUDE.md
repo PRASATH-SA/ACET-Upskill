@@ -28,6 +28,9 @@ Repo-specific notes (added on top of Part A):
   theory subject (`theorySubjectId`), has no topics, and places experiments (`labExperiments`, linking code-lab
   problems) on the theory roadmap. Student home splits Theory/Practical; `/labs/:id` and studio `/studio/labs/:id`.
   Seeded labs: Python Programming Lab (CSC26P03) and DBMS Lab (CS P53) — see `docs/decisions/0012-practical-lab-subjects.md`.
+- **Leaderboard and progress reports (2026-10-27):** `GET /leaderboard`, `/reports/progress`, `/reports/students/:id`
+  rank students by mastery XP (same as `gamify()`), scoped by role (class / faculty subjects / mentees / HOD department).
+  Pages `/leaderboard`, `/studio/students[/:id]`, `/admin/progress` — see `docs/decisions/0013-leaderboard-and-cohort-progress.md`.
 - `docs/requirements.md` is a placeholder until the real requirements document is added.
 - **Status (2026-10-21):** Phase 0, B1–B5, A1–A5 and F1–F7 are built and tested, plus extras outside Part B
   (question variants/quiz sessions, video learning, explain-it-back, liquid-glass UI — ADR 0004, and the

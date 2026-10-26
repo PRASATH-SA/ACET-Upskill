@@ -12,9 +12,12 @@ import {
   ProgressBar,
   StatTile,
 } from '../../components/ui';
+import { useSession } from '../auth/session';
+import { CohortProgressPanel } from '../progress/CohortWidgets';
 
 /** /admin — department usage overview (B5.6, A5.4, F7.2). */
 export function AdminHome() {
+  const role = useSession((s) => s.user.role);
   const usage = useQuery({ queryKey: ['admin', 'usage'], queryFn: () => get('/admin/usage') });
   if (usage.isPending) {
     return (
@@ -68,6 +71,13 @@ export function AdminHome() {
           hint={`${ai.pending} waiting for review`}
         />
       </div>
+
+      <CohortProgressPanel
+        title="Department progress"
+        role={role}
+        to="/admin/progress"
+        linkLabel="Full report"
+      />
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
         <Card>
@@ -148,6 +158,9 @@ export function AdminHome() {
       <div className="mt-6 flex flex-wrap gap-3">
         <Button as={Link} to="/admin/users" className="hover:no-underline">
           Manage users
+        </Button>
+        <Button as={Link} to="/admin/progress" variant="secondary" className="hover:no-underline">
+          Department progress
         </Button>
         <Button as={Link} to="/admin/co-po" variant="secondary" className="hover:no-underline">
           CO–PO report

@@ -123,9 +123,9 @@ describe('env validation (A.3, A.7, A.9)', () => {
       JWT_REFRESH_SECRET: 'b'.repeat(32),
     };
     expect(parseEnv(ServerEnvSchema, { ...base, CORS_ORIGIN: '' }).CORS_ORIGIN).toBeUndefined();
-    expect(() => parseEnv(ServerEnvSchema, { ...base, CORS_ORIGIN: 'acet.vercel.app' })).toThrowError(
-      /CORS_ORIGIN must be one or more comma-separated URLs/,
-    );
+    expect(() =>
+      parseEnv(ServerEnvSchema, { ...base, CORS_ORIGIN: 'acet.vercel.app' }),
+    ).toThrowError(/CORS_ORIGIN must be one or more comma-separated URLs/);
   });
 
   it('parses a complete server env', () => {
@@ -181,5 +181,16 @@ describe('roles and student term (ADR 0011)', () => {
     expect(
       SetStudentTermSchema.safeParse({ userIds: [id], yearOfStudy: 1, semester: 3 }).success,
     ).toBe(false);
+  });
+});
+
+describe('yearOfBatch', () => {
+  it('derives the year of study from the batch start year, with June as the new academic year', async () => {
+    const { yearOfBatch } = await import('./enums.js');
+    expect(yearOfBatch('2023-27', new Date('2026-10-27'))).toBe(4);
+    expect(yearOfBatch('2023-27', new Date('2026-03-01'))).toBe(3);
+    expect(yearOfBatch('2026-30', new Date('2026-07-01'))).toBe(1);
+    expect(yearOfBatch('2019-23', new Date('2026-10-27'))).toBeNull();
+    expect(yearOfBatch(null)).toBeNull();
   });
 });

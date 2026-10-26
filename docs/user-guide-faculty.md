@@ -22,7 +22,7 @@ Open a topic (**Edit content**).
 
 1. Upload your **notes** (PDF works best; PPTX/DOCX are stored but not read by the AI yet).
    Wait for **Ready for AI**.
-2. Choose what to draft (easy explanation, 10-mark answer, flashcards, quiz MCQs, curiosity
+2. Choose what to draft (easy explanation, exam study material, flashcards, quiz MCQs, curiosity
    question, real-world uses) and press **Draft with AI**.
 3. The AI writes **only from your uploaded notes**. If there isn't enough material, it says so and
    creates nothing: upload more and try again.

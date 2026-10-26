@@ -35,7 +35,7 @@ const SECTION = {
 const KIND_TITLE = {
   curiosity: 'Curiosity challenge',
   easy: 'In simple words',
-  tenMark: '10-mark answer',
+  tenMark: 'Exam study material',
   realWorld: 'Real-world uses',
   workshop: 'Workshop brief',
 };
