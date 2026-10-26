@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
+import { MotionConfig } from 'framer-motion';
 import { RouterProvider } from 'react-router-dom';
 import { Toaster } from '../components/ui';
 import { restoreSession } from '../features/auth/session';
@@ -17,9 +18,12 @@ export function App() {
   }, []);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} future={{ v7_startTransition: true }} />
-      <Toaster />
-    </QueryClientProvider>
+    // reducedMotion="user": springs become plain fades for people who ask for less motion.
+    <MotionConfig reducedMotion="user">
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} future={{ v7_startTransition: true }} />
+        <Toaster />
+      </QueryClientProvider>
+    </MotionConfig>
   );
 }

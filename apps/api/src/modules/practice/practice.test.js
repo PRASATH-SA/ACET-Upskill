@@ -338,3 +338,56 @@ describe('inline flashcard rating (F4)', () => {
     await send(f.faculty, String(cards[0]._id)).expect(403);
   });
 });
+
+describe('topic step progress (resume where you left off)', () => {
+  it('saves finished steps and the last step, and returns them when the topic is opened again', async () => {
+    const f = await dbmsFixture();
+    const topic = f.id('relational');
+    const first = await api().post(`/api/v1/topics/${topic}/open`).set(f.student.auth).expect(200);
+    expect(first.body.data.steps).toEqual({ done: [], last: null, offset: 0 });
+
+    await api()
+      .put(`/api/v1/topics/${topic}/steps`)
+      .set(f.student.auth)
+      .send({ done: ['curiosity'], last: 'understand' })
+      .expect(200);
+    const saved = await api()
+      .put(`/api/v1/topics/${topic}/steps`)
+      .set(f.student.auth)
+      .send({ done: ['curiosity', 'understand'], last: 'prepare', offset: 640 })
+      .expect(200);
+    expect(saved.body.data).toEqual({
+      done: ['curiosity', 'understand'],
+      last: 'prepare',
+      offset: 640,
+    });
+
+    const again = await api().post(`/api/v1/topics/${topic}/open`).set(f.student.auth).expect(200);
+    expect(again.body.data.steps).toEqual({
+      done: ['curiosity', 'understand'],
+      last: 'prepare',
+      offset: 640,
+    });
+    expect(again.body.data.mastery.state).toBe('learning');
+  });
+
+  it('rejects unknown steps and non-students', async () => {
+    const f = await dbmsFixture();
+    const topic = f.id('relational');
+    await api()
+      .put(`/api/v1/topics/${topic}/steps`)
+      .set(f.student.auth)
+      .send({ last: 'nap' })
+      .expect(400);
+    await api()
+      .put(`/api/v1/topics/${topic}/steps`)
+      .set(f.faculty.auth)
+      .send({ last: 'prepare' })
+      .expect(403);
+    await api()
+      .put(`/api/v1/topics/${topic}/steps`)
+      .set(f.outsider.auth)
+      .send({ last: 'prepare' })
+      .expect(403);
+  });
+});

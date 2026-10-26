@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import {
+  isAdminRole,
   CreateMentorNoteSchema,
   IdParamsSchema,
   ObjectIdSchema,
@@ -27,7 +28,7 @@ export function mentorRoutes() {
         res,
         await mentorStudents(
           user,
-          user.role === 'admin' && req.query.mentorId ? req.query.mentorId : user.id,
+          isAdminRole(user.role) && req.query.mentorId ? req.query.mentorId : user.id,
         ),
       );
     }),

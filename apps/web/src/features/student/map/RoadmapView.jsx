@@ -39,11 +39,11 @@ const FACE = {
   needsRevision:
     'border-gold-border bg-gold text-navy shadow-[inset_0_2px_0_rgb(255_255_255/0.55),0_6px_0_0_#C9A100]',
   current:
-    'border-blue bg-blue text-white shadow-[inset_0_2px_0_rgb(255_255_255/0.35),0_6px_0_0_#1F4FB8]',
+    'border-blue bg-blue text-white shadow-[inset_0_2px_0_rgb(255_255_255/0.35),0_6px_0_0_#9E1360]',
   unlocked:
-    'border-blue bg-white/85 text-blue-dark backdrop-blur-md shadow-[inset_0_2px_0_rgb(255_255_255/0.9),0_6px_0_0_rgb(47_107_234/0.35)]',
+    'border-blue bg-white/85 text-blue-dark backdrop-blur-md shadow-[inset_0_2px_0_rgb(255_255_255/0.9),0_6px_0_0_rgb(200_29_120/0.35)]',
   locked:
-    'border-[#C7CCD4] bg-[#E5E7EB]/85 text-navy/70 backdrop-blur-md shadow-[inset_0_2px_0_rgb(255_255_255/0.6),0_6px_0_0_#C7CCD4]',
+    'border-[#CFCDE0] bg-[#ECEBF3]/85 text-navy/70 backdrop-blur-md shadow-[inset_0_2px_0_rgb(255_255_255/0.6),0_6px_0_0_#CFCDE0]',
 };
 const ICON = {
   mastered: Check,
@@ -77,10 +77,10 @@ function UnitBanner({ unit, done, total, index, onOpenMap }) {
     <div className="sticky top-0 z-20 px-0 pb-2 pt-3">
       <div
         className={cn(
-          'relative flex items-center gap-4 overflow-hidden rounded-card border px-5 py-4 text-white',
+          'relative flex items-center gap-4 overflow-hidden rounded-card border px-5 py-3.5 text-white',
           index % 2 === 0
-            ? 'border-white/15 bg-navy/95 shadow-[inset_0_1px_0_rgb(255_255_255/0.15),0_5px_0_0_#0B2247]'
-            : 'border-white/20 bg-blue shadow-[inset_0_1px_0_rgb(255_255_255/0.25),0_5px_0_0_#1F4FB8]',
+            ? 'border-white/15 bg-navy/95 shadow-[inset_0_1px_0_rgb(255_255_255/0.15),0_5px_0_0_#0E0D1F]'
+            : 'border-white/20 bg-blue shadow-[inset_0_1px_0_rgb(255_255_255/0.25),0_5px_0_0_#9E1360]',
           'backdrop-blur-xl',
         )}
       >
@@ -90,8 +90,8 @@ function UnitBanner({ unit, done, total, index, onOpenMap }) {
         />
         <div className="relative min-w-0 flex-1">
           <p className="eyebrow text-gold">Unit {unit.number}</p>
-          <h2 className="mt-0.5 truncate text-lg text-white sm:text-xl">{unit.title}</h2>
-          <div className="mt-2 flex items-center gap-3">
+          <h2 className="mt-0.5 truncate text-base text-white sm:text-lg">{unit.title}</h2>
+          <div className="mt-1.5 flex items-center gap-3">
             <div
               role="progressbar"
               aria-label={`Unit ${unit.number} mastery`}
@@ -125,8 +125,11 @@ function UnitBanner({ unit, done, total, index, onOpenMap }) {
   );
 }
 
-/** The card under a tapped node: what it is, and the one next action. */
-function NodePopover({ topic, node, state, unitNumber, missing, x, onClose, onDetails }) {
+/**
+ * The card under a tapped node: what it is, and the one next action. `action` (from the lab
+ * page, ADR 0012) replaces the learning call to action: { label, icon, onClick, note }.
+ */
+function NodePopover({ topic, node, state, unitNumber, missing, x, onClose, onDetails, action }) {
   const width = 272;
   const left = Math.max(0, Math.min(COL - width, x - width / 2));
   const arrow = x - left;
@@ -149,7 +152,7 @@ function NodePopover({ topic, node, state, unitNumber, missing, x, onClose, onDe
     >
       <span
         aria-hidden
-        className="absolute -top-2 h-4 w-4 rotate-45 rounded-sm border-l border-t border-white/80 bg-white/90"
+        className="absolute -top-2 h-4 w-4 rotate-45 rounded-sm border-l border-t border-line bg-white"
         style={{ left: arrow - 8 }}
       />
       <div className="flex items-start gap-2">
@@ -158,7 +161,7 @@ function NodePopover({ topic, node, state, unitNumber, missing, x, onClose, onDe
             Unit {unitNumber} · {STATE_LABEL[state]}
             {node?.mastery && ` · ${MASTERY_LABEL[node.mastery]}`}
           </p>
-          <p className="mt-0.5 font-heading text-base font-extrabold leading-snug text-navy">
+          <p className="mt-0.5 font-heading text-base font-bold leading-snug text-navy">
             {topic.title}
           </p>
         </div>
@@ -172,7 +175,24 @@ function NodePopover({ topic, node, state, unitNumber, missing, x, onClose, onDe
         </button>
       </div>
       {topic.summary && <p className="mt-1 line-clamp-2 text-sm">{topic.summary}</p>}
-      {state === 'locked' ? (
+      {action ? (
+        <>
+          {action.note && <p className="mt-2 text-sm font-semibold text-navy">{action.note}</p>}
+          {action.label && (
+            <Button
+              variant={state === 'current' ? 'primary' : 'navy'}
+              icon={action.icon ?? ArrowRight}
+              className="mt-3 w-full"
+              onClick={() => {
+                action.onClick();
+                onClose();
+              }}
+            >
+              {action.label}
+            </Button>
+          )}
+        </>
+      ) : state === 'locked' ? (
         <p className="mt-3 flex items-start gap-2 rounded-2xl bg-navy/5 p-3 text-sm font-semibold text-navy">
           <Lock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
           Finish {missing.join(', ') || 'the earlier topics'} first
@@ -189,9 +209,11 @@ function NodePopover({ topic, node, state, unitNumber, missing, x, onClose, onDe
           <span className="sr-only"> {topic.title}</span>
         </Button>
       )}
-      <Button variant="ghost" size="sm" onClick={onDetails} className="mt-2 w-full lg:hidden">
-        Links and exam insight
-      </Button>
+      {!action && (
+        <Button variant="ghost" size="sm" onClick={onDetails} className="mt-2 w-full lg:hidden">
+          Links and exam insight
+        </Button>
+      )}
     </div>
   );
 }
@@ -206,6 +228,7 @@ function UnitTrail({
   setOpenId,
   onSelect,
   onDetails,
+  action,
   highlightId,
   startIndex,
 }) {
@@ -293,7 +316,7 @@ function UnitTrail({
               {state === 'current' && (
                 <span
                   aria-hidden
-                  className="absolute -top-12 z-10 animate-bob whitespace-nowrap rounded-2xl border-2 border-blue/30 bg-white px-3.5 py-1.5 font-heading text-xs font-extrabold uppercase tracking-[0.18em] text-blue-dark shadow-[0_3px_0_0_rgb(47_107_234/0.25)]"
+                  className="absolute -top-12 z-10 animate-bob whitespace-nowrap rounded-2xl border-2 border-blue/30 bg-white px-3.5 py-1.5 font-heading text-xs font-bold uppercase tracking-[0.18em] text-blue-dark shadow-[0_3px_0_0_rgb(200_29_120/0.25)]"
                   style={{ left: p.x }}
                 >
                   {node?.mastery && node.mastery !== 'notStarted' ? 'Continue' : 'Start'}
@@ -385,6 +408,7 @@ function UnitTrail({
                   x={p.x}
                   onClose={() => setOpenId(null)}
                   onDetails={() => onDetails(id)}
+                  action={action?.(t, state)}
                 />
               )}
             </li>
@@ -404,7 +428,7 @@ function UnitTrail({
           'absolute inline-flex animate-node-in items-center justify-center rounded-3xl border-2',
           complete
             ? 'shine animate-wobble border-gold-border bg-gold text-navy shadow-[inset_0_2px_0_rgb(255_255_255/0.55),0_6px_0_0_#C9A100,0_0_30px_rgb(245_192_0/0.5)]'
-            : 'border-[#C7CCD4] bg-[#E5E7EB]/85 text-navy/50 shadow-[0_6px_0_0_#C7CCD4]',
+            : 'border-[#CFCDE0] bg-[#ECEBF3]/85 text-navy/50 shadow-[0_6px_0_0_#CFCDE0]',
         )}
         style={{
           width: NODE + 8,
@@ -434,6 +458,7 @@ export function RoadmapView({
   onSelect,
   onDetails,
   onOpenMap,
+  action,
 }) {
   const [openId, setOpenId] = useState(null);
   const rootRef = useRef(null);
@@ -459,7 +484,7 @@ export function RoadmapView({
 
   let start = 0;
   return (
-    <div ref={rootRef} className="mx-auto w-full max-w-xl px-4 pb-16">
+    <div ref={rootRef} className="mx-auto w-full max-w-xl px-4 pb-16 sm:px-6">
       {groups.map((g, i) => {
         const done = g.ids.filter((id) => nodeOf.get(id)?.state === 'mastered').length;
         const trail = (
@@ -481,6 +506,7 @@ export function RoadmapView({
               setOpenId={setOpenId}
               onSelect={onSelect}
               onDetails={onDetails}
+              action={action}
               highlightId={highlightId}
               startIndex={start}
             />

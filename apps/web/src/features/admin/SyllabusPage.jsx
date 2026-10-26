@@ -1,7 +1,15 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { BookOpen, Building2, Map as MapIcon, Pencil, Plus, Trash2 } from 'lucide-react';
+import {
+  BookOpen,
+  Building2,
+  FlaskConical,
+  Map as MapIcon,
+  Pencil,
+  Plus,
+  Trash2,
+} from 'lucide-react';
 import { del, get, patch, post } from '../../api/client';
 import { Page } from '../../components/layout/AppShell';
 import {
@@ -14,6 +22,7 @@ import {
   IconButton,
   Input,
   LoadingBlock,
+  Select,
   toast,
 } from '../../components/ui';
 import { useDepartments, useUsersByRole, useVersions, versionLabel } from './lookups';
@@ -63,14 +72,19 @@ function VersionForm({ initial, onSave, saving }) {
   );
 }
 
-function SubjectForm({ initial, versionId, onSave, saving }) {
+function SubjectForm({ initial, versionId, theorySubjects, onSave, saving }) {
   const faculty = useUsersByRole('faculty');
   const [s, setS] = useState({
     code: initial?.code ?? '',
     name: initial?.name ?? '',
     semester: initial?.semester ?? 5,
     facultyIds: initial?.facultyIds ?? [],
+    kind: initial?.kind ?? 'theory',
+    theorySubjectId: initial?.theorySubjectId ?? '',
   });
+  const practical = s.kind === 'practical';
+  // A lab links a theory subject of this version (never itself).
+  const theories = theorySubjects.filter((t) => t.id !== initial?.id);
   const toggle = (id) =>
     setS((x) => ({
       ...x,
@@ -97,6 +111,32 @@ function SubjectForm({ initial, versionId, onSave, saving }) {
           onChange={(e) => setS({ ...s, semester: Number(e.target.value) })}
         />
       </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Select
+          label="Type"
+          value={s.kind}
+          onChange={(e) => setS({ ...s, kind: e.target.value })}
+          options={[
+            { value: 'theory', label: 'Theory (has its own roadmap)' },
+            { value: 'practical', label: 'Practical / lab' },
+          ]}
+        />
+        {practical && (
+          <Select
+            label="Uses the roadmap of"
+            value={s.theorySubjectId}
+            onChange={(e) => setS({ ...s, theorySubjectId: e.target.value })}
+            placeholder="Choose the theory subject"
+            options={theories.map((t) => ({ value: t.id, label: `${t.code} · ${t.name}` }))}
+          />
+        )}
+      </div>
+      {practical && (
+        <p className="text-sm">
+          A lab has no units of its own. Its experiments are placed on the topics of this theory
+          subject, so students follow the same roadmap.
+        </p>
+      )}
       <fieldset>
         <legend className="text-sm font-semibold text-navy">Faculty who teach it</legend>
         <div className="mt-2 grid gap-1 sm:grid-cols-2">
@@ -116,8 +156,14 @@ function SubjectForm({ initial, versionId, onSave, saving }) {
       <Button
         variant="navy"
         loading={saving}
-        disabled={!s.code.trim() || !s.name.trim()}
-        onClick={() => onSave({ ...s, ...(initial ? {} : { syllabusVersionId: versionId }) })}
+        disabled={!s.code.trim() || !s.name.trim() || (practical && !s.theorySubjectId)}
+        onClick={() =>
+          onSave({
+            ...s,
+            theorySubjectId: practical ? s.theorySubjectId : null,
+            ...(initial ? {} : { syllabusVersionId: versionId }),
+          })
+        }
       >
         Save subject
       </Button>
@@ -239,6 +285,8 @@ export function SyllabusPage() {
                       <div className="min-w-0 flex-1">
                         <p className="text-xs font-semibold">
                           {s.code} · Semester {s.semester}
+                          {s.kind === 'practical' &&
+                            ` · Practical, roadmap of ${subjects.data.find((t) => t.id === s.theorySubjectId)?.code ?? '—'}`}
                         </p>
                         <p className="font-semibold text-navy">{s.name}</p>
                         <div className="mt-1 flex flex-wrap gap-1">
@@ -252,16 +300,29 @@ export function SyllabusPage() {
                         </div>
                       </div>
                       <div className="flex gap-1">
-                        <Button
-                          as={Link}
-                          to={`/studio/subjects/${s.id}`}
-                          size="sm"
-                          variant="ghost"
-                          icon={MapIcon}
-                          className="hover:no-underline"
-                        >
-                          Map
-                        </Button>
+                        {s.kind === 'practical' ? (
+                          <Button
+                            as={Link}
+                            to={`/studio/labs/${s.id}`}
+                            size="sm"
+                            variant="ghost"
+                            icon={FlaskConical}
+                            className="hover:no-underline"
+                          >
+                            Experiments
+                          </Button>
+                        ) : (
+                          <Button
+                            as={Link}
+                            to={`/studio/subjects/${s.id}`}
+                            size="sm"
+                            variant="ghost"
+                            icon={MapIcon}
+                            className="hover:no-underline"
+                          >
+                            Map
+                          </Button>
+                        )}
                         <IconButton
                           icon={Pencil}
                           label={`Edit ${s.name}`}
@@ -306,6 +367,7 @@ export function SyllabusPage() {
             key={subjectDialog.id ?? 'new'}
             initial={subjectDialog.id ? subjectDialog : null}
             versionId={current}
+            theorySubjects={(subjects.data ?? []).filter((x) => x.kind !== 'practical')}
             saving={saveSubject.isPending}
             onSave={(body) => saveSubject.mutate({ id: subjectDialog.id, body })}
           />

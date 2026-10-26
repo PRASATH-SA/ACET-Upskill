@@ -126,4 +126,5 @@ export const ROLE_HOME = {
   faculty: '/studio',
   mentor: '/mentor',
   admin: '/admin',
+  coordinator: '/admin',
 };

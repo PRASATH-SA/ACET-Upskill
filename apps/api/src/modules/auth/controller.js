@@ -23,7 +23,7 @@ function readRefreshCookie(req) {
 }
 
 export async function register(req, res) {
-  created(res, await auth.registerUser(req.body, currentUser(req).id));
+  created(res, await auth.registerUser(req.body, currentUser(req)));
 }
 
 export async function importStudents(req, res) {
@@ -39,8 +39,10 @@ export async function importStudents(req, res) {
     syllabusVersionId: req.body?.syllabusVersionId || undefined,
     batch: req.body?.batch || undefined,
     mentorId: req.body?.mentorId || undefined,
+    yearOfStudy: req.body?.yearOfStudy || undefined,
+    semester: req.body?.semester || undefined,
   });
-  ok(res, await auth.importStudents(csv, defaults, currentUser(req).id));
+  ok(res, await auth.importStudents(csv, defaults, currentUser(req)));
 }
 
 export async function login(req, res) {

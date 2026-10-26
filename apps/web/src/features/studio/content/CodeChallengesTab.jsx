@@ -6,6 +6,7 @@ import {
   Button,
   Card,
   EmptyState,
+  IconButton,
   Input,
   LoadingBlock,
   Select,
@@ -19,9 +20,10 @@ import { MarkdownField } from './editors';
 const TYPE = 'code-challenges';
 const DIFFICULTY_TONE = { easy: 'green', medium: 'orange', hard: 'red' };
 
-const blank = () => ({
+const blank = (language = 'sql') => ({
   title: '',
   difficulty: 'easy',
+  language,
   prompt: '',
   setupSql: '',
   hiddenSql: '',
@@ -29,10 +31,11 @@ const blank = () => ({
   solution: '',
   checkSql: '',
   orderMatters: false,
+  tests: language === 'python' ? [{ input: '', hidden: false }] : [],
   hints: [],
 });
 
-function SqlField({ label, hint, value, onChange, rows = 6 }) {
+function CodeField({ label, hint, value, onChange, rows = 6 }) {
   return (
     <Textarea
       label={label}
@@ -46,26 +49,117 @@ function SqlField({ label, hint, value, onChange, rows = 6 }) {
   );
 }
 
+/** Python test cases: stdin for each run; expected output comes from the reference program. */
+function TestsEditor({ tests, onChange }) {
+  const set = (i, patch) => onChange(tests.map((t, j) => (j === i ? { ...t, ...patch } : t)));
+  return (
+    <fieldset className="space-y-3">
+      <legend className="text-sm font-semibold text-navy">Test cases</legend>
+      <p className="text-xs text-body">
+        Each test is what the program reads with input(), one value per line. The expected output is
+        produced by running your reference solution. Visible tests are shown to students as
+        examples; hidden tests catch programs that print fixed answers.
+      </p>
+      {tests.map((t, i) => (
+        <div key={i} className="grid gap-2 sm:grid-cols-[1fr_auto_auto] sm:items-end">
+          <CodeField
+            label={`Test ${i + 1} input`}
+            value={t.input}
+            onChange={(input) => set(i, { input })}
+            rows={2}
+          />
+          <label className="flex min-h-[44px] items-center gap-2 text-sm font-semibold text-navy">
+            <input
+              type="checkbox"
+              className="h-5 w-5 accent-navy"
+              checked={t.hidden}
+              onChange={(e) => set(i, { hidden: e.target.checked })}
+            />
+            Hidden
+          </label>
+          <IconButton
+            icon={Trash2}
+            label={`Remove test ${i + 1}`}
+            variant="outline"
+            onClick={() => onChange(tests.filter((_, j) => j !== i))}
+          />
+        </div>
+      ))}
+      {tests.length < 10 && (
+        <Button
+          size="sm"
+          variant="ghost"
+          icon={Plus}
+          onClick={() => onChange([...tests, { input: '', hidden: true }])}
+        >
+          Add test
+        </Button>
+      )}
+    </fieldset>
+  );
+}
+
 /**
- * Authoring form for one code-lab problem. The API runs the solution against the sample and
- * hidden data before saving, so a broken problem never reaches students.
+ * Authoring form for one code-lab problem. The API runs the solution against the sample data
+ * (SQL) or every test input (Python) before saving, so a broken problem never reaches students.
  */
-function ChallengeForm({ initial, onSubmit, saving, onCancel }) {
-  const [c, setC] = useState(() => ({ ...blank(), ...initial }));
+function ChallengeForm({ initial, onSubmit, saving, onCancel, defaultLanguage }) {
+  const [c, setC] = useState(() => ({
+    ...blank(initial?.language ?? defaultLanguage),
+    ...initial,
+  }));
   const set = (patch) => setC((x) => ({ ...x, ...patch }));
+  const python = c.language === 'python';
   const valid =
     c.title.trim().length >= 3 &&
     c.prompt.trim().length >= 10 &&
-    c.setupSql.trim() &&
-    c.solution.trim();
+    c.solution.trim() &&
+    (python ? c.tests.some((t) => !t.hidden) : c.setupSql.trim());
+  const body = () => {
+    const common = {
+      title: c.title,
+      difficulty: c.difficulty,
+      language: c.language,
+      prompt: c.prompt,
+      starterCode: c.starterCode,
+      solution: c.solution,
+      hints: c.hints.map((h) => h.trim()).filter(Boolean),
+    };
+    return python
+      ? { ...common, tests: c.tests }
+      : {
+          ...common,
+          setupSql: c.setupSql,
+          hiddenSql: c.hiddenSql,
+          checkSql: c.checkSql,
+          orderMatters: c.orderMatters,
+        };
+  };
   return (
     <Card tone="surface" className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-[1fr_160px]">
+      <div className="grid gap-3 sm:grid-cols-[1fr_140px_140px]">
         <Input
           label="Title"
           value={c.title}
           onChange={(e) => set({ title: e.target.value })}
           maxLength={120}
+        />
+        <Select
+          label="Language"
+          value={c.language}
+          onChange={(e) =>
+            set({
+              language: e.target.value,
+              tests:
+                e.target.value === 'python' && !c.tests.length
+                  ? [{ input: '', hidden: false }]
+                  : c.tests,
+            })
+          }
+          options={[
+            { value: 'python', label: 'Python' },
+            { value: 'sql', label: 'SQL' },
+          ]}
         />
         <Select
           label="Difficulty"
@@ -80,61 +174,71 @@ function ChallengeForm({ initial, onSubmit, saving, onCancel }) {
         onChange={(prompt) => set({ prompt })}
         rows={6}
       />
-      <SqlField
-        label="Tables and sample rows"
-        hint="CREATE TABLE … and INSERT …. Students see these tables and every Run uses them."
-        value={c.setupSql}
-        onChange={(setupSql) => set({ setupSql })}
-        rows={10}
-      />
-      <SqlField
-        label="Hidden test rows (optional)"
-        hint="Extra INSERTs used only when grading, so hard-coded answers fail. Never shown to students."
-        value={c.hiddenSql}
-        onChange={(hiddenSql) => set({ hiddenSql })}
-        rows={4}
-      />
-      <SqlField
+      {python ? (
+        <TestsEditor tests={c.tests} onChange={(tests) => set({ tests })} />
+      ) : (
+        <>
+          <CodeField
+            label="Tables and sample rows"
+            hint="CREATE TABLE … and INSERT …. Students see these tables and every Run uses them."
+            value={c.setupSql}
+            onChange={(setupSql) => set({ setupSql })}
+            rows={10}
+          />
+          <CodeField
+            label="Hidden test rows (optional)"
+            hint="Extra INSERTs used only when grading, so hard-coded answers fail. Never shown to students."
+            value={c.hiddenSql}
+            onChange={(hiddenSql) => set({ hiddenSql })}
+            rows={4}
+          />
+        </>
+      )}
+      <CodeField
         label="Starter code"
         value={c.starterCode}
         onChange={(starterCode) => set({ starterCode })}
         rows={4}
       />
-      <SqlField
+      <CodeField
         label="Reference solution (hidden)"
-        hint="Students' output is compared with this query's output by value; column names don't matter."
+        hint={
+          python
+            ? 'A complete program. Its output on each test is the expected output.'
+            : "Students' output is compared with this query's output by value; column names don't matter."
+        }
         value={c.solution}
         onChange={(solution) => set({ solution })}
-        rows={4}
+        rows={6}
       />
-      <SqlField
-        label="Check query (optional)"
-        hint="For tasks that change data or schema (UPDATE, CREATE INDEX…): this query's output is compared instead."
-        value={c.checkSql}
-        onChange={(checkSql) => set({ checkSql })}
-        rows={3}
-      />
+      {!python && (
+        <CodeField
+          label="Check query (optional)"
+          hint="For tasks that change data or schema (UPDATE, CREATE INDEX…): this query's output is compared instead."
+          value={c.checkSql}
+          onChange={(checkSql) => set({ checkSql })}
+          rows={3}
+        />
+      )}
       <Textarea
         label="Hints (one per line, up to 5)"
         rows={3}
         value={c.hints.join('\n')}
         onChange={(e) => set({ hints: e.target.value.split('\n').slice(0, 5) })}
       />
-      <label className="flex min-h-[44px] items-center gap-2 text-sm font-semibold text-navy">
-        <input
-          type="checkbox"
-          className="h-5 w-5 accent-navy"
-          checked={c.orderMatters}
-          onChange={(e) => set({ orderMatters: e.target.checked })}
-        />
-        Row order matters (the task asks for ORDER BY)
-      </label>
+      {!python && (
+        <label className="flex min-h-[44px] items-center gap-2 text-sm font-semibold text-navy">
+          <input
+            type="checkbox"
+            className="h-5 w-5 accent-navy"
+            checked={c.orderMatters}
+            onChange={(e) => set({ orderMatters: e.target.checked })}
+          />
+          Row order matters (the task asks for ORDER BY)
+        </label>
+      )}
       <div className="flex flex-wrap gap-2">
-        <Button
-          disabled={!valid}
-          loading={saving}
-          onClick={() => onSubmit({ ...c, hints: c.hints.map((h) => h.trim()).filter(Boolean) })}
-        >
+        <Button disabled={!valid} loading={saving} onClick={() => onSubmit(body())}>
           Save draft
         </Button>
         {onCancel && (
@@ -150,13 +254,15 @@ function ChallengeForm({ initial, onSubmit, saving, onCancel }) {
 const editable = (c) => ({
   title: c.title,
   difficulty: c.difficulty,
+  language: c.language ?? 'sql',
   prompt: c.prompt,
-  setupSql: c.setupSql,
+  setupSql: c.setupSql ?? '',
   hiddenSql: c.hiddenSql ?? '',
   starterCode: c.starterCode ?? '',
   solution: c.solution,
   checkSql: c.checkSql ?? '',
   orderMatters: Boolean(c.orderMatters),
+  tests: (c.tests ?? []).map((t) => ({ input: t.input ?? '', hidden: Boolean(t.hidden) })),
   hints: c.hints ?? [],
 });
 
@@ -170,11 +276,13 @@ export function CodeChallengesTab({ topicId }) {
 
   if (items.isPending) return <LoadingBlock />;
   const list = items.data ?? [];
+  // New problems default to the language this topic already uses.
+  const defaultLanguage = list.some((c) => c.language === 'python') ? 'python' : 'sql';
   return (
     <div className="space-y-3">
       <p className="text-sm">
-        LeetCode-style SQL problems. Students run queries on the sample rows and submit for grading
-        against your solution and the hidden rows.
+        LeetCode-style SQL or Python problems. Students run queries on the sample rows and submit
+        for grading against your solution and the hidden rows.
       </p>
       {list.length === 0 && editing !== 'new' && (
         <EmptyState
@@ -186,6 +294,7 @@ export function CodeChallengesTab({ topicId }) {
       {list.map((c) =>
         editing === c.id ? (
           <ChallengeForm
+            defaultLanguage={defaultLanguage}
             key={c.id}
             initial={editable(c)}
             saving={save.isPending}
@@ -237,6 +346,7 @@ export function CodeChallengesTab({ topicId }) {
       )}
       {editing === 'new' ? (
         <ChallengeForm
+          defaultLanguage={defaultLanguage}
           saving={save.isPending}
           onCancel={() => setEditing(null)}
           onSubmit={(body) =>

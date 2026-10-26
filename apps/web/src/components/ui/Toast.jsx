@@ -1,8 +1,10 @@
 import { useEffect } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { AlertCircle, CheckCircle2, Info, X } from 'lucide-react';
 import { create } from 'zustand';
 import { cn } from '../../lib/cn';
 import { IconButton } from './IconButton';
+import { bouncy } from '../../lib/motion';
 
 let nextId = 1;
 
@@ -46,18 +48,26 @@ function ToastItem({ t }) {
     return () => clearTimeout(timer);
   }, [t.id, t.duration, tone, dismiss]);
   return (
-    <div
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 40, scale: 0.85 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, x: 80, scale: 0.9, transition: { duration: 0.2 } }}
+      transition={bouncy}
       role={tone === 'error' ? 'alert' : 'status'}
-      className="glass-strong pointer-events-auto flex w-full animate-glass-pop items-start gap-3 rounded-2xl p-3.5"
+      className="glass-strong pointer-events-auto flex w-full items-start gap-3 rounded-2xl p-3.5"
     >
-      <span
+      <motion.span
+        initial={{ scale: 0, rotate: -90 }}
+        animate={{ scale: 1, rotate: 0 }}
+        transition={{ ...bouncy, delay: 0.08 }}
         className={cn(
           'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full',
           TONES[tone],
         )}
       >
         <Icon className="h-5 w-5" aria-hidden />
-      </span>
+      </motion.span>
       <div className="min-w-0 flex-1">
         <p className="font-semibold text-navy">{t.title}</p>
         {t.description && <p className="mt-0.5 text-sm text-body">{t.description}</p>}
@@ -68,7 +78,7 @@ function ToastItem({ t }) {
         onClick={() => dismiss(t.id)}
         className="-m-2"
       />
-    </div>
+    </motion.div>
   );
 }
 
@@ -80,9 +90,11 @@ export function Toaster() {
       aria-live="polite"
       className="pointer-events-none fixed inset-x-0 bottom-24 z-[60] mx-auto flex max-w-md flex-col gap-2 px-4 md:bottom-6 md:right-6 md:left-auto md:mx-0"
     >
-      {toasts.map((t) => (
-        <ToastItem key={t.id} t={t} />
-      ))}
+      <AnimatePresence initial={false}>
+        {toasts.map((t) => (
+          <ToastItem key={t.id} t={t} />
+        ))}
+      </AnimatePresence>
     </div>
   );
 }

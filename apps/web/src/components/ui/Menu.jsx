@@ -1,5 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
+import { motion } from 'framer-motion';
 import { cn } from '../../lib/cn';
+import { bouncy } from '../../lib/motion';
 import { focusRing } from './Button';
 
 /**
@@ -63,21 +65,29 @@ export function Menu({ trigger, label, items, align = 'right' }) {
         {trigger}
       </button>
       {open && (
-        <div
+        <motion.div
+          initial={{ opacity: 0, scale: 0.85, y: -8 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={bouncy}
+          style={{ transformOrigin: align === 'right' ? 'top right' : 'top left' }}
           id={id}
           role="menu"
           aria-label={label}
           onKeyDown={onMenuKey}
           className={cn(
-            'glass-strong absolute z-40 mt-2 min-w-[13rem] animate-glass-pop overflow-hidden rounded-2xl p-1.5',
+            'glass-strong absolute z-40 mt-2 min-w-[13rem] overflow-hidden rounded-2xl p-1.5',
             align === 'right' ? 'right-0' : 'left-0',
           )}
         >
           {items.map((item, i) => {
             const Icon = item.icon;
             return (
-              <button
+              <motion.button
                 key={item.label}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ ...bouncy, delay: 0.03 * i }}
+                whileHover={{ x: 4 }}
                 ref={(el) => (itemRefs.current[i] = el)}
                 role="menuitem"
                 type="button"
@@ -87,16 +97,16 @@ export function Menu({ trigger, label, items, align = 'right' }) {
                   item.onSelect();
                 }}
                 className={cn(
-                  'flex min-h-[44px] w-full items-center gap-3 rounded-xl px-3.5 text-left text-sm font-medium transition-colors hover:bg-navy/5 focus:bg-navy/5 focus:outline-none',
+                  'flex min-h-[44px] w-full items-center gap-3 rounded-xl px-3.5 text-left text-sm font-medium transition-colors hover:bg-brand-soft focus:bg-brand-soft focus:outline-none',
                   item.tone === 'danger' ? 'text-red-dark' : 'text-navy',
                 )}
               >
                 {Icon && <Icon className="h-4 w-4" aria-hidden />}
                 {item.label}
-              </button>
+              </motion.button>
             );
           })}
-        </div>
+        </motion.div>
       )}
     </div>
   );

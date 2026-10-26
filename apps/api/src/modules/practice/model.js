@@ -1,5 +1,6 @@
 import {
   COLLECTIONS,
+  LEARNING_STEPS,
   MASTERY_STATES,
   REVIEW_ITEM_TYPES,
   REVIEW_RATINGS,
@@ -69,6 +70,11 @@ const masterySchema = new Schema(
     /** Revisions passed since the topic last entered needsRevision (or ever). */
     revisionsPassed: { type: Number, default: 0 },
     openedAt: Date,
+    /** Six-step page progress, so the topic page resumes where the student left off. */
+    stepsDone: { type: [{ type: String, enum: LEARNING_STEPS }], default: [] },
+    lastStep: { type: String, enum: [...LEARNING_STEPS, null], default: null },
+    /** How far into the last step's section the student had scrolled (px). */
+    lastStepOffset: { type: Number, default: 0 },
   },
   { timestamps: true },
 );

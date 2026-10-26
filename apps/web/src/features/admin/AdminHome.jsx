@@ -92,17 +92,17 @@ export function AdminHome() {
           <div className="mt-4 grid grid-cols-3 gap-3 text-center">
             <div>
               <CheckCircle2 className="mx-auto h-5 w-5 text-success" aria-hidden />
-              <p className="font-heading text-2xl font-extrabold text-navy">{ai.approved}</p>
+              <p className="font-heading text-2xl font-bold text-navy">{ai.approved}</p>
               <p className="text-xs">approved</p>
             </div>
             <div>
               <Pencil className="mx-auto h-5 w-5 text-navy" aria-hidden />
-              <p className="font-heading text-2xl font-extrabold text-navy">{ai.edited}</p>
+              <p className="font-heading text-2xl font-bold text-navy">{ai.edited}</p>
               <p className="text-xs">edited first</p>
             </div>
             <div>
               <XCircle className="mx-auto h-5 w-5 text-red-dark" aria-hidden />
-              <p className="font-heading text-2xl font-extrabold text-navy">{ai.rejected}</p>
+              <p className="font-heading text-2xl font-bold text-navy">{ai.rejected}</p>
               <p className="text-xs">rejected</p>
             </div>
           </div>

@@ -1,9 +1,11 @@
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { useQueries } from '@tanstack/react-query';
 import {
   ArrowRight,
   BookOpen,
   Brain,
+  FlaskConical,
   Flame,
   Map as MapIcon,
   PlayCircle,
@@ -28,15 +30,34 @@ import {
 } from '../../components/ui';
 import { cn } from '../../lib/cn';
 import { useSession } from '../auth/session';
-import { keys, useProgress, useRevisionToday, useSubjectMap, useSubjects } from './api';
+import {
+  isPractical,
+  keys,
+  theoryOnly,
+  useLab,
+  useProgress,
+  useRevisionToday,
+  useSubjectMap,
+  useSubjects,
+} from './api';
 import { QueryError } from '../../components/QueryError';
+import { bouncy, item, stagger } from '../../lib/motion';
 
 // Subject tiles rotate through tints of the A.8 palette (no new colours).
 const SUBJECT_TINTS = [
-  { tile: 'bg-blue/[0.08]', orb: 'bg-blue text-white shadow-[0_3px_0_0_#1F4FB8]' },
+  { tile: 'bg-blue/[0.08]', orb: 'bg-blue text-white shadow-[0_3px_0_0_#9E1360]' },
   { tile: 'bg-gold-tint/70', orb: 'bg-gold text-navy shadow-[0_3px_0_0_#C9A100]' },
   { tile: 'bg-navy/[0.06]', orb: 'bg-navy text-gold shadow-press-navy-sm' },
 ];
+
+const ROMAN = ['I', 'II', 'III', 'IV'];
+
+/** "Year III · Semester 5" from the term the HOD set; null until one is set. */
+export function termLabel(user) {
+  if (!user?.semester) return null;
+  const year = user.yearOfStudy ?? Math.ceil(user.semester / 2);
+  return `Year ${ROMAN[year - 1] ?? year} · Semester ${user.semester}`;
+}
 
 function greeting(now = new Date()) {
   const h = now.getHours();
@@ -70,9 +91,14 @@ function ContinueCard({ subjects }) {
   if (!hit || !topic) {
     return (
       <Card tone="gold" className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        <span className="inline-flex h-14 w-14 shrink-0 animate-float items-center justify-center rounded-2xl bg-gold text-navy shadow-[0_3px_0_0_#C9A100]">
+        <motion.span
+          initial={{ scale: 0, rotate: -90 }}
+          animate={{ scale: 1, rotate: 0 }}
+          transition={bouncy}
+          className="inline-flex h-14 w-14 shrink-0 animate-float items-center justify-center rounded-2xl bg-gold text-navy shadow-[0_3px_0_0_#C9A100]"
+        >
           <Trophy className="h-7 w-7" aria-hidden />
-        </span>
+        </motion.span>
         <EyebrowHeading
           eyebrow="Continue learning"
           title="Every unlocked topic is mastered"
@@ -96,9 +122,13 @@ function ContinueCard({ subjects }) {
       />
       <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 flex-1 items-start gap-4">
-          <span className="hidden h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-white/20 bg-white/10 text-gold backdrop-blur sm:inline-flex">
+          <motion.span
+            animate={{ scale: [1, 1.12, 1] }}
+            transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+            className="hidden h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-white/20 bg-white/10 text-gold sm:inline-flex"
+          >
             <PlayCircle className="h-7 w-7" aria-hidden />
-          </span>
+          </motion.span>
           <div className="min-w-0">
             <p className="eyebrow text-gold">Continue learning</p>
             <h2 className="mt-1 text-xl text-white sm:text-2xl">{topic.title}</h2>
@@ -143,7 +173,7 @@ function SubjectCard({ subject, progress, index }) {
   const tint = SUBJECT_TINTS[index % SUBJECT_TINTS.length];
 
   return (
-    <li>
+    <motion.li {...item} whileHover={{ y: -6 }} whileTap={{ scale: 0.98 }}>
       <Link
         to={`/subjects/${subject.id}`}
         className={cn(
@@ -158,14 +188,16 @@ function SubjectCard({ subject, progress, index }) {
             </p>
             <h3 className="mt-1.5 text-lg leading-snug">{subject.name}</h3>
           </div>
-          <span
+          <motion.span
+            whileHover={{ rotate: [0, -12, 12, 0], scale: 1.12 }}
+            transition={{ duration: 0.5 }}
             className={cn(
               'inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl',
               tint.orb,
             )}
           >
             <BookOpen className="h-5 w-5" aria-hidden />
-          </span>
+          </motion.span>
         </div>
 
         <div className="flex items-center gap-4 px-3 pb-3 pt-4">
@@ -194,7 +226,62 @@ function SubjectCard({ subject, progress, index }) {
           </div>
         </div>
       </Link>
-    </li>
+    </motion.li>
+  );
+}
+
+/** A practical (lab) subject: experiments done, on the roadmap of its theory subject (ADR 0012). */
+function PracticalCard({ subject, theory, index }) {
+  const lab = useLab(subject.id);
+  const total = lab.data?.summary.total ?? 0;
+  const done = lab.data?.summary.done ?? 0;
+  const pct = total ? (done / total) * 100 : 0;
+  const tint = SUBJECT_TINTS[(index + 1) % SUBJECT_TINTS.length];
+  return (
+    <motion.li {...item} whileHover={{ y: -6 }} whileTap={{ scale: 0.98 }}>
+      <Link
+        to={`/labs/${subject.id}`}
+        className={cn(
+          'glass glass-hover block h-full rounded-card p-2 hover:no-underline',
+          focusRing,
+        )}
+      >
+        <div className={cn('flex items-start justify-between gap-3 rounded-2xl p-4', tint.tile)}>
+          <div className="min-w-0">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-navy/70">
+              {subject.code} · Sem {subject.semester}
+            </p>
+            <h3 className="mt-1.5 text-lg leading-snug">{subject.name}</h3>
+            {theory && (
+              <p className="mt-1 text-xs font-semibold text-navy/70">Roadmap: {theory.name}</p>
+            )}
+          </div>
+          <motion.span
+            whileHover={{ rotate: [0, -12, 12, 0], scale: 1.12 }}
+            transition={{ duration: 0.5 }}
+            className={cn(
+              'inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl',
+              tint.orb,
+            )}
+          >
+            <FlaskConical className="h-5 w-5" aria-hidden />
+          </motion.span>
+        </div>
+        <div className="flex items-center gap-4 px-3 pb-3 pt-4">
+          <ProgressRing value={pct} label={`${subject.name} experiments done`} size={60} />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-navy">
+              {lab.isPending ? 'Loading experiments…' : `${done} of ${total} experiments done`}
+            </p>
+            {total > 0 && done === total && (
+              <Badge tone="gold" icon={Trophy} className="mt-2">
+                Complete
+              </Badge>
+            )}
+          </div>
+        </div>
+      </Link>
+    </motion.li>
   );
 }
 
@@ -242,6 +329,10 @@ export function LearnHome() {
   const allSubjects = progress.data?.subjects ?? [];
   const overall = allSubjects.reduce((n, s) => n + s.totalTopics, 0);
   const overallMastered = allSubjects.reduce((n, s) => n + (s.counts.confident ?? 0), 0);
+  const term = termLabel(user);
+  const theory = theoryOnly(subjects.data);
+  const labs = (subjects.data ?? []).filter(isPractical);
+  const subjectById = new Map((subjects.data ?? []).map((s) => [s.id, s]));
 
   return (
     <Page>
@@ -249,13 +340,15 @@ export function LearnHome() {
         <div>
           <p className="eyebrow">{greeting()}</p>
           <h1 className="mt-1">Hello, {user.name.split(' ')[0]}</h1>
-          <p className="mt-1 text-sm">Let&apos;s keep the flow going.</p>
+          <p className="mt-1 text-sm">
+            {term ?? 'Your HOD has not set your semester yet, so all your subjects are shown.'}
+          </p>
         </div>
         {overall > 0 && (
           <ProgressBar
             className="w-full sm:w-64"
             value={(overallMastered / overall) * 100}
-            label="Semester mastery"
+            label={term ? `Semester ${user.semester} mastery` : 'Overall mastery'}
             showValue
             tone="gold"
           />
@@ -271,7 +364,11 @@ export function LearnHome() {
           className="mt-6"
           icon={BookOpen}
           title="No subjects yet"
-          description="Your account has no syllabus version, or no subjects are published for it. Ask your HOD to check your batch."
+          description={
+            term
+              ? `No subjects are set up for ${term} in your syllabus yet. Ask your HOD to check.`
+              : 'Your account has no syllabus version, or no subjects are published for it. Ask your HOD to check your batch.'
+          }
           action={
             <Button as={Link} to="/profile" variant="secondary">
               Check my profile
@@ -280,18 +377,74 @@ export function LearnHome() {
         />
       ) : (
         <div className="mt-6 space-y-6">
-          {progress.data && <StatsRow progress={progress.data} />}
+          <section aria-labelledby="subjects-h">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <EyebrowHeading
+                id="subjects-h"
+                eyebrow={term ?? 'This semester'}
+                title="My subjects"
+              />
+              <Button
+                as={Link}
+                to="/exam-prep"
+                variant="secondary"
+                size="sm"
+                icon={Target}
+                className="hover:no-underline"
+              >
+                Exam prep
+              </Button>
+            </div>
+            {theory.length > 0 && (
+              <>
+                <h3 className="mb-3 flex items-center gap-2 text-base">
+                  <BookOpen className="h-4 w-4" aria-hidden /> Theory
+                </h3>
+                <motion.ul {...stagger} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {theory.map((s, idx) => (
+                    <SubjectCard
+                      key={s.id}
+                      subject={s}
+                      progress={progressOf.get(s.id)}
+                      index={idx}
+                    />
+                  ))}
+                </motion.ul>
+              </>
+            )}
+            {labs.length > 0 && (
+              <>
+                <h3 className="mb-3 mt-6 flex items-center gap-2 text-base">
+                  <FlaskConical className="h-4 w-4" aria-hidden /> Practical
+                </h3>
+                <motion.ul {...stagger} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {labs.map((s, idx) => (
+                    <PracticalCard
+                      key={s.id}
+                      subject={s}
+                      theory={subjectById.get(s.theorySubjectId)}
+                      index={idx}
+                    />
+                  ))}
+                </motion.ul>
+              </>
+            )}
+          </section>
 
-          <ContinueCard subjects={subjects.data} />
+          {theory.length > 0 && <ContinueCard subjects={theory} />}
 
           {due > 0 && (
             <Card tone="gold" className="flex flex-col gap-4 sm:flex-row sm:items-center">
-              <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gold text-navy shadow-[0_3px_0_0_#C9A100]">
+              <motion.span
+                animate={{ rotate: [0, -10, 10, -6, 0], scale: [1, 1.1, 1] }}
+                transition={{ duration: 1.2, repeat: Infinity, repeatDelay: 2.5 }}
+                className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gold text-navy shadow-[0_3px_0_0_#C9A100]"
+              >
                 <Sparkles className="h-6 w-6" aria-hidden />
-              </span>
+              </motion.span>
               <div className="min-w-0 flex-1">
                 <p className="eyebrow">Revision</p>
-                <p className="mt-1 font-heading text-lg font-extrabold text-navy">
+                <p className="mt-1 font-heading text-lg font-bold text-navy">
                   {due} {due === 1 ? 'card is' : 'cards are'} ready for review
                 </p>
                 <p className="text-sm">A few minutes now keeps these topics from fading.</p>
@@ -308,26 +461,7 @@ export function LearnHome() {
             </Card>
           )}
 
-          <section aria-labelledby="subjects-h">
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <EyebrowHeading id="subjects-h" eyebrow="This semester" title="My subjects" />
-              <Button
-                as={Link}
-                to="/exam-prep"
-                variant="secondary"
-                size="sm"
-                icon={Target}
-                className="hover:no-underline"
-              >
-                Exam prep
-              </Button>
-            </div>
-            <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {subjects.data.map((s, idx) => (
-                <SubjectCard key={s.id} subject={s} progress={progressOf.get(s.id)} index={idx} />
-              ))}
-            </ul>
-          </section>
+          {progress.data && <StatsRow progress={progress.data} />}
         </div>
       )}
     </Page>

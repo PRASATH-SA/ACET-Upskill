@@ -1,5 +1,10 @@
 import { rm } from 'node:fs/promises';
-import { RESOURCE_KINDS, STUDENT_VISIBLE_STATUS } from '@acet/shared';
+import {
+  isAdminRole,
+  RESOURCE_KINDS,
+  STUDENT_VISIBLE_STATUS,
+  codeChallengeProblems,
+} from '@acet/shared';
 import { oid } from '../../db/mongoose.js';
 import { facultySubjectIds, isStaff, loadSubject, loadTopic } from '../../lib/access.js';
 import { badRequest, forbidden, notFound } from '../../lib/errors.js';
@@ -99,7 +104,12 @@ export async function updateItem(user, type, id, input) {
     const max = criteria.reduce((n, c) => n + c.points, 0);
     if (passScore > max) throw badRequest(`passScore cannot exceed the total points (${max})`);
   }
-  if (type === 'challenge') await assertChallengeWorks({ ...doc.toObject(), ...input });
+  if (type === 'challenge') {
+    const merged = { ...doc.toObject(), ...input };
+    const problems = codeChallengeProblems(merged);
+    if (problems.length) throw badRequest(problems.join('; '));
+    await assertChallengeWorks(merged);
+  }
   doc.set(input);
   if (doc.source === 'ai') doc.editedAfterAi = true;
   doc.rejectedAt = undefined;
@@ -318,7 +328,7 @@ const COLLECTION = {
  */
 export async function reviewQueue(user, query) {
   let subjectIds;
-  if (user.role === 'admin') subjectIds = query.subjectId ? [query.subjectId] : null;
+  if (isAdminRole(user.role)) subjectIds = query.subjectId ? [query.subjectId] : null;
   else {
     const mine = await facultySubjectIds(user.id);
     if (query.subjectId && !mine.includes(query.subjectId))

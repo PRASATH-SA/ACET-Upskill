@@ -1,9 +1,18 @@
 import { useId } from 'react';
 import { createPortal } from 'react-dom';
+import { motion } from 'framer-motion';
 import { X } from 'lucide-react';
 import { useOverlay } from '../../hooks/useOverlay';
 import { cn } from '../../lib/cn';
+import { bouncy } from '../../lib/motion';
 import { IconButton } from './IconButton';
+
+/** The panel springs up from below and settles, like a game's reward card. */
+const PANEL = {
+  initial: { opacity: 0, y: 60, scale: 0.92 },
+  animate: { opacity: 1, y: 0, scale: 1 },
+  transition: bouncy,
+};
 
 /**
  * Modal dialog: focus is trapped inside, Escape and the backdrop close it, and focus returns
@@ -16,12 +25,15 @@ export function Dialog({ open, onClose, title, description, footer, size = 'md',
   if (!open) return null;
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4">
-      <div
-        className="absolute inset-0 bg-navy/40 backdrop-blur-[6px]"
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="absolute inset-0 bg-navy/40 backdrop-blur-[3px]"
         aria-hidden
         onClick={onClose}
       />
-      <div
+      <motion.div
+        {...PANEL}
         ref={panelRef}
         role="dialog"
         aria-modal="true"
@@ -29,14 +41,14 @@ export function Dialog({ open, onClose, title, description, footer, size = 'md',
         aria-describedby={description ? descId : undefined}
         tabIndex={-1}
         className={cn(
-          'glass-strong flex max-h-[90vh] w-full animate-glass-pop flex-col rounded-t-sheet focus:outline-none sm:rounded-sheet',
+          'glass-strong flex max-h-[90vh] w-full flex-col rounded-t-sheet focus:outline-none sm:rounded-sheet',
           size === 'sm' && 'sm:max-w-sm',
           size === 'md' && 'sm:max-w-lg',
           size === 'lg' && 'sm:max-w-3xl',
           size === 'xl' && 'sm:max-w-5xl',
         )}
       >
-        <div className="flex items-start justify-between gap-4 border-b border-navy/[0.08] px-5 py-4 sm:px-6">
+        <div className="flex items-start justify-between gap-4 border-b border-line px-5 py-4 sm:px-6">
           <div>
             <h2 id={titleId} className="text-lg">
               {title}
@@ -51,11 +63,11 @@ export function Dialog({ open, onClose, title, description, footer, size = 'md',
         </div>
         <div className="overflow-y-auto px-5 py-5 sm:px-6">{children}</div>
         {footer && (
-          <div className="flex flex-wrap justify-end gap-3 border-t border-navy/[0.08] px-5 py-4 sm:px-6">
+          <div className="flex flex-wrap justify-end gap-3 border-t border-line px-5 py-4 sm:px-6">
             {footer}
           </div>
         )}
-      </div>
+      </motion.div>
     </div>,
     document.body,
   );

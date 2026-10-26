@@ -3,6 +3,7 @@ import {
   ApiErrorSchema,
   apiSuccessSchema,
   canTransition,
+  BRAND_COLORS,
   COLORS,
   CONTENT_STATUSES,
   ERROR_CODES,
@@ -117,17 +118,45 @@ describe('env validation (A.3, A.7, A.9)', () => {
   });
 });
 
-describe('design tokens (A.8)', () => {
-  it('matches the ACET palette', () => {
+describe('design tokens (ADR 0010)', () => {
+  it('maps the A.8 names onto the Achariya logo palette', () => {
     expect(COLORS).toMatchObject({
-      navy: '#0F2D5C',
-      red: '#E0262B',
-      blue: '#2F6BEA',
-      gold: '#F5C000',
-      text: '#5B6577',
-      border: '#ECEFF3',
-      surface: '#F8F9FB',
+      navy: '#22355E',
+      red: '#D92D20',
+      blue: '#C81D78',
+      gold: '#F2C014',
+      text: '#5B6478',
+      border: '#F1E4CC',
+      surface: '#FFF8EC',
       card: '#FFFFFF',
     });
+    expect(BRAND_COLORS.brandLogo).toBe('#E02888');
+    expect(BRAND_COLORS.brand).toBe(COLORS.blue);
+  });
+});
+
+describe('roles and student term (ADR 0011)', () => {
+  it('lets the coordinator pass admin checks only', async () => {
+    const { roleAllows } = await import('./enums.js');
+    expect(roleAllows('coordinator', ['admin'])).toBe(true);
+    expect(roleAllows('coordinator', ['faculty', 'admin'])).toBe(true);
+    expect(roleAllows('coordinator', ['mentor'])).toBe(false);
+    expect(roleAllows('admin', ['coordinator'])).toBe(false);
+  });
+
+  it('accepts a semester only inside its year of study', async () => {
+    const { AdminUpdateUserSchema, SetStudentTermSchema } = await import('./schemas/users.js');
+    expect(AdminUpdateUserSchema.safeParse({ yearOfStudy: 3, semester: 5 }).success).toBe(true);
+    expect(AdminUpdateUserSchema.safeParse({ yearOfStudy: 3, semester: 4 }).success).toBe(false);
+    expect(AdminUpdateUserSchema.safeParse({ yearOfStudy: null, semester: null }).success).toBe(
+      true,
+    );
+    const id = 'a'.repeat(24);
+    expect(
+      SetStudentTermSchema.safeParse({ userIds: [id], yearOfStudy: 1, semester: 2 }).success,
+    ).toBe(true);
+    expect(
+      SetStudentTermSchema.safeParse({ userIds: [id], yearOfStudy: 1, semester: 3 }).success,
+    ).toBe(false);
   });
 });

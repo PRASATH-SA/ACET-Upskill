@@ -38,7 +38,7 @@ function Poster({ title, thumb, onPlay, note }) {
           loading="lazy"
         />
       )}
-      <span className="relative inline-flex h-16 w-16 items-center justify-center rounded-full bg-red group-hover:scale-105">
+      <span className="relative inline-flex h-16 w-16 items-center justify-center rounded-full bg-accent shadow-cta group-hover:scale-105">
         <Play className="h-7 w-7 translate-x-0.5" aria-hidden />
       </span>
       {note && (

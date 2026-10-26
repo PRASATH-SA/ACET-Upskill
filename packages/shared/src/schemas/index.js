@@ -9,3 +9,4 @@ export * from './ai.js';
 export * from './explain.js';
 export * from './codelab.js';
 export * from './overview.js';
+export * from './labs.js';

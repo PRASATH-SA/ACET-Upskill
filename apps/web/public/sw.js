@@ -9,7 +9,7 @@
  * - "clear-api-cache" from the page (on sign-out) deletes cached API data, which matters on
  *   shared lab computers.
  */
-const VERSION = 'v1';
+const VERSION = 'v2'; // v2: Achariya logo icons (ADR 0010)
 const SHELL = `skillup-shell-${VERSION}`;
 const STATIC = `skillup-static-${VERSION}`;
 const API = `skillup-api-${VERSION}`;

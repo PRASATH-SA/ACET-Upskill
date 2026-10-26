@@ -1,5 +1,7 @@
 import { cloneElement, useId, useState } from 'react';
+import { motion } from 'framer-motion';
 import { cn } from '../../lib/cn';
+import { bouncy } from '../../lib/motion';
 
 /**
  * Text tooltip on hover and keyboard focus, linked with aria-describedby.
@@ -20,17 +22,21 @@ export function Tooltip({ content, side = 'top', children }) {
       onKeyDown={(e) => e.key === 'Escape' && hide()}
     >
       {cloneElement(children, { 'aria-describedby': open ? id : undefined })}
-      <span
+      <motion.span
         role="tooltip"
         id={id}
         hidden={!open}
+        initial={false}
+        animate={open ? { opacity: 1, scale: 1, y: 0 } : { opacity: 0, scale: 0.8, y: side === 'top' ? 6 : -6 }}
+        transition={bouncy}
+        style={{ x: '-50%' }}
         className={cn(
-          'pointer-events-none absolute left-1/2 z-50 w-max max-w-[16rem] -translate-x-1/2 rounded-xl border border-white/15 bg-navy/90 px-3 py-1.5 shadow-glass-lg backdrop-blur-md text-xs font-medium leading-snug text-white',
+          'pointer-events-none absolute left-1/2 z-50 w-max max-w-[16rem] rounded-md bg-navy px-3 py-1.5 text-xs font-medium leading-snug text-white shadow-glass-lg',
           side === 'top' ? 'bottom-full mb-2' : 'top-full mt-2',
         )}
       >
         {content}
-      </span>
+      </motion.span>
     </span>
   );
 }

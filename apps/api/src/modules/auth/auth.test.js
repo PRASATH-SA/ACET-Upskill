@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { api, makeUser, PASSWORD, refreshCookie } from '../../../test/helpers.js';
 import { env } from '../../config/env.js';
 import { AuditLog } from '../audit/model.js';
-import { SyllabusVersion } from '../org/model.js';
+import { Department, SyllabusVersion } from '../org/model.js';
 import { Subject } from '../syllabus/model.js';
 
 describe('health', () => {
@@ -124,8 +124,9 @@ describe('login, refresh and logout', () => {
   });
 
   it('deactivated users cannot use their access token', async () => {
-    const admin = await makeUser('admin');
-    const s = await makeUser('student');
+    const dept = await Department.create({ name: 'Deact Dept', code: `DD${Date.now() % 100000}` });
+    const admin = await makeUser('admin', { departmentId: dept._id });
+    const s = await makeUser('student', { departmentId: dept._id });
     await api().delete(`/api/v1/users/${s.id}`).set(admin.auth).expect(200);
     const res = await api().get('/api/v1/auth/me').set(s.auth);
     expect(res.status).toBe(401);
@@ -146,7 +147,8 @@ describe('role guard', () => {
   });
 
   it('admin can register users and change roles (audited)', async () => {
-    const admin = await makeUser('admin');
+    const dept = await Department.create({ name: 'Auth Dept', code: `AD${Date.now() % 100000}` });
+    const admin = await makeUser('admin', { departmentId: dept._id });
     const created = await api()
       .post('/api/v1/auth/register')
       .set(admin.auth)
@@ -268,7 +270,8 @@ describe('profile and password', () => {
 
 describe('bulk CSV import', () => {
   it('creates valid students, reports bad rows, and returns temporary passwords', async () => {
-    const admin = await makeUser('admin');
+    const dept = await Department.create({ name: 'CSV Dept', code: `CV${Date.now() % 100000}` });
+    const admin = await makeUser('admin', { departmentId: dept._id });
     const stamp = Date.now();
     const csv = [
       'name,email,password,batch',
@@ -287,6 +290,8 @@ describe('bulk CSV import', () => {
     const bala = res.body.data.created.find((c) => c.user.email.startsWith('bala'));
     expect(bala.temporaryPassword).toBeTypeOf('string');
     expect(bala.user.batch).toBe('2023-27');
+    // A HOD's imports always land in the HOD's department.
+    expect(bala.user.departmentId).toBe(String(dept._id));
     await api()
       .post('/api/v1/auth/login')
       .send({ email: `bala${stamp}@acet.test`, password: bala.temporaryPassword })

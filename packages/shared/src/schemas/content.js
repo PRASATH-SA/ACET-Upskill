@@ -186,3 +186,58 @@ export const BulkReviewSchema = z.object({
     .min(1)
     .max(200),
 });
+
+// ---------- content & quiz CSV (import / export per unit, separated by topics) ----------
+
+/** Lesson rows (one resource per kind per topic) and quiz rows of the content CSV. */
+export const CONTENT_CSV_LESSON_TYPES = [
+  'curiosity',
+  'video',
+  'easy',
+  'tenMark',
+  'realWorld',
+  'workshop',
+];
+export const CONTENT_CSV_QUIZ_TYPES = ['curiosity_question', 'flashcard', 'mcq'];
+export const CONTENT_CSV_TYPES = [...CONTENT_CSV_LESSON_TYPES, ...CONTENT_CSV_QUIZ_TYPES];
+
+/** Answer letters for option_a … option_f (a question has 2–6 options). */
+export const CONTENT_CSV_OPTION_LETTERS = ['a', 'b', 'c', 'd', 'e', 'f'];
+
+/**
+ * Columns of the content CSV, in order. Export and import use the same file, so a teacher can
+ * download a unit, edit it in a spreadsheet and upload it again. `id` and `status` are filled on
+ * export: `id` lets an edited row update its item; `status` is for information only.
+ */
+export const CONTENT_CSV_COLUMNS = [
+  'unit',
+  'unit_title',
+  'topic',
+  'type',
+  'id',
+  'status',
+  'title',
+  'url',
+  'body',
+  'front',
+  'back',
+  'question',
+  ...CONTENT_CSV_OPTION_LETTERS.map((l) => `option_${l}`),
+  'correct',
+  'explanation',
+  ...CONTENT_CSV_OPTION_LETTERS.map((l) => `why_${l}`),
+  'difficulty',
+];
+
+/** GET /subjects/:id/content.csv — the whole subject, or one unit; `template` adds blank rows. */
+export const ContentCsvExportQuerySchema = z.object({
+  unitId: ObjectIdSchema.optional(),
+  template: QueryBoolSchema.default(false),
+});
+
+/** POST /subjects/:id/content-import (multipart `file`) — one unit, or the whole subject. */
+export const ContentCsvImportQuerySchema = z.object({
+  unitId: ObjectIdSchema.optional(),
+  /** Publish every imported item at once (faculty of the subject only), else leave drafts. */
+  publish: QueryBoolSchema.default(false),
+});

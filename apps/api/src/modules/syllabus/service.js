@@ -5,6 +5,7 @@ import { badRequest, conflict, notFound, unprocessable } from '../../lib/errors.
 
 import { audit } from '../audit/service.js';
 import { Flashcard, Question, Resource } from '../content/model.js';
+import { LabExperiment } from '../labs/model.js';
 import { Mastery } from '../practice/model.js';
 import { User } from '../users/model.js';
 import { findCycle, topologicalSort } from './graph.js';
@@ -16,9 +17,11 @@ export async function listSubjects(user, query) {
   const filter = {};
   if (query.semester) filter.semester = query.semester;
   if (user.role === 'student') {
-    // B2.6: a student only sees subjects of their syllabus version.
+    // B2.6: a student only sees subjects of their syllabus version, and by default only those
+    // of the semester their HOD set. Earlier semesters stay reachable with ?semester=.
     if (!user.syllabusVersionId) return [];
     filter.syllabusVersionId = user.syllabusVersionId;
+    if (!query.semester && user.semester) filter.semester = user.semester;
   } else {
     if (query.syllabusVersionId) filter.syllabusVersionId = query.syllabusVersionId;
     if (user.role === 'faculty') filter.facultyIds = user.id;
@@ -42,9 +45,43 @@ async function assertFaculty(ids) {
   if (count !== new Set(ids).size) throw badRequest('facultyIds must be active faculty users');
 }
 
+/**
+ * ADR 0012: a practical subject must name a theory subject of the same syllabus version and has
+ * no units of its own; a theory subject has no theory link. `current` is the stored subject on
+ * update. Returns the input with `theorySubjectId` normalised.
+ */
+async function checkKind(input, current) {
+  const kind = input.kind ?? current?.kind ?? 'theory';
+  const versionId = input.syllabusVersionId ?? current?.syllabusVersionId;
+  if (kind === 'theory') {
+    if (current?.kind === 'practical' && (await LabExperiment.exists({ subjectId: current._id })))
+      throw conflict('Delete the lab experiments before making this a theory subject');
+    return input.kind || input.theorySubjectId !== undefined
+      ? { ...input, theorySubjectId: null }
+      : input;
+  }
+  const theoryId =
+    input.theorySubjectId !== undefined ? input.theorySubjectId : current?.theorySubjectId;
+  if (!theoryId) throw badRequest('A practical subject needs the theory subject it belongs to');
+  const theory = await Subject.findById(theoryId).select('kind syllabusVersionId').lean();
+  if (!theory || theory.kind === 'practical' || (current && sameId(theory._id, current._id)))
+    throw badRequest('theorySubjectId must be a theory subject');
+  if (!sameId(theory.syllabusVersionId, versionId))
+    throw badRequest('The theory subject must be in the same syllabus version');
+  if (current && current.kind !== 'practical' && (await Unit.exists({ subjectId: current._id })))
+    throw conflict('This subject has units; a practical subject uses its theory roadmap instead');
+  if (
+    current &&
+    current.kind !== 'practical' &&
+    (await Subject.exists({ theorySubjectId: current._id }))
+  )
+    throw conflict('Labs are linked to this subject; it must stay a theory subject');
+  return { ...input, theorySubjectId: theoryId };
+}
+
 export async function createSubject(input, actor) {
   await assertFaculty(input.facultyIds);
-  const s = await Subject.create(input);
+  const s = await Subject.create(await checkKind(input));
   await audit({
     actorId: actor.id,
     action: 'subject.create',
@@ -55,9 +92,11 @@ export async function createSubject(input, actor) {
 
 export async function updateSubject(id, input, actor) {
   await assertFaculty(input.facultyIds);
+  const current = await Subject.findById(id).lean();
+  if (!current) throw notFound('Subject');
   const s = await Subject.findByIdAndUpdate(
     id,
-    { $set: input },
+    { $set: await checkKind(input, current) },
     { new: true, runValidators: true },
   );
   if (!s) throw notFound('Subject');
@@ -72,6 +111,10 @@ export async function updateSubject(id, input, actor) {
 
 export async function deleteSubject(id, actor) {
   if (await Topic.exists({ subjectId: id })) throw conflict('Delete the subject topics first');
+  if (await Subject.exists({ theorySubjectId: id }))
+    throw conflict('Labs are linked to this subject; delete or relink them first');
+  if (await LabExperiment.exists({ subjectId: id }))
+    throw conflict('Delete the lab experiments first');
   await Unit.deleteMany({ subjectId: id });
   const s = await Subject.findByIdAndDelete(id);
   if (!s) throw notFound('Subject');
@@ -86,7 +129,11 @@ export async function listUnits(user, subjectId) {
 }
 
 export async function createUnit(user, subjectId, input) {
-  await loadSubject(user, subjectId, 'write');
+  const subject = await loadSubject(user, subjectId, 'write');
+  if (subject.kind === 'practical')
+    throw badRequest(
+      'A practical subject uses its theory subject’s roadmap; add experiments instead',
+    );
   return Unit.create({ ...input, subjectId });
 }
 

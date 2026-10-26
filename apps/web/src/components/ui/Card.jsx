@@ -1,16 +1,17 @@
 import { cn } from '../../lib/cn';
+import { fadeUp, motionOf, spring } from '../../lib/motion';
 
 const TONES = {
   default: 'glass',
   navy: 'glass-navy',
   gold: 'glass-gold',
-  surface: 'glass border-white/60 bg-white/40',
+  surface: 'border border-line bg-surface',
   blue: 'glass-blue',
 };
 
 /**
- * Liquid-glass card: 28px radius, translucent fill, light rim and soft elevation.
- * `tone="navy"` is the dark panel. `interactive` lifts the card on hover (for link cards).
+ * Kit card: 14px radius, white surface, 1px line hairline and shadow-card. It rises in when it
+ * mounts. `tone="navy"` is the deep violet feature panel. `interactive` lifts it on hover.
  */
 export function Card({
   as: As = 'section',
@@ -20,13 +21,17 @@ export function Card({
   className,
   ...rest
 }) {
+  const M = motionOf(As);
   return (
-    <As
+    <M
+      {...fadeUp}
+      {...(interactive ? { whileHover: { y: -4, scale: 1.01 }, whileTap: { scale: 0.99 } } : {})}
+      transition={spring}
       className={cn(
         'rounded-card',
         TONES[tone],
-        padded && 'p-5 sm:p-6',
-        interactive && 'glass-hover',
+        padded && 'p-4 sm:p-5',
+        interactive && 'transition-[box-shadow,border-color] hover:border-brand/30 hover:shadow-glass-lg',
         className,
       )}
       {...rest}

@@ -11,12 +11,34 @@ Repo-specific notes (added on top of Part A):
 - Shared contracts already exist in `packages/shared/src`: enums (A.2, A.5), API envelope and
   pagination schemas (A.6), design tokens (A.8), env-variable names (A.3, A.7) and collection names (A.5).
   Import from `@acet/shared`; extend these files rather than redefining values elsewhere.
+- **Design system (2026-10-23):** the UI follows the "E-Learning Kit" design system (violet `brand`,
+  Poppins, white hairline cards on lavender), which replaces the A.8 palette/fonts and the liquid-glass
+  look. The A.8 token names are kept and remapped — see `docs/decisions/0008-e-learning-kit-design-system.md`.
+- **Brand (2026-10-23):** colours come from the Achariya "25 years" logo (`apps/web/public/brand/`):
+  magenta brand `#C81D78`, navy `#22355E`, sunburst yellow, orange, cream page — see
+  `docs/decisions/0010-achariya-brand-palette.md` (supersedes ADR 0008's colours, not its structure).
+- **Motion and game layer (2026-10-23):** every UI component animates with framer-motion (presets in
+  `apps/web/src/lib/motion.js`); students get XP, levels, achievements, combos and confetti derived from
+  `/me/progress` by `gamify()` in `@acet/shared` — see `docs/decisions/0009-motion-and-gamification.md`.
+- **Roles and term (2026-10-25):** `coordinator` (Academic Coordinator) is a super admin that passes every
+  `admin` check (`roleAllows` in `@acet/shared`); a HOD (`admin`) manages only their own department's users.
+  Students carry `yearOfStudy`/`semester`, set per student by the HOD; the learn page and `/me/progress` follow
+  that semester — see `docs/decisions/0011-academic-coordinator-and-student-term.md`.
+- **Theory and practical subjects (2026-10-26):** `subjects.kind` is `theory` or `practical`. A lab links a
+  theory subject (`theorySubjectId`), has no topics, and places experiments (`labExperiments`, linking code-lab
+  problems) on the theory roadmap. Student home splits Theory/Practical; `/labs/:id` and studio `/studio/labs/:id`.
+  Seeded labs: Python Programming Lab (CSC26P03) and DBMS Lab (CS P53) — see `docs/decisions/0012-practical-lab-subjects.md`.
 - `docs/requirements.md` is a placeholder until the real requirements document is added.
 - **Status (2026-10-21):** Phase 0, B1–B5, A1–A5 and F1–F7 are built and tested, plus extras outside Part B
   (question variants/quiz sessions, video learning, explain-it-back, liquid-glass UI — ADR 0004, and the
-  LeetCode-style SQL code lab — ADR 0005). H1 is in progress: the route audit test is done.
-- Every seeded DBMS topic has full content (`apps/api/src/db/dbmsContent.js`). `npm run seed:content` adds
-  any missing content to an existing database without touching faculty edits.
+  LeetCode-style SQL code lab — ADR 0005, the subject root page/overview, and the Python code lab — ADR 0007).
+  H1 is in progress: the route audit test is done.
+- Three seeded subjects with full content: DBMS (`apps/api/src/db/dbmsContent.js`, SQL problems), PSPP
+  CSC26103 Units 1–2 (`psppSyllabus.js`, `psppContent.js`, Python problems; no PYQs yet) and Biology for
+  Computer Engineers BOT26105, Sem 1, Units I–V (`biologySyllabus.js` with CO1–CO5, `biologyContent*.js`
+  one file per unit, YouTube video per topic; no code lab, no PYQs). `npm run seed:content` adds PSPP,
+  Biology and any missing content to an existing database without touching faculty edits.
+- Student pages that span subjects (exam prep, code lab, revision) are split per subject with `SubjectTabs`.
 - E2E: `npm run e2e` (Playwright starts its own API on :4100, dev web on :5174 and preview on :5175).
 - Run tests with `npm test`. API tests use an in-memory MongoDB replica set (no Docker needed).
   Local dev without Docker: `npm run db:dev`, then `npm run seed`, then `npm run dev`. Seed password `Acet@2025`.

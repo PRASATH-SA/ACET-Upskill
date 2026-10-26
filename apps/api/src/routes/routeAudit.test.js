@@ -21,6 +21,7 @@ const BODY_EXEMPT = new Map([
   ['POST /auth/refresh', 'no body; cookie only'],
   ['POST /auth/logout', 'no body; cookie only'],
   ['POST /auth/import-students', 'multipart CSV, parsed and validated row by row'],
+  ['POST /subjects/:id/content-import', 'multipart CSV, parsed and validated row by row'],
   ['POST /materials', 'multipart; UploadMaterialSchema parsed in the controller'],
   ['POST /resources/:id/file', 'multipart video, type sniffed from bytes'],
   ['POST /resources/:id/captions', 'multipart; CaptionUploadSchema parsed in the route'],

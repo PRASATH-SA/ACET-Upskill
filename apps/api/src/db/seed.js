@@ -1,8 +1,9 @@
 /**
- * npm run seed (A.9): 1 admin, 2 faculty, 1 mentor, 10 students, the CSE Sem 5 syllabus version,
+ * npm run seed (A.9): 1 academic coordinator, 1 admin (HOD), 2 faculty, 1 mentor, 10 students, the CSE Sem 5 syllabus version,
  * and the DBMS subject (Unit 3 Database Design + Indexing in Unit 4) with links.
- * Also publishes demo content for every topic (seedContent.js: video, notes, flashcards, MCQs,
- * code-lab problems) so the student flow can be tried at once.
+ * the PSPP subject (CSC26103, Units 1–2) and Biology for Computer Engineers (BOT26105, Sem 1,
+ * Units I–V). Every topic gets published demo content
+ * (seedContent.js: video, notes, flashcards, MCQs, code-lab problems, subject overview).
  *
  *   npm run seed            refuses to run if users already exist
  *   npm run seed -- --reset drops the database first (never allowed in production)
@@ -20,7 +21,10 @@ import { User } from '../modules/users/model.js';
 import { Workshop } from '../modules/workshops/model.js';
 import { connectMongo, disconnectMongo } from './connect.js';
 import { createDbmsSubject } from './dbmsSyllabus.js';
-import { seedDbmsContent } from './seedContent.js';
+import { createBiologySubject } from './biologySyllabus.js';
+import { ensureLabs } from './labSeed.js';
+import { createPsppSubject } from './psppSyllabus.js';
+import { seedSubjectContent } from './seedContent.js';
 
 export const SEED_PASSWORD = 'Acet@2025';
 const DOMAIN = 'acet.test';
@@ -37,6 +41,13 @@ export async function seed() {
   const passwordHash = await hashPassword(SEED_PASSWORD);
   const base = { passwordHash, departmentId: dept._id };
 
+  // Super admin over every department; belongs to none.
+  const coordinator = await User.create({
+    passwordHash,
+    name: 'Academic Coordinator',
+    email: `coordinator@${DOMAIN}`,
+    role: 'coordinator',
+  });
   const admin = await User.create({
     ...base,
     name: 'HOD CSE',
@@ -318,9 +329,47 @@ export async function seed() {
     })),
   ]);
 
-  await seedDbmsContent({ subjectId: subject._id, facultyId: faculty1._id, now });
+  await seedSubjectContent({ subjectId: subject._id, facultyId: faculty1._id, pack: 'dbms', now });
 
-  return { admin, faculty: [faculty1, faculty2], mentor, students, subject, version };
+  // PSPP (CSC26103), Units 1 and 2, with Python code-lab problems.
+  const pspp = await createPsppSubject({
+    syllabusVersionId: version._id,
+    facultyIds: [faculty1._id, faculty2._id],
+  });
+  await seedSubjectContent({
+    subjectId: pspp.subject._id,
+    facultyId: faculty1._id,
+    pack: 'pspp',
+    now,
+  });
+
+  // Biology for Computer Engineers (BOT26105), Semester 1, Units I–V.
+  const biology = await createBiologySubject({
+    syllabusVersionId: version._id,
+    facultyIds: [faculty1._id, faculty2._id],
+  });
+  await seedSubjectContent({
+    subjectId: biology.subject._id,
+    facultyId: faculty1._id,
+    pack: 'biology',
+    now,
+  });
+
+  // Practical subjects (ADR 0012): Python and DBMS labs on the PSPP and DBMS roadmaps.
+  const labs = await ensureLabs(version._id, faculty1._id);
+
+  return {
+    coordinator,
+    admin,
+    faculty: [faculty1, faculty2],
+    mentor,
+    students,
+    subject,
+    pspp: pspp.subject,
+    biology: biology.subject,
+    labs: labs.map((l) => l.subject),
+    version,
+  };
 }
 
 async function main() {
@@ -347,11 +396,12 @@ async function main() {
     const r = await seed();
     const lines = [
       'Seed complete. All accounts use the password: ' + SEED_PASSWORD,
+      `  coordinator ${r.coordinator.email}`,
       `  admin    ${r.admin.email}`,
       `  faculty  ${r.faculty.map((f) => f.email).join(', ')}`,
       `  mentor   ${r.mentor.email}`,
       `  students ${r.students[0].email} … ${r.students[r.students.length - 1].email}`,
-      `  subject  ${r.subject.code} ${r.subject.name} (${r.subject._id})`,
+      `  subjects ${[r.subject, r.pspp, r.biology].map((s) => `${s.code} ${s.name}`).join(', ')}`,
     ];
     process.stdout.write(lines.join('\n') + '\n');
   } finally {

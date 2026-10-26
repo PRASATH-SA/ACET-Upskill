@@ -8,6 +8,7 @@ import {
   RateReviewSchema,
   SubmitQuizSchema,
   SubmitQuizSessionSchema,
+  TopicStepsSchema,
 } from '@acet/shared';
 import { assertCanAccessUser } from '../../lib/access.js';
 import { asyncHandler as h, created, ok, validate } from '../../lib/http.js';
@@ -25,7 +26,19 @@ export function practiceRoutes() {
   r.post(
     '/topics/:id/open',
     validate(P),
-    h(async (req, res) => ok(res, { mastery: await s.openTopic(currentUser(req), req.params.id) })),
+    h(async (req, res) => {
+      const user = currentUser(req);
+      const mastery = await s.openTopic(user, req.params.id);
+      ok(res, { mastery, steps: await s.topicSteps(user, req.params.id) });
+    }),
+  );
+  r.put(
+    '/topics/:id/steps',
+    student,
+    validate({ ...P, body: TopicStepsSchema }),
+    h(async (req, res) =>
+      ok(res, await s.saveTopicSteps(currentUser(req), req.params.id, req.body)),
+    ),
   );
   r.get(
     '/topics/:id/quiz',

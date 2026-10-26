@@ -14,24 +14,26 @@ const STATE_TONE = {
 function TopicLinks({ title, items, onSelect, empty }) {
   return (
     <div>
-      <h3 className="text-sm font-bold uppercase tracking-wider text-navy">{title}</h3>
+      <h3 className="text-xs font-bold uppercase tracking-[0.15em] text-navy">{title}</h3>
       {items.length === 0 ? (
-        <p className="mt-1 text-sm">{empty}</p>
+        <p className="mt-2 text-sm">{empty}</p>
       ) : (
-        <ul className="mt-2 space-y-2">
+        <ul className="mt-3 space-y-3">
           {items.map((t) => (
             <li key={t.id}>
               <button
                 type="button"
                 onClick={() => onSelect(t.id)}
-                className="group flex min-h-[44px] w-full items-start gap-2 rounded-xl border border-line px-3 py-2 text-left hover:border-blue focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue"
+                className="group flex min-h-[44px] w-full items-start gap-3 rounded-2xl border border-line bg-white p-4 text-left transition-colors hover:border-blue focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue"
               >
                 <CornerDownRight className="mt-1 h-4 w-4 shrink-0 text-navy" aria-hidden />
                 <span>
                   <span className="block text-sm font-semibold text-navy group-hover:text-blue-dark">
                     {t.title}
                   </span>
-                  {t.reason && <span className="block text-xs">{t.reason}</span>}
+                  {t.reason && (
+                    <span className="mt-1 block text-xs leading-relaxed">{t.reason}</span>
+                  )}
                 </span>
               </button>
             </li>
@@ -43,10 +45,10 @@ function TopicLinks({ title, items, onSelect, empty }) {
 }
 
 /**
- * Selected-topic panel (F3): summary, builds on / unlocks, exam insight and the one CTA.
- * @param {{ map: object, node?: object, topicId: string|null, examFrequency?: number, years?: number, onSelect: (id: string) => void }} props
+ * Selected-topic panel (F3): summary, builds on / unlocks and the one CTA.
+ * @param {{ map: object, node?: object, topicId: string|null, onSelect: (id: string) => void }} props
  */
-export function TopicPanel({ map, node, topicId, examFrequency, years = 5, onSelect }) {
+export function TopicPanel({ map, node, topicId, onSelect }) {
   const topic = map.topics.find((t) => t.id === topicId);
   if (!topic) {
     return (
@@ -64,19 +66,19 @@ export function TopicPanel({ map, node, topicId, examFrequency, years = 5, onSel
   const unit = map.units.find((u) => u.id === topic.unitId);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-7">
       <div>
         <EyebrowHeading eyebrow="Selected topic" title={topic.title} level={2} />
-        <div className="mt-2 flex flex-wrap gap-2">
+        <div className="mt-3 flex flex-wrap gap-2">
           <Badge tone={STATE_TONE[state]}>{STATE_LABEL[state]}</Badge>
           {node?.mastery && <Badge>{MASTERY_LABEL[node.mastery]}</Badge>}
           {unit && <Badge>Unit {unit.number}</Badge>}
         </div>
-        {topic.summary && <p className="mt-3 text-sm">{topic.summary}</p>}
+        {topic.summary && <p className="mt-4 text-sm leading-relaxed">{topic.summary}</p>}
       </div>
 
       {state === 'locked' ? (
-        <Card tone="surface" padded={false} className="p-4">
+        <Card tone="surface" padded={false} className="p-5">
           <p className="flex items-center gap-2 font-semibold text-navy">
             <Lock className="h-4 w-4" aria-hidden /> Finish{' '}
             {missing.map((m) => m.title).join(', ') || 'the earlier topics'} first
@@ -101,17 +103,6 @@ export function TopicPanel({ map, node, topicId, examFrequency, years = 5, onSel
         >
           {state === 'mastered' ? 'Review topic' : 'Start topic'}
         </Button>
-      )}
-
-      {examFrequency !== undefined && (
-        <Card tone="navy" padded={false} className="p-4">
-          <p className="eyebrow text-gold">Exam insight</p>
-          <p className="mt-1 font-heading text-lg font-bold text-white">
-            {examFrequency > 0
-              ? `Asked ${examFrequency}× in ${years} years`
-              : `Not asked in the last ${years} years`}
-          </p>
-        </Card>
       )}
 
       <TopicLinks

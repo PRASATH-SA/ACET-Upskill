@@ -1,13 +1,21 @@
 import { z } from 'zod';
 import { RoleSchema } from '../enums.js';
 import { PaginationQuerySchema } from '../api.js';
-import { ObjectIdSchema } from './common.js';
+import {
+  ObjectIdSchema,
+  SemesterSchema,
+  TERM_MISMATCH,
+  YearOfStudySchema,
+  termMatchesYear,
+} from './common.js';
 import { PasswordSchema } from './auth.js';
 
 export const ListUsersQuerySchema = PaginationQuerySchema.extend({
   role: RoleSchema.optional(),
   departmentId: ObjectIdSchema.optional(),
   syllabusVersionId: ObjectIdSchema.optional(),
+  yearOfStudy: YearOfStudySchema.optional(),
+  semester: SemesterSchema.optional(),
   q: z.string().trim().max(100).optional(),
 });
 
@@ -19,10 +27,22 @@ export const AdminUpdateUserSchema = z
     batch: z.string().trim().max(40).nullable(),
     syllabusVersionId: ObjectIdSchema.nullable(),
     mentorId: ObjectIdSchema.nullable(),
+    yearOfStudy: YearOfStudySchema.nullable(),
+    semester: SemesterSchema.nullable(),
     isActive: z.boolean(),
   })
   .partial()
-  .refine((v) => Object.keys(v).length > 0, 'at least one field is required');
+  .refine((v) => Object.keys(v).length > 0, 'at least one field is required')
+  .refine(termMatchesYear, TERM_MISMATCH);
+
+/** The HOD sets the year of study and semester of many students at once. */
+export const SetStudentTermSchema = z
+  .object({
+    userIds: z.array(ObjectIdSchema).min(1).max(500),
+    yearOfStudy: YearOfStudySchema,
+    semester: SemesterSchema,
+  })
+  .refine(termMatchesYear, TERM_MISMATCH);
 
 export const UpdateProfileSchema = z.object({ name: z.string().trim().min(2).max(120) });
 

@@ -1,6 +1,16 @@
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { BarChart3, Bot, BookOpen, ClipboardCheck, Compass, Map as MapIcon } from 'lucide-react';
+import {
+  BarChart3,
+  Bot,
+  BookOpen,
+  ClipboardCheck,
+  Compass,
+  Eye,
+  FileSpreadsheet,
+  FlaskConical,
+  Map as MapIcon,
+} from 'lucide-react';
 import { get } from '../../api/client';
 import { Page } from '../../components/layout/AppShell';
 import {
@@ -119,48 +129,83 @@ export function StudioHome() {
                 <Card className="h-full">
                   <p className="text-xs font-semibold">
                     {s.code} · Semester {s.semester}
+                    {s.kind === 'practical' && ' · Practical'}
                   </p>
                   <h3 className="mt-1 text-lg">{s.name}</h3>
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <Button
-                      as={Link}
-                      to={`/studio/subjects/${s.id}`}
-                      size="sm"
-                      icon={MapIcon}
-                      className="hover:no-underline"
-                    >
-                      Build the map
-                    </Button>
-                    <Button
-                      as={Link}
-                      to={`/studio/subjects/${s.id}/insights`}
-                      size="sm"
-                      variant="secondary"
-                      icon={BarChart3}
-                      className="hover:no-underline"
-                    >
-                      Class insights
-                    </Button>
-                    <Button
-                      as={Link}
-                      to={`/studio/subjects/${s.id}/overview`}
-                      size="sm"
-                      variant="secondary"
-                      icon={Compass}
-                      className="hover:no-underline"
-                    >
-                      Subject overview
-                    </Button>
-                    <Button
-                      as={Link}
-                      to={`/studio/review?subjectId=${s.id}`}
-                      size="sm"
-                      variant="ghost"
-                      className="hover:no-underline"
-                    >
-                      Review drafts
-                    </Button>
-                  </div>
+                  {s.kind === 'practical' ? (
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <Button
+                        as={Link}
+                        to={`/studio/labs/${s.id}`}
+                        size="sm"
+                        icon={FlaskConical}
+                        className="hover:no-underline"
+                      >
+                        Experiments
+                      </Button>
+                      <Button
+                        as={Link}
+                        to={`/labs/${s.id}`}
+                        size="sm"
+                        variant="secondary"
+                        icon={Eye}
+                        className="hover:no-underline"
+                      >
+                        Student view
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <Button
+                        as={Link}
+                        to={`/studio/subjects/${s.id}`}
+                        size="sm"
+                        icon={MapIcon}
+                        className="hover:no-underline"
+                      >
+                        Build the map
+                      </Button>
+                      <Button
+                        as={Link}
+                        to={`/studio/subjects/${s.id}/insights`}
+                        size="sm"
+                        variant="secondary"
+                        icon={BarChart3}
+                        className="hover:no-underline"
+                      >
+                        Class insights
+                      </Button>
+                      <Button
+                        as={Link}
+                        to={`/studio/subjects/${s.id}/overview`}
+                        size="sm"
+                        variant="secondary"
+                        icon={Compass}
+                        className="hover:no-underline"
+                      >
+                        Subject overview
+                      </Button>
+                      <Button
+                        as={Link}
+                        to={`/studio/subjects/${s.id}/content`}
+                        size="sm"
+                        variant="secondary"
+                        icon={FileSpreadsheet}
+                        className="hover:no-underline"
+                      >
+                        Content & quiz CSV
+                      </Button>
+                      <Button
+                        as={Link}
+                        to={`/studio/review?subjectId=${s.id}`}
+                        size="sm"
+                        variant="ghost"
+                        className="hover:no-underline"
+                      >
+                        Review drafts
+                      </Button>
+                    </div>
+                  )}
                 </Card>
               </li>
             ))}

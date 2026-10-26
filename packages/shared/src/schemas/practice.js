@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { FlashcardResultSchema, ReviewRatingSchema, SIMPLE_RATINGS } from '../enums.js';
+import {
+  FlashcardResultSchema,
+  LearningStepSchema,
+  ReviewRatingSchema,
+  SIMPLE_RATINGS,
+} from '../enums.js';
 import { ObjectIdSchema } from './common.js';
 
 export const QuizQuerySchema = z.object({
@@ -43,3 +48,16 @@ export const RateReviewSchema = z
   .object({ rating: ReviewRatingSchema.optional(), result: FlashcardResultSchema.optional() })
   .refine((v) => Boolean(v.rating) !== Boolean(v.result), 'Send either rating or result')
   .transform((v) => ({ rating: v.rating ?? SIMPLE_RATINGS[v.result] }));
+
+/**
+ * PUT /topics/:id/steps — where a student is on a topic's six-step page, so it resumes there on
+ * any device. `done` steps are added (never removed); `last` is the step they were reading.
+ */
+export const TopicStepsSchema = z
+  .object({
+    done: z.array(LearningStepSchema).max(6).optional(),
+    last: LearningStepSchema.optional(),
+    /** Pixels scrolled into the `last` step's section, to return to the exact spot. */
+    offset: z.number().int().min(0).max(200000).optional(),
+  })
+  .refine((v) => v.done?.length || v.last, 'send done steps or the last step');

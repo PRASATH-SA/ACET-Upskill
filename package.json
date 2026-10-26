@@ -20,6 +20,7 @@
     "db:dev": "npm run db:dev -w @acet/api",
     "seed": "npm run seed -w @acet/api",
     "seed:content": "npm run seed:content -w @acet/api",
+    "create:coordinator": "npm run create:coordinator -w @acet/api --",
     "ai:pull": "node scripts/ai-pull.js",
     "test": "npm run test --workspaces --if-present",
     "lint": "eslint .",

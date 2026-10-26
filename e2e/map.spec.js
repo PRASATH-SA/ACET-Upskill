@@ -69,8 +69,11 @@ test.describe('F3 concept map', () => {
   test('nodes are reachable by keyboard and Enter selects them', async ({ page }) => {
     await openDbmsMap(page);
     const first = page.locator('[data-topic-id]').first();
-    await first.focus();
-    await expect(first).toBeFocused();
+    // React Flow re-renders once it has measured the nodes, which can drop an early focus.
+    await expect(async () => {
+      await first.focus();
+      await expect(first).toBeFocused({ timeout: 500 });
+    }).toPass({ timeout: 10_000 });
     await page.keyboard.press('Tab');
     const second = page.locator('[data-topic-id]').nth(1);
     await expect(second).toBeFocused();

@@ -181,35 +181,27 @@ describe('graph builder', () => {
     ]);
   });
 
-  it('uses the exact A.8 colours per state', () => {
-    expect(MAP_NODE_STYLE.mastered.fill).toBe('#F5C000');
-    expect(MAP_NODE_STYLE.current.fill).toBe('#2F6BEA');
-    expect(MAP_NODE_STYLE.unlocked).toMatchObject({ fill: '#FFFFFF', border: '#2F6BEA' });
-    expect(MAP_NODE_STYLE.needsRevision.fill).toBe('#F5C000');
+  it('uses the exact token colours per state', () => {
+    expect(MAP_NODE_STYLE.mastered.fill).toBe('#F2C014');
+    expect(MAP_NODE_STYLE.current.fill).toBe('#C81D78');
+    expect(MAP_NODE_STYLE.unlocked).toMatchObject({ fill: '#FFFFFF', border: '#C81D78' });
+    expect(MAP_NODE_STYLE.needsRevision.fill).toBe('#F2C014');
   });
 });
 
 describe('selected-topic panel', () => {
   const wrap = (ui) => render(<MemoryRouter>{ui}</MemoryRouter>);
 
-  it('shows the start CTA, exam insight and connections for an open topic', async () => {
+  it('shows the start CTA and connections for an open topic, without exam insight', async () => {
     const onSelect = vi.fn();
-    wrap(
-      <TopicPanel
-        map={map}
-        node={me.nodes[1]}
-        topicId="keys"
-        examFrequency={4}
-        onSelect={onSelect}
-      />,
-    );
+    wrap(<TopicPanel map={map} node={me.nodes[1]} topicId="keys" onSelect={onSelect} />);
     expect(screen.getByText('Selected topic')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Keys' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Start topic' })).toHaveAttribute(
       'href',
       '/topics/keys',
     );
-    expect(screen.getByText('Asked 4× in 5 years')).toBeInTheDocument();
+    expect(screen.queryByText(/Exam insight/i)).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: /Normalization/ }));
     expect(onSelect).toHaveBeenCalledWith('norm');
   });

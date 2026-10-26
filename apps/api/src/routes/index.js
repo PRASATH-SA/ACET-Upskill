@@ -4,6 +4,8 @@ import { userLimiter } from '../middleware/rateLimit.js';
 import { requireAuth } from '../middleware/auth.js';
 import { authRoutes } from '../modules/auth/routes.js';
 import { contentRoutes } from '../modules/content/routes.js';
+import { contentCsvRoutes } from '../modules/contentcsv/routes.js';
+import { labRoutes } from '../modules/labs/routes.js';
 import { examRoutes } from '../modules/exam/routes.js';
 import { insightRoutes } from '../modules/insights/routes.js';
 import { mentorRoutes } from '../modules/mentor/routes.js';
@@ -42,6 +44,8 @@ export function apiRouter() {
   r.use('/', orgRoutes());
   r.use('/', syllabusRoutes());
   r.use('/', contentRoutes());
+  r.use('/', contentCsvRoutes());
+  r.use('/', labRoutes());
   r.use('/', practiceRoutes());
   r.use('/', examRoutes());
   r.use('/', workshopRoutes());

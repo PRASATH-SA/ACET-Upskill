@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
+import { quizStars } from '@acet/shared';
 import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -27,6 +29,10 @@ import { cn } from '../../../lib/cn';
 import { useSession } from '../../auth/session';
 import { keys, useTopicPage } from '../api';
 import { MASTERY_LABEL } from '../map/graph';
+import { bouncy, shake, soft } from '../../../lib/motion';
+import { celebrate } from '../game/celebrate';
+import { useCelebrateWhen } from '../game/Celebration';
+import { ComboMeter, StarRating } from '../game/GameWidgets';
 
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
 
@@ -39,12 +45,25 @@ function Options({ question, selected, onSelect, result }) {
           const isCorrect = result && i === result.correctIndex;
           const isWrongPick = result && i === result.selectedIndex && !result.correct;
           return (
-            <label
+            <motion.label
               key={i}
+              initial={{ opacity: 0, x: -16 }}
+              animate={
+                isWrongPick
+                  ? { opacity: 1, x: shake.x }
+                  : isCorrect
+                    ? { opacity: 1, x: 0, scale: [1, 1.04, 1] }
+                    : { opacity: 1, x: 0 }
+              }
+              transition={
+                isWrongPick ? shake.transition : { ...soft, delay: result ? 0 : 0.05 * i }
+              }
+              whileHover={result ? undefined : { x: 6 }}
+              whileTap={result ? undefined : { scale: 0.98 }}
               className={cn(
                 'flex min-h-[52px] items-start gap-3 rounded-2xl border-2 px-4 py-3 transition-colors',
-                result ? 'cursor-default' : 'cursor-pointer hover:border-blue',
-                selected === i && !result ? 'border-blue bg-blue/5' : 'border-line',
+                result ? 'cursor-default' : 'cursor-pointer hover:border-brand',
+                selected === i && !result ? 'border-brand bg-brand-soft' : 'border-line bg-card',
                 isCorrect && 'border-success bg-success/10',
                 isWrongPick && 'border-red bg-red/5',
                 'focus-within:ring-2 focus-within:ring-blue focus-within:ring-offset-2',
@@ -58,15 +77,19 @@ function Options({ question, selected, onSelect, result }) {
                 disabled={Boolean(result)}
                 onChange={() => onSelect(i)}
               />
-              <span
+              <motion.span
                 aria-hidden
+                animate={
+                  selected === i ? { scale: [1, 1.3, 1], rotate: [0, -10, 0] } : { scale: 1 }
+                }
+                transition={bouncy}
                 className={cn(
                   'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-xs font-bold',
-                  selected === i ? 'border-blue bg-blue text-white' : 'border-line text-navy',
+                  selected === i ? 'border-brand bg-brand text-white' : 'border-line text-navy',
                 )}
               >
                 {i + 1}
-              </span>
+              </motion.span>
               <span className="flex-1 text-navy">
                 <span className="sr-only">Option {LETTERS[i]}: </span>
                 {opt}
@@ -77,15 +100,21 @@ function Options({ question, selected, onSelect, result }) {
                 )}
               </span>
               {isCorrect && (
-                <CheckCircle2
-                  className="h-5 w-5 shrink-0 text-success"
-                  aria-label="Correct answer"
-                />
+                <motion.span
+                  initial={{ scale: 0, rotate: -90 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={bouncy}
+                >
+                  <CheckCircle2
+                    className="h-5 w-5 shrink-0 text-success"
+                    aria-label="Correct answer"
+                  />
+                </motion.span>
               )}
               {isWrongPick && (
                 <XCircle className="h-5 w-5 shrink-0 text-red-dark" aria-label="Your answer" />
               )}
-            </label>
+            </motion.label>
           );
         })}
       </div>
@@ -137,6 +166,19 @@ export function QuizPage() {
   const result = phase === 'review' && q ? resultOf.get(q.id) : null;
   const last = index === questions.length - 1;
   const allAnswered = questions.every((x) => answers[x.id] !== undefined);
+  // Combo: consecutive correct answers up to the question being reviewed.
+  let combo = 0;
+  if (phase === 'review') {
+    for (let k = index; k >= 0 && resultOf.get(questions[k]?.id)?.correct; k -= 1) combo += 1;
+  }
+  const stars = submit.data ? quizStars(submit.data.score) : 0;
+  useCelebrateWhen(phase === 'summary' && stars >= 2, { size: stars === 3 ? 'lg' : 'md' });
+
+  // A small burst for every correct answer as it is revealed, bigger on a combo.
+  useEffect(() => {
+    if (result?.correct) celebrate({ size: combo >= 3 ? 'md' : 'sm', y: 0.35 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [result?.questionId]);
 
   const goNext = () => {
     if (phase === 'answer') {
@@ -210,6 +252,23 @@ export function QuizPage() {
     return (
       <Page>
         <EyebrowHeading eyebrow="Quiz complete" title={title} level={1} />
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={bouncy}
+          className="mt-6 flex flex-col items-center gap-2 rounded-card border border-line bg-card p-6 text-center shadow-card"
+        >
+          <StarRating stars={stars} label={`${stars} of 3 stars`} />
+          <p className="font-heading text-lg font-bold text-navy">
+            {stars === 3
+              ? 'Flawless!'
+              : stars === 2
+                ? 'Great run!'
+                : stars === 1
+                  ? 'Good start, keep going'
+                  : 'Every attempt counts. Try again!'}
+          </p>
+        </motion.div>
         <div className="mt-6 grid gap-4 sm:grid-cols-3">
           <StatTile
             label="Score"
@@ -293,14 +352,17 @@ export function QuizPage() {
         </Link>
         <div className="mt-2 flex items-center justify-between gap-3">
           <p className="eyebrow">{phase === 'review' ? 'Review' : 'Practice quiz'}</p>
-          {q.difficulty && <Badge>{q.difficulty}</Badge>}
+          <div className="flex items-center gap-2">
+            <ComboMeter combo={combo} />
+            {q.difficulty && <Badge>{q.difficulty}</Badge>}
+          </div>
         </div>
         <ProgressBar
           className="mt-3"
           value={((index + (phase === 'review' ? 1 : 0)) / questions.length) * 100}
           label={`Question ${index + 1} of ${questions.length}`}
         />
-        <Card className="mt-5">
+        <Card key={`${phase}-${q.id}`} className="mt-5">
           <h1 className="text-lg sm:text-xl" aria-live="polite">
             {q.stem}
           </h1>
@@ -313,7 +375,10 @@ export function QuizPage() {
             />
           </div>
           {result && (
-            <div
+            <motion.div
+              initial={{ opacity: 0, y: 12, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={bouncy}
               role="status"
               className={cn(
                 'mt-5 rounded-2xl p-4 text-sm',
@@ -330,7 +395,7 @@ export function QuizPage() {
                 </p>
               )}
               {result.explanation && <p className="mt-1">{result.explanation}</p>}
-            </div>
+            </motion.div>
           )}
           {!isStudent && phase === 'answer' && (
             <p className="mt-4 text-sm">Preview mode: only students can submit quizzes.</p>

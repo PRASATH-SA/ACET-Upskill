@@ -1,13 +1,16 @@
 import { cloneElement, forwardRef, useId } from 'react';
 import { ChevronDown } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { bouncy, shake } from '../../lib/motion';
 import { cn } from '../../lib/cn';
 
 const control =
-  'block w-full rounded-xl border bg-white/70 px-4 text-navy shadow-[inset_0_1px_2px_rgb(15_45_92/0.06)] backdrop-blur-md placeholder:text-body/70 transition-[border-color,box-shadow,background-color] focus:border-blue focus:bg-white/90 focus:outline-none focus:ring-4 focus:ring-blue/15 disabled:cursor-not-allowed disabled:bg-navy/5';
+  'block w-full rounded-md border bg-card px-4 text-navy placeholder:text-ink-subtle transition-[border-color,box-shadow] focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/15 disabled:cursor-not-allowed disabled:bg-surface';
 
 /**
  * Label, hint and error around one form control, wired with aria-describedby / aria-invalid.
  * Every control below uses it, so react-hook-form's `register()` spreads straight onto them.
+ * The field shakes when an error appears and the message pops in.
  */
 function Field({ label, hint, error, required, hideLabel, className, children }) {
   const id = useId();
@@ -15,7 +18,11 @@ function Field({ label, hint, error, required, hideLabel, className, children })
   const errorId = error ? `${id}-error` : undefined;
   const describedBy = [hintId, errorId].filter(Boolean).join(' ') || undefined;
   return (
-    <div className={className}>
+    <motion.div
+      className={className}
+      animate={error ? { x: shake.x } : { x: 0 }}
+      transition={shake.transition}
+    >
       <label
         htmlFor={id}
         className={cn('mb-1.5 block text-sm font-semibold text-navy', hideLabel && 'sr-only')}
@@ -40,11 +47,18 @@ function Field({ label, hint, error, required, hideLabel, className, children })
         </p>
       )}
       {error && (
-        <p id={errorId} className="mt-1 text-xs font-semibold text-red-dark" role="alert">
+        <motion.p
+          initial={{ opacity: 0, y: -4, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={bouncy}
+          id={errorId}
+          className="mt-1 text-xs font-semibold text-red-dark"
+          role="alert"
+        >
           {error}
-        </p>
+        </motion.p>
       )}
-    </div>
+    </motion.div>
   );
 }
 
@@ -59,7 +73,7 @@ export const Input = forwardRef(function Input(
         className={cn(
           control,
           'min-h-[44px]',
-          error ? 'border-red' : 'border-navy/15 hover:border-navy/35',
+          error ? 'border-red' : 'border-line hover:border-brand/40',
           inputClassName,
         )}
         {...rest}
@@ -80,7 +94,7 @@ export const Textarea = forwardRef(function Textarea(
         className={cn(
           control,
           'py-3 leading-body',
-          error ? 'border-red' : 'border-navy/15 hover:border-navy/35',
+          error ? 'border-red' : 'border-line hover:border-brand/40',
         )}
         {...rest}
       />
@@ -88,9 +102,12 @@ export const Textarea = forwardRef(function Textarea(
   );
 });
 
-/** Native select (best for keyboard and screen readers). `options`: [{ value, label }]. */
+/**
+ * Native select (best for keyboard and screen readers). `options`: [{ value, label }].
+ * `compact` makes it shorter for dense toolbars (40px on phones, 36px from sm).
+ */
 export const Select = forwardRef(function Select(
-  { label, hint, error, required, hideLabel, className, options, placeholder, ...rest },
+  { label, hint, error, required, hideLabel, className, options, placeholder, compact, ...rest },
   ref,
 ) {
   return (
@@ -100,6 +117,7 @@ export const Select = forwardRef(function Select(
         error={error}
         options={options}
         placeholder={placeholder}
+        compact={compact}
         {...rest}
       />
     </Field>
@@ -107,7 +125,7 @@ export const Select = forwardRef(function Select(
 });
 
 const SelectControl = forwardRef(function SelectControl(
-  { error, options, placeholder, ...rest },
+  { error, options, placeholder, compact, ...rest },
   ref,
 ) {
   return (
@@ -116,8 +134,9 @@ const SelectControl = forwardRef(function SelectControl(
         ref={ref}
         className={cn(
           control,
-          'min-h-[44px] appearance-none pr-10',
-          error ? 'border-red' : 'border-navy/15 hover:border-navy/35',
+          compact ? 'min-h-[40px] text-sm sm:min-h-[36px]' : 'min-h-[44px]',
+          'appearance-none pr-10',
+          error ? 'border-red' : 'border-line hover:border-brand/40',
         )}
         {...rest}
       >

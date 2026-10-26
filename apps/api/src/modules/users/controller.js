@@ -6,7 +6,7 @@ import * as users from './service.js';
 
 export async function list(req, res) {
   const query = q(req, ListUsersQuerySchema);
-  const { items, total } = await users.listUsers(query);
+  const { items, total } = await users.listUsers(currentUser(req), query);
   ok(res, items, pageMeta(query.page, query.limit, total));
 }
 
@@ -17,11 +17,15 @@ export async function get(req, res) {
 }
 
 export async function update(req, res) {
-  ok(res, await users.adminUpdateUser(req.params.id, req.body, currentUser(req).id));
+  ok(res, await users.adminUpdateUser(req.params.id, req.body, currentUser(req)));
 }
 
 export async function deactivate(req, res) {
-  ok(res, await users.deactivateUser(req.params.id, currentUser(req).id));
+  ok(res, await users.deactivateUser(req.params.id, currentUser(req)));
+}
+
+export async function setTerm(req, res) {
+  ok(res, await users.setStudentTerm(currentUser(req), req.body));
 }
 
 export async function updateMe(req, res) {

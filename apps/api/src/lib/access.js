@@ -3,6 +3,7 @@
  * "faculty only for their subjects, mentor only for their students, student only for self".
  */
 
+import { isAdminRole } from '@acet/shared';
 import { audit } from '../modules/audit/service.js';
 import { STUDENT_MAP_STATUSES, Subject, Topic } from '../modules/syllabus/model.js';
 import { User } from '../modules/users/model.js';
@@ -10,12 +11,12 @@ import { forbidden, notFound } from './errors.js';
 import { sameId } from '../db/mongoose.js';
 
 export function isStaff(user) {
-  return user.role === 'faculty' || user.role === 'admin';
+  return user.role === 'faculty' || isAdminRole(user.role);
 }
 
 /** Admin, or a faculty member assigned to the subject. */
 export function canWriteSubject(user, subject) {
-  if (user.role === 'admin') return true;
+  if (isAdminRole(user.role)) return true;
   if (user.role !== 'faculty') return false;
   return (subject.facultyIds ?? []).some((f) => sameId(f, user.id));
 }
@@ -29,6 +30,7 @@ async function mentorSyllabusVersions(mentorId) {
 export async function canReadSubject(user, subject) {
   switch (user.role) {
     case 'admin':
+    case 'coordinator':
       return true;
     case 'faculty':
       return canWriteSubject(user, subject);
@@ -75,7 +77,7 @@ export async function facultySubjectIds(facultyId) {
  */
 export async function canAccessStudent(actor, studentId) {
   if (sameId(actor.id, studentId)) return true;
-  if (actor.role === 'admin') return true;
+  if (isAdminRole(actor.role)) return true;
   const student = await User.findById(studentId).select('role mentorId syllabusVersionId').lean();
   if (!student || student.role !== 'student') return false;
   if (actor.role === 'mentor') return sameId(student.mentorId, actor.id);

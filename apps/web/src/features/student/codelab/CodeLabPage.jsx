@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { motion } from 'framer-motion';
 import { Link, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -17,11 +18,13 @@ import {
 import { Page } from '../../../components/layout/AppShell';
 import { Markdown } from '../../../components/Markdown';
 import { QueryError } from '../../../components/QueryError';
-import { Badge, Button, Card, LoadingBlock, Tabs } from '../../../components/ui';
+import { Badge, Button, Card, LoadingBlock, Tabs, Textarea } from '../../../components/ui';
 import { useTopicPage } from '../api';
 import { useChallenge, useRunCode, useSubmitCode, useTopicCodeLab } from './api';
 import { CodeEditor } from './CodeEditor';
 import { ResultTable } from './ResultTable';
+import { bouncy, shake } from '../../../lib/motion';
+import { useCelebrateWhen } from '../game/Celebration';
 
 export const DIFFICULTY_TONE = { easy: 'green', medium: 'orange', hard: 'red' };
 
@@ -79,6 +82,34 @@ function TablesPanel({ tables }) {
   );
 }
 
+function ExamplesPanel({ examples, hiddenTestCount }) {
+  return (
+    <div className="space-y-4">
+      {examples.map((e, i) => (
+        <div key={i}>
+          <h3 className="text-sm">Example {i + 1}</h3>
+          <div className="mt-1 grid gap-2 sm:grid-cols-2">
+            <div>
+              <p className="mb-1 text-xs font-semibold text-navy">Input</p>
+              <Console text={e.input} label={`Example ${i + 1} input`} empty="(no input)" />
+            </div>
+            <div>
+              <p className="mb-1 text-xs font-semibold text-navy">Output</p>
+              <Console text={e.output} label={`Example ${i + 1} output`} />
+            </div>
+          </div>
+        </div>
+      ))}
+      {hiddenTestCount > 0 && (
+        <p className="text-xs text-body">
+          Submit also runs {hiddenTestCount} hidden test{hiddenTestCount === 1 ? '' : 's'} with
+          different input.
+        </p>
+      )}
+    </div>
+  );
+}
+
 function HintsPanel({ hints }) {
   const [shown, setShown] = useState(0);
   if (!hints?.length) return <p className="text-sm">This problem has no hints. You can do it!</p>;
@@ -109,21 +140,53 @@ function HintsPanel({ hints }) {
   );
 }
 
-function RunOutput({ result }) {
-  if (!result.ok)
+/** Program output (Python), shown as a console. */
+function Console({ text, label, empty = '(no output)' }) {
+  return (
+    <pre
+      aria-label={label}
+      className="max-h-80 overflow-auto whitespace-pre rounded-xl bg-[#0B1F40] p-3 font-mono text-xs leading-5 text-white"
+    >
+      {text ? text : <span className="text-white/50">{empty}</span>}
+    </pre>
+  );
+}
+
+function ErrorBox({ result, python }) {
+  return (
+    <div className="rounded-xl border border-red/30 bg-red/5 p-3">
+      <p className="flex items-center gap-2 font-semibold text-red-dark">
+        {result.stage === 'timeout' ? (
+          <Clock className="h-4 w-4" aria-hidden />
+        ) : (
+          <TriangleAlert className="h-4 w-4" aria-hidden />
+        )}
+        {result.stage === 'timeout'
+          ? 'Time limit'
+          : result.stage === 'output'
+            ? 'Too much output'
+            : python
+              ? 'Error'
+              : 'SQL error'}
+      </p>
+      <pre className="mt-1 whitespace-pre-wrap font-mono text-xs text-navy">{result.error}</pre>
+    </div>
+  );
+}
+
+function RunOutput({ result, python }) {
+  if (python)
     return (
-      <div className="rounded-xl border border-red/30 bg-red/5 p-3">
-        <p className="flex items-center gap-2 font-semibold text-red-dark">
-          {result.stage === 'timeout' ? (
-            <Clock className="h-4 w-4" aria-hidden />
-          ) : (
-            <TriangleAlert className="h-4 w-4" aria-hidden />
-          )}
-          {result.stage === 'timeout' ? 'Time limit' : 'SQL error'}
-        </p>
-        <p className="mt-1 font-mono text-xs text-navy">{result.error}</p>
+      <div className="space-y-3">
+        <p className="text-xs text-body">Ran in {result.timeMs} ms.</p>
+        <div>
+          <h3 className="mb-1 text-sm">Output</h3>
+          <Console text={result.stdout} label="Program output" />
+        </div>
+        {!result.ok && <ErrorBox result={result} python />}
       </div>
     );
+  if (!result.ok) return <ErrorBox result={result} />;
   return (
     <div>
       <p className="mb-2 text-xs text-body">Ran on the sample data in {result.timeMs} ms.</p>
@@ -132,16 +195,32 @@ function RunOutput({ result }) {
   );
 }
 
-function SubmitOutput({ result, next }) {
+function SubmitOutput({ result, next, python }) {
   const failed = result.cases.find((c) => !c.passed);
+  // Confetti for an accepted solution, a big burst for a first solve.
+  useCelebrateWhen(result.passed, { size: result.firstSolve ? 'lg' : 'md' });
   if (result.passed)
     return (
-      <div className="rounded-xl border border-success/30 bg-success/10 p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={bouncy}
+        className="rounded-xl border border-success/30 bg-success/10 p-4"
+      >
         <p className="flex items-center gap-2 text-lg font-bold text-success">
-          <CheckCircle2 className="h-5 w-5" aria-hidden /> Accepted
+          <motion.span
+            initial={{ scale: 0, rotate: -180 }}
+            animate={{ scale: 1, rotate: 0 }}
+            transition={{ ...bouncy, delay: 0.1 }}
+            className="inline-flex"
+          >
+            <CheckCircle2 className="h-5 w-5" aria-hidden />
+          </motion.span>{' '}
+          Accepted
         </p>
         <p className="mt-1 text-sm text-navy">
-          {result.firstSolve ? 'Solved! ' : ''}Passed the sample data and the hidden tests in{' '}
+          {result.firstSolve ? 'Solved! ' : ''}Passed{' '}
+          {python ? `all ${result.cases.length} tests` : 'the sample data and the hidden tests'} in{' '}
           {result.timeMs} ms.
           {result.preview ? ' (Faculty preview: not recorded.)' : ''}
         </p>
@@ -156,17 +235,22 @@ function SubmitOutput({ result, next }) {
             Next problem: {next.title}
           </Button>
         )}
-      </div>
+      </motion.div>
     );
   const title = {
     wrongAnswer: 'Wrong answer',
     hiddenTests: 'Failed hidden tests',
     timeout: 'Time limit exceeded',
-    error: 'SQL error',
+    error: python ? 'Runtime error' : 'SQL error',
   }[result.verdict];
   return (
     <div className="space-y-3">
-      <div className="rounded-xl border border-red/30 bg-red/5 p-4">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1, x: shake.x }}
+        transition={shake.transition}
+        className="rounded-xl border border-red/30 bg-red/5 p-4"
+      >
         <p className="flex items-center gap-2 text-lg font-bold text-red-dark">
           <XCircle className="h-5 w-5" aria-hidden /> {title}
         </p>
@@ -183,9 +267,29 @@ function SubmitOutput({ result, next }) {
           ))}
         </ul>
         {failed?.reason && <p className="mt-2 text-sm text-navy">{failed.reason}</p>}
-        {failed?.error && <p className="mt-2 font-mono text-xs text-navy">{failed.error}</p>}
-      </div>
-      {failed?.expected && (
+        {failed?.error && (
+          <pre className="mt-2 whitespace-pre-wrap font-mono text-xs text-navy">{failed.error}</pre>
+        )}
+      </motion.div>
+      {python && failed?.input != null && (
+        <div>
+          <h3 className="mb-1 text-sm">Input</h3>
+          <Console text={failed.input} label="Test input" empty="(no input)" />
+        </div>
+      )}
+      {python && failed?.expected != null && (
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <h3 className="mb-1 text-sm">Expected output</h3>
+            <Console text={failed.expected} label="Expected output" />
+          </div>
+          <div>
+            <h3 className="mb-1 text-sm">Your output</h3>
+            <Console text={failed.got} label="Your output" />
+          </div>
+        </div>
+      )}
+      {!python && failed?.expected && (
         <div className="grid gap-4 md:grid-cols-2">
           <div>
             <h3 className="mb-1 text-sm">Expected</h3>
@@ -201,7 +305,7 @@ function SubmitOutput({ result, next }) {
   );
 }
 
-/** /code/:challengeId — LeetCode-style SQL problem: statement and tables on the left, editor on the right. */
+/** /code/:challengeId — LeetCode-style problem (SQL or Python): statement on the left, editor on the right. */
 export function CodeLabPage() {
   const { challengeId } = useParams();
   const challenge = useChallenge(challengeId);
@@ -213,12 +317,15 @@ export function CodeLabPage() {
   const [tab, setTab] = useState('problem');
   const [code, setCode] = useState(null);
   const [output, setOutput] = useState(null);
+  const [stdin, setStdin] = useState('');
+  const python = c?.language === 'python';
 
   // Load the draft, else my last submission, else the starter code.
   useEffect(() => {
     if (!c) return;
     setCode(loadDraft(c.id) ?? c.lastSubmission?.code ?? c.starterCode ?? '');
     setOutput(null);
+    setStdin(c.examples?.[0]?.input ?? '');
     setTab('problem');
   }, [c?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -249,7 +356,10 @@ export function CodeLabPage() {
   const busy = run.isPending || submit.isPending;
   const doRun = () => {
     if (!code?.trim() || busy) return;
-    run.mutate(code, { onSuccess: (r) => setOutput({ kind: 'run', result: r }) });
+    run.mutate(
+      { code, ...(python ? { input: stdin } : {}) },
+      { onSuccess: (r) => setOutput({ kind: 'run', result: r }) },
+    );
   };
   const doSubmit = () => {
     if (!code?.trim() || busy) return;
@@ -266,7 +376,7 @@ export function CodeLabPage() {
       </nav>
       <header className="mt-2 flex flex-wrap items-center gap-3">
         <div className="min-w-0">
-          <p className="eyebrow">Code lab · SQL</p>
+          <p className="eyebrow">Code lab · {python ? 'Python' : 'SQL'}</p>
           <h1 className="mt-1 text-2xl sm:text-3xl">{c.title}</h1>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -288,12 +398,21 @@ export function CodeLabPage() {
             onChange={setTab}
             tabs={[
               { value: 'problem', label: 'Problem', content: <Markdown>{c.prompt}</Markdown> },
-              {
-                value: 'tables',
-                label: 'Tables',
-                count: c.tables.length,
-                content: <TablesPanel tables={c.tables} />,
-              },
+              python
+                ? {
+                    value: 'examples',
+                    label: 'Examples',
+                    count: c.examples.length,
+                    content: (
+                      <ExamplesPanel examples={c.examples} hiddenTestCount={c.hiddenTestCount} />
+                    ),
+                  }
+                : {
+                    value: 'tables',
+                    label: 'Tables',
+                    count: c.tables.length,
+                    content: <TablesPanel tables={c.tables} />,
+                  },
               {
                 value: 'hints',
                 label: 'Hints',
@@ -303,8 +422,9 @@ export function CodeLabPage() {
             ]}
           />
           <p className="mt-5 text-xs text-body">
-            {c.orderMatters ? 'Row order matters for this problem.' : 'Rows can be in any order.'}{' '}
-            Column names do not matter, only values.
+            {python
+              ? 'Your program reads with input() and is checked on what it prints. Trailing spaces and blank lines at the end do not matter.'
+              : `${c.orderMatters ? 'Row order matters for this problem.' : 'Rows can be in any order.'} Column names do not matter, only values.`}
           </p>
         </Card>
 
@@ -315,7 +435,20 @@ export function CodeLabPage() {
             onChange={edit}
             onRun={doRun}
             onSubmit={doSubmit}
+            label={python ? 'Your Python' : 'Your SQL'}
+            placeholder={python ? 'n = int(input())' : 'SELECT …'}
+            indent={python ? '    ' : '  '}
           />
+          {python && (
+            <Textarea
+              label="Input for Run (what input() reads, one value per line)"
+              rows={2}
+              value={stdin}
+              onChange={(e) => setStdin(e.target.value)}
+              className="font-mono"
+              spellCheck={false}
+            />
+          )}
           <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="secondary"
@@ -346,15 +479,16 @@ export function CodeLabPage() {
             {output ? (
               <Card>
                 {output.kind === 'run' ? (
-                  <RunOutput result={output.result} />
+                  <RunOutput result={output.result} python={python} />
                 ) : (
-                  <SubmitOutput result={output.result} next={next} />
+                  <SubmitOutput result={output.result} next={next} python={python} />
                 )}
               </Card>
             ) : (
               <p className="rounded-2xl border border-dashed border-line p-4 text-sm">
-                Run your query to see its output on the sample data. Submit to check it against
-                hidden tests too.
+                {python
+                  ? 'Run your program with the input above to see what it prints. Submit to check it against every test.'
+                  : 'Run your query to see its output on the sample data. Submit to check it against hidden tests too.'}
               </p>
             )}
           </section>

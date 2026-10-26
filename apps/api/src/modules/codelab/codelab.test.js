@@ -246,3 +246,113 @@ describe('code lab API', () => {
     expect((await api().get(`/api/v1/code-lab/${phone.id}`).set(f.outsider.auth)).status).toBe(403);
   });
 });
+
+describe('Python code lab (PSPP)', () => {
+  async function setupPython() {
+    const { dbmsFixture: fixture } = await import('../../../test/fixtures.js');
+    const { createPsppSubject } = await import('../../db/psppSyllabus.js');
+    const { seedSubjectContent } = await import('../../db/seedContent.js');
+    const f = await fixture();
+    const pspp = await createPsppSubject({
+      syllabusVersionId: f.version._id,
+      facultyIds: [f.faculty.id],
+    });
+    await seedSubjectContent({
+      subjectId: pspp.subject._id,
+      facultyId: f.faculty.id,
+      pack: 'pspp',
+    });
+    const topicId = String(pspp.topics.problemsolving._id);
+    const list = (await api().get(`/api/v1/topics/${topicId}/code-lab`).set(f.student.auth)).body
+      .data;
+    const sum = list.find((c) => c.title === 'Sum of first n natural numbers');
+    return { f, pspp, topicId, sum };
+  }
+  const run = (f, id, body) =>
+    api().post(`/api/v1/code-lab/${id}/run`).set(f.student.auth).send(body);
+  const submit = (f, id, code) =>
+    api().post(`/api/v1/code-lab/${id}/submit`).set(f.student.auth).send({ code });
+
+  it('shows examples with expected output but never the solution or hidden inputs', async () => {
+    const { f, sum } = await setupPython();
+    expect(sum.language).toBe('python');
+    const c = (await api().get(`/api/v1/code-lab/${sum.id}`).set(f.student.auth)).body.data;
+    expect(c.examples).toEqual([{ input: '10', output: 'Sum = 55' }]);
+    expect(c.hiddenTestCount).toBe(2);
+    expect(c.tables).toBeUndefined();
+    const raw = JSON.stringify(c);
+    for (const secret of ['solution', 'total = total + i', '"100"', 'tests'])
+      expect(raw).not.toContain(secret);
+  }, 30_000);
+
+  it('runs with the first example or custom input, and shows tracebacks', async () => {
+    const { f, sum } = await setupPython();
+    const code = 'n = int(input())\nprint("Sum =", n * (n + 1) // 2)';
+    expect((await run(f, sum.id, { code })).body.data).toMatchObject({
+      ok: true,
+      stdout: 'Sum = 55\n',
+      input: '10',
+    });
+    expect((await run(f, sum.id, { code, input: '4' })).body.data.stdout).toBe('Sum = 10\n');
+    const err = (await run(f, sum.id, { code: 'print(undefined_name)' })).body.data;
+    expect(err).toMatchObject({ ok: false, stage: 'code' });
+    expect(err.error).toMatch(/NameError: name 'undefined_name' is not defined/);
+  }, 30_000);
+
+  it('grades wrong, hard-coded, crashing and correct programs', async () => {
+    const { f, sum } = await setupPython();
+    const wrong = (await submit(f, sum.id, 'n = int(input())\nprint("Sum:", n)')).body.data;
+    expect(wrong).toMatchObject({ passed: false, verdict: 'wrongAnswer' });
+    expect(wrong.cases[0]).toMatchObject({
+      name: 'Example 1',
+      input: '10',
+      expected: 'Sum = 55\n',
+      got: 'Sum: 10\n',
+    });
+
+    const hardCoded = (await submit(f, sum.id, 'input()\nprint("Sum = 55")')).body.data;
+    expect(hardCoded).toMatchObject({ passed: false, verdict: 'hiddenTests' });
+    expect(hardCoded.cases.at(-1)).toMatchObject({ name: 'Hidden test 1', input: null });
+    expect(hardCoded.cases.at(-1).reason).toMatch(/Read the input/);
+
+    const crash = (await submit(f, sum.id, 'n = int(input())\nprint(1/0)')).body.data;
+    expect(crash).toMatchObject({ passed: false, verdict: 'error' });
+    expect(crash.cases[0].error).toMatch(/ZeroDivisionError/);
+
+    // Trailing spaces and newlines don't matter.
+    const ok = (
+      await submit(f, sum.id, 'n = int(input())\nprint("Sum =", sum(range(n + 1)), "  ")\nprint()')
+    ).body.data;
+    expect(ok).toMatchObject({ passed: true, verdict: 'accepted', firstSolve: true });
+    expect(ok.cases.map((c) => c.passed)).toEqual([true, true, true]);
+  }, 30_000);
+
+  it('stops an endless loop', async () => {
+    const { f, sum } = await setupPython();
+    const r = (await submit(f, sum.id, 'while True:\n    pass')).body.data;
+    expect(r).toMatchObject({ passed: false, verdict: 'timeout' });
+  }, 60_000);
+
+  it('faculty must give tests and a working solution', async () => {
+    const { f, topicId } = await setupPython();
+    const create = (body) =>
+      api().post(`/api/v1/topics/${topicId}/code-challenges`).set(f.faculty.auth).send(body);
+    const base = {
+      title: 'Double it',
+      prompt: 'Read n and print 2 * n.',
+      language: 'python',
+      solution: 'print(2 * int(input()))',
+    };
+    expect((await create(base)).status).toBe(400); // no tests
+    expect((await create({ ...base, tests: [{ input: '2', hidden: true }] })).status).toBe(400); // no example
+    const broken = await create({
+      ...base,
+      solution: 'print(2 * int(input())',
+      tests: [{ input: '2' }],
+    });
+    expect(broken.status).toBe(400);
+    expect(broken.body.error.message).toMatch(/SyntaxError/);
+    const ok = await create({ ...base, tests: [{ input: '2' }, { input: '-7', hidden: true }] });
+    expect(ok.status).toBe(201);
+  }, 60_000);
+});

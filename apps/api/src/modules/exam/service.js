@@ -1,4 +1,4 @@
-import { STUDENT_VISIBLE_STATUS } from '@acet/shared';
+import { isAdminRole, STUDENT_VISIBLE_STATUS } from '@acet/shared';
 import { oid, sameId } from '../../db/mongoose.js';
 import { loadSubject } from '../../lib/access.js';
 import { badRequest, notFound } from '../../lib/errors.js';
@@ -44,7 +44,7 @@ export async function createPyqs(user, subjectId, items, materialId) {
 
 export async function listPyqs(user, subjectId) {
   await loadSubject(user, subjectId, 'read');
-  const staff = user.role === 'faculty' || user.role === 'admin';
+  const staff = user.role === 'faculty' || isAdminRole(user.role);
   return Pyq.find({ subjectId, ...(staff ? {} : { status: STUDENT_VISIBLE_STATUS }) }).sort({
     examDate: -1,
   });

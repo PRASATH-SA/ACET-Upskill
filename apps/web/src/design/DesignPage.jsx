@@ -10,7 +10,23 @@ import {
   Trash2,
   Users,
 } from 'lucide-react';
-import { COLORS, SUPPORT_COLORS } from '@acet/shared';
+import { BRAND_COLORS, COLORS, SUPPORT_COLORS, gamify } from '@acet/shared';
+import { CelebrationLayer } from '../features/student/game/Celebration';
+import { celebrate } from '../features/student/game/celebrate';
+import {
+  AchievementGrid,
+  ComboMeter,
+  LevelCard,
+  StarRating,
+} from '../features/student/game/GameWidgets';
+
+// A sample student for the game section: 3 mastered, 2 practising, a 4-day streak.
+const SAMPLE_GAME = gamify({
+  subjects: [
+    { totalTopics: 9, counts: { confident: 3, practicing: 2, learning: 1, notStarted: 3 } },
+  ],
+  revision: { dueNow: 2, streakDays: 4 },
+});
 import {
   Avatar,
   Badge,
@@ -59,7 +75,7 @@ export function DesignPage() {
   const [chip, setChip] = useState('all');
   const [step, setStep] = useState('remember');
 
-  const swatches = { ...COLORS, ...SUPPORT_COLORS };
+  const swatches = { ...COLORS, ...BRAND_COLORS, ...SUPPORT_COLORS };
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
@@ -83,12 +99,12 @@ export function DesignPage() {
 
       <Section id="ds-type" title="Typography">
         <p className="eyebrow">Eyebrow label</p>
-        <h1 className="mt-1">Heading 1 · Montserrat 800</h1>
+        <h1 className="mt-1">Heading 1 · Poppins 700</h1>
         <h2 className="mt-3">Heading 2</h2>
-        <h3 className="mt-3">Heading 3 · Montserrat 700</h3>
+        <h3 className="mt-3">Heading 3 · Poppins 600</h3>
         <p className="mt-3 max-w-prose">
-          Body text is Inter 400 at line-height 1.7. Normalization splits a table into smaller
-          tables so that each fact is stored once. <strong>Strong text is navy.</strong>{' '}
+          Body text is Poppins 400 at line-height 1.6. Normalization splits a table into smaller
+          tables so that each fact is stored once. <strong>Strong text is ink.</strong>{' '}
           <a href="#ds-type">Links are blue.</a>
         </p>
       </Section>
@@ -96,6 +112,9 @@ export function DesignPage() {
       <Section id="ds-buttons" title="Buttons">
         <Row>
           <Button>Start topic</Button>
+          <Button variant="gradient" size="lg">
+            Continue Learning
+          </Button>
           <Button variant="secondary">Secondary</Button>
           <Button variant="ghost">Ghost</Button>
           <Button variant="navy" icon={Sparkles}>
@@ -127,7 +146,7 @@ export function DesignPage() {
           </Card>
           <Card tone="navy">
             <EyebrowHeading eyebrow="Exam insight" title="Asked 4× in 5 years" level={3} light />
-            <p className="mt-2 text-sm text-white/80">Navy panel.</p>
+            <p className="mt-2 text-sm text-white/80">Feature panel (brand deep).</p>
           </Card>
           <Card tone="gold">
             <EyebrowHeading eyebrow="Achievement" title="Unit 3 mastered" level={3} />
@@ -312,6 +331,21 @@ export function DesignPage() {
             action={<Button variant="secondary">Retry</Button>}
           />
         </div>
+      </Section>
+
+      <Section id="ds-game" title="Game layer">
+        <div className="space-y-6">
+          <LevelCard game={SAMPLE_GAME} streak={4} />
+          <AchievementGrid achievements={SAMPLE_GAME.achievements} />
+          <Row>
+            <StarRating stars={3} />
+            <ComboMeter combo={4} />
+            <Button onClick={() => celebrate({ size: 'lg' })} icon={Sparkles}>
+              Celebrate
+            </Button>
+          </Row>
+        </div>
+        <CelebrationLayer />
       </Section>
     </div>
   );

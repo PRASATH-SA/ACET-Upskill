@@ -4,9 +4,32 @@
  */
 import { z } from 'zod';
 
-/** A.2 — user roles. `admin` is the HOD. */
-export const ROLES = ['student', 'faculty', 'mentor', 'admin'];
+/**
+ * A.2 — user roles. `admin` is the HOD of one department. `coordinator` is the Academic
+ * Coordinator: a super admin over every department, its HODs and students.
+ */
+export const ROLES = ['student', 'faculty', 'mentor', 'admin', 'coordinator'];
 export const RoleSchema = z.enum(ROLES);
+
+/** Roles only the coordinator may hand out or edit. */
+export const SUPER_ROLES = ['admin', 'coordinator'];
+
+/**
+ * Whether `role` passes a check for `allowed` roles. The coordinator passes every check
+ * that lets the HOD (`admin`) through, so routes only ever list `admin`.
+ */
+export function roleAllows(role, allowed) {
+  return allowed.includes(role) || (role === 'coordinator' && allowed.includes('admin'));
+}
+
+/** HOD or coordinator. */
+export const isAdminRole = (role) => role === 'admin' || role === 'coordinator';
+
+/** Years of study (I–IV) and the two semesters each year spans: year y → 2y−1, 2y. */
+export const YEARS_OF_STUDY = [1, 2, 3, 4];
+export const SEMESTERS = [1, 2, 3, 4, 5, 6, 7, 8];
+export const semestersOfYear = (year) => [2 * year - 1, 2 * year];
+export const yearOfSemester = (semester) => Math.ceil(semester / 2);
 
 /** A.5 — content status lifecycle: draft → inReview → approved → published. */
 export const CONTENT_STATUSES = ['draft', 'inReview', 'approved', 'published'];
@@ -51,6 +74,13 @@ export const MasteryStateSchema = z.enum(MASTERY_STATES);
 /** A.5 resources.kind */
 export const RESOURCE_KINDS = ['video', 'easy', 'tenMark', 'realWorld', 'workshop', 'curiosity'];
 export const ResourceKindSchema = z.enum(RESOURCE_KINDS);
+
+/**
+ * Subject kinds (ADR 0012). A practical (lab) subject has no topics of its own: it reuses the
+ * roadmap of the theory subject it is linked to, and attaches experiments to its topics.
+ */
+export const SUBJECT_KINDS = ['theory', 'practical'];
+export const SubjectKindSchema = z.enum(SUBJECT_KINDS);
 
 /** A.5 questions.type */
 export const QUESTION_TYPES = ['mcq', 'curiosity'];

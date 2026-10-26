@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Download, FileUp, Pencil, Plus, Search, Users } from 'lucide-react';
-import { ROLES } from '@acet/shared';
+import { CalendarRange, Download, FileUp, Pencil, Plus, Search, Users } from 'lucide-react';
+import { ROLES, SUPER_ROLES, YEARS_OF_STUDY, semestersOfYear } from '@acet/shared';
 import { get, patch, post } from '../../api/client';
 import { Page } from '../../components/layout/AppShell';
 import {
@@ -16,6 +16,7 @@ import {
   Select,
   toast,
 } from '../../components/ui';
+import { useSession } from '../auth/session';
 import { useDepartments, useUsersByRole, useVersions, versionLabel } from './lookups';
 import { QueryError } from '../../components/QueryError';
 
@@ -24,10 +25,67 @@ const ROLE_LABEL = {
   faculty: 'Faculty',
   mentor: 'Mentor',
   admin: 'HOD / Admin',
+  coordinator: 'Academic Coordinator',
 };
-const roleOptions = ROLES.map((r) => ({ value: r, label: ROLE_LABEL[r] }));
+const ROMAN = ['I', 'II', 'III', 'IV'];
+
+const yearOptions = YEARS_OF_STUDY.map((y) => ({
+  value: String(y),
+  label: `Year ${ROMAN[y - 1]}`,
+}));
+/** Semesters of the chosen year, or all eight when no year is chosen. */
+const semesterOptions = (year) =>
+  (year ? semestersOfYear(Number(year)) : [1, 2, 3, 4, 5, 6, 7, 8]).map((s) => ({
+    value: String(s),
+    label: `Semester ${s}`,
+  }));
+
+/** The coordinator may hand out every role; a HOD only student, faculty and mentor. */
+function useRoleScope() {
+  const user = useSession((s) => s.user);
+  const coordinator = user?.role === 'coordinator';
+  const roles = coordinator ? ROLES : ROLES.filter((r) => !SUPER_ROLES.includes(r));
+  return {
+    coordinator,
+    roleOptions: roles.map((r) => ({ value: r, label: ROLE_LABEL[r] })),
+  };
+}
+
+const termText = (u) =>
+  u.semester
+    ? `Year ${ROMAN[(u.yearOfStudy ?? Math.ceil(u.semester / 2)) - 1]} · Sem ${u.semester}`
+    : '–';
+
+/** Year + semester pickers; picking a year resets a semester that no longer fits it. */
+function TermFields({ year, semester, onChange, yearLabel = 'Year of study' }) {
+  return (
+    <>
+      <Select
+        label={yearLabel}
+        value={year}
+        onChange={(e) => {
+          const y = e.target.value;
+          const fits = y && semester && semestersOfYear(Number(y)).includes(Number(semester));
+          onChange({ year: y, semester: fits ? semester : '' });
+        }}
+        placeholder="Not set"
+        options={yearOptions}
+      />
+      <Select
+        label="Semester"
+        value={semester}
+        onChange={(e) => onChange({ year, semester: e.target.value })}
+        placeholder="Not set"
+        options={semesterOptions(year)}
+        hint={year ? undefined : 'Choose the year first'}
+        disabled={!year}
+      />
+    </>
+  );
+}
 
 function UserForm({ initial, onSubmit, saving, creating }) {
+  const { coordinator, roleOptions } = useRoleScope();
   const versions = useVersions();
   const departments = useDepartments();
   const mentors = useUsersByRole('mentor');
@@ -40,20 +98,31 @@ function UserForm({ initial, onSubmit, saving, creating }) {
     syllabusVersionId: initial?.syllabusVersionId ?? '',
     departmentId: initial?.departmentId ?? '',
     mentorId: initial?.mentorId ?? '',
+    yearOfStudy: initial?.yearOfStudy ? String(initial.yearOfStudy) : '',
+    semester: initial?.semester ? String(initial.semester) : '',
     isActive: initial?.isActive ?? true,
   }));
   const set = (k) => (e) =>
     setF((x) => ({ ...x, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }));
+  const student = f.role === 'student';
+  // A HOD editing another HOD's role is blocked by the API; show the current role anyway.
+  const roles = roleOptions.some((o) => o.value === f.role)
+    ? roleOptions
+    : [...roleOptions, { value: f.role, label: ROLE_LABEL[f.role] }];
   const submit = () => {
     const opt = (v) => (v === '' ? (creating ? undefined : null) : v);
+    const num = (v) => (v === '' ? (creating ? undefined : null) : Number(v));
     onSubmit({
       name: f.name.trim(),
       ...(creating ? { email: f.email.trim(), password: f.password } : { isActive: f.isActive }),
       role: f.role,
       batch: opt(f.batch.trim()),
       syllabusVersionId: opt(f.syllabusVersionId),
-      departmentId: opt(f.departmentId),
+      // Only the coordinator chooses a department; a HOD's users join the HOD's department.
+      ...(coordinator ? { departmentId: opt(f.departmentId) } : {}),
       mentorId: opt(f.mentorId),
+      yearOfStudy: student ? num(f.yearOfStudy) : num(''),
+      semester: student ? num(f.semester) : num(''),
     });
   };
   return (
@@ -75,7 +144,26 @@ function UserForm({ initial, onSubmit, saving, creating }) {
             required
           />
         )}
-        <Select label="Role" value={f.role} onChange={set('role')} options={roleOptions} />
+        <Select label="Role" value={f.role} onChange={set('role')} options={roles} />
+        {coordinator && (
+          <Select
+            label="Department"
+            value={f.departmentId}
+            onChange={set('departmentId')}
+            placeholder="None"
+            options={(departments.data ?? []).map((d) => ({
+              value: d.id,
+              label: `${d.code} · ${d.name}`,
+            }))}
+          />
+        )}
+        {student && (
+          <TermFields
+            year={f.yearOfStudy}
+            semester={f.semester}
+            onChange={({ year, semester }) => setF((x) => ({ ...x, yearOfStudy: year, semester }))}
+          />
+        )}
         <Input label="Batch" value={f.batch} onChange={set('batch')} placeholder="e.g. 2023-27" />
         <Select
           label="Syllabus version"
@@ -84,17 +172,7 @@ function UserForm({ initial, onSubmit, saving, creating }) {
           placeholder="None"
           options={(versions.data ?? []).map((v) => ({ value: v.id, label: versionLabel(v) }))}
         />
-        <Select
-          label="Department"
-          value={f.departmentId}
-          onChange={set('departmentId')}
-          placeholder="None"
-          options={(departments.data ?? []).map((d) => ({
-            value: d.id,
-            label: `${d.code} · ${d.name}`,
-          }))}
-        />
-        {f.role === 'student' && (
+        {student && (
           <Select
             label="Mentor"
             value={f.mentorId}
@@ -104,6 +182,11 @@ function UserForm({ initial, onSubmit, saving, creating }) {
           />
         )}
       </div>
+      {student && (
+        <p className="text-sm">
+          The student&apos;s learn page lists the subjects of this semester.
+        </p>
+      )}
       {!creating && (
         <label className="flex min-h-[44px] items-center gap-3 font-semibold text-navy">
           <input
@@ -118,7 +201,11 @@ function UserForm({ initial, onSubmit, saving, creating }) {
       <Button
         variant="navy"
         loading={saving}
-        disabled={!f.name.trim() || (creating && (!f.email || !f.password))}
+        disabled={
+          !f.name.trim() ||
+          (creating && (!f.email || !f.password)) ||
+          (student && Boolean(f.yearOfStudy) !== Boolean(f.semester))
+        }
         onClick={submit}
       >
         {creating ? 'Create user' : 'Save changes'}
@@ -129,6 +216,7 @@ function UserForm({ initial, onSubmit, saving, creating }) {
 
 function ImportDialog({ open, onClose }) {
   const qc = useQueryClient();
+  const { coordinator } = useRoleScope();
   const versions = useVersions();
   const mentors = useUsersByRole('mentor');
   const departments = useDepartments();
@@ -139,6 +227,8 @@ function ImportDialog({ open, onClose }) {
     batch: '',
     mentorId: '',
     departmentId: '',
+    yearOfStudy: '',
+    semester: '',
   });
   const [result, setResult] = useState(null);
   const set = (k) => (e) => setDefaults((d) => ({ ...d, [k]: e.target.value }));
@@ -234,6 +324,13 @@ function ImportDialog({ open, onClose }) {
             </Button>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
+            <TermFields
+              year={defaults.yearOfStudy}
+              semester={defaults.semester}
+              onChange={({ year, semester }) =>
+                setDefaults((d) => ({ ...d, yearOfStudy: year, semester }))
+              }
+            />
             <Select
               label="Syllabus version for this batch"
               value={defaults.syllabusVersionId}
@@ -255,18 +352,24 @@ function ImportDialog({ open, onClose }) {
               placeholder="None"
               options={(mentors.data ?? []).map((m) => ({ value: m.id, label: m.name }))}
             />
-            <Select
-              label="Department"
-              value={defaults.departmentId}
-              onChange={set('departmentId')}
-              placeholder="None"
-              options={(departments.data ?? []).map((d) => ({
-                value: d.id,
-                label: `${d.code} · ${d.name}`,
-              }))}
-            />
+            {coordinator && (
+              <Select
+                label="Department"
+                value={defaults.departmentId}
+                onChange={set('departmentId')}
+                placeholder="None"
+                options={(departments.data ?? []).map((d) => ({
+                  value: d.id,
+                  label: `${d.code} · ${d.name}`,
+                }))}
+              />
+            )}
           </div>
-          <Button disabled={!file} loading={run.isPending} onClick={() => run.mutate()}>
+          <Button
+            disabled={!file || Boolean(defaults.yearOfStudy) !== Boolean(defaults.semester)}
+            loading={run.isPending}
+            onClick={() => run.mutate()}
+          >
             Import students
           </Button>
         </div>
@@ -275,21 +378,77 @@ function ImportDialog({ open, onClose }) {
   );
 }
 
-/** /admin/users — users table, CSV import, role and batch changes (F7.2). */
+/** Sticky bar for the students ticked in the table: set their year and semester at once. */
+function BulkTermBar({ ids, onDone }) {
+  const qc = useQueryClient();
+  const [term, setTerm] = useState({ year: '', semester: '' });
+  const run = useMutation({
+    mutationFn: () =>
+      post('/users/term', {
+        userIds: ids,
+        yearOfStudy: Number(term.year),
+        semester: Number(term.semester),
+      }),
+    onSuccess: (r) => {
+      toast.success(
+        `Updated ${r.updated} ${r.updated === 1 ? 'student' : 'students'}` +
+          (r.skipped ? ` · ${r.skipped} skipped` : ''),
+      );
+      qc.invalidateQueries({ queryKey: ['admin', 'users'] });
+      onDone();
+    },
+  });
+  return (
+    <div className="glass sticky bottom-20 z-10 mt-4 grid gap-3 rounded-card p-4 sm:bottom-4 sm:grid-cols-[auto_1fr_1fr_auto] sm:items-end">
+      <p className="font-semibold text-navy sm:self-center">
+        {ids.length} {ids.length === 1 ? 'student' : 'students'} selected
+      </p>
+      <TermFields
+        year={term.year}
+        semester={term.semester}
+        onChange={setTerm}
+        yearLabel="Move to year"
+      />
+      <div className="flex gap-2">
+        <Button variant="ghost" onClick={onDone}>
+          Clear
+        </Button>
+        <Button
+          variant="navy"
+          icon={CalendarRange}
+          disabled={!term.year || !term.semester}
+          loading={run.isPending}
+          onClick={() => run.mutate()}
+        >
+          Set term
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/** /admin/users — users table, CSV import, role, batch and term changes (F7.2). */
 export function UsersPage() {
   const qc = useQueryClient();
+  const { coordinator, roleOptions } = useRoleScope();
   const [role, setRole] = useState('');
+  const [year, setYear] = useState('');
+  const [semester, setSemester] = useState('');
   const [q, setQ] = useState('');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [selected, setSelected] = useState(() => new Set());
   const [editing, setEditing] = useState(null);
   const [creating, setCreating] = useState(false);
   const [importing, setImporting] = useState(false);
   const versions = useVersions();
+  const departments = useDepartments();
   const versionOf = new Map((versions.data ?? []).map((v) => [v.id, v]));
+  const deptOf = new Map((departments.data ?? []).map((d) => [d.id, d]));
+  const filters = { role, yearOfStudy: year, semester, q: search, page, limit: 25 };
   const users = useQuery({
-    queryKey: ['admin', 'users', { role, search, page }],
-    queryFn: () => get('/users', { query: { role, q: search, page, limit: 25 }, withMeta: true }),
+    queryKey: ['admin', 'users', filters],
+    queryFn: () => get('/users', { query: filters, withMeta: true }),
     placeholderData: (p) => p,
   });
   const save = useMutation({
@@ -302,11 +461,38 @@ export function UsersPage() {
     },
   });
   const total = users.data?.meta?.total ?? 0;
+  const rows = users.data?.data ?? [];
+  const studentsOnPage = rows.filter((u) => u.role === 'student');
+  const allTicked = studentsOnPage.length > 0 && studentsOnPage.every((u) => selected.has(u.id));
+  const toggle = (id) =>
+    setSelected((s) => {
+      const next = new Set(s);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const toggleAll = () =>
+    setSelected((s) => {
+      const next = new Set(s);
+      for (const u of studentsOnPage) {
+        if (allTicked) next.delete(u.id);
+        else next.add(u.id);
+      }
+      return next;
+    });
+  const filter = (setter) => (e) => {
+    setter(e.target.value);
+    setPage(1);
+  };
 
   return (
     <Page wide>
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <EyebrowHeading eyebrow="Admin" title="Users" level={1} />
+        <EyebrowHeading
+          eyebrow={coordinator ? 'Academic Coordinator' : 'Admin'}
+          title={coordinator ? 'All users' : 'Department users'}
+          level={1}
+        />
         <div className="flex flex-wrap gap-2">
           <Button variant="secondary" icon={FileUp} onClick={() => setImporting(true)}>
             Import students (CSV)
@@ -318,7 +504,7 @@ export function UsersPage() {
       </div>
       <form
         role="search"
-        className="mt-5 grid gap-3 sm:grid-cols-[1fr_200px_auto] sm:items-end"
+        className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_180px_150px_150px_auto] lg:items-end"
         onSubmit={(e) => {
           e.preventDefault();
           setSearch(q.trim());
@@ -329,12 +515,29 @@ export function UsersPage() {
         <Select
           label="Role"
           value={role}
-          onChange={(e) => {
-            setRole(e.target.value);
-            setPage(1);
-          }}
+          onChange={filter(setRole)}
           placeholder="All roles"
           options={roleOptions}
+        />
+        <Select
+          label="Year"
+          value={year}
+          onChange={(e) => {
+            const y = e.target.value;
+            setYear(y);
+            if (y && semester && !semestersOfYear(Number(y)).includes(Number(semester)))
+              setSemester('');
+            setPage(1);
+          }}
+          placeholder="All years"
+          options={yearOptions}
+        />
+        <Select
+          label="Semester"
+          value={semester}
+          onChange={filter(setSemester)}
+          placeholder="All semesters"
+          options={semesterOptions(year)}
         />
         <Button type="submit" variant="secondary" icon={Search}>
           Search
@@ -345,7 +548,7 @@ export function UsersPage() {
         <LoadingBlock className="mt-6" lines={6} />
       ) : users.isError ? (
         <QueryError className="mt-6" query={users} what="users" />
-      ) : (users.data?.data ?? []).length === 0 ? (
+      ) : rows.length === 0 ? (
         <EmptyState
           className="mt-6"
           icon={Users}
@@ -355,15 +558,33 @@ export function UsersPage() {
         />
       ) : (
         <div className="mt-6 overflow-x-auto glass rounded-card">
-          <table className="w-full min-w-[720px] text-left text-sm">
+          <table className="w-full min-w-[820px] text-left text-sm">
             <caption className="sr-only">Users</caption>
             <thead>
               <tr className="border-b border-line text-xs uppercase tracking-wider text-navy">
+                <th scope="col" className="w-12 px-4 py-3">
+                  <input
+                    type="checkbox"
+                    className="h-5 w-5 accent-navy"
+                    aria-label="Select all students on this page"
+                    checked={allTicked}
+                    disabled={studentsOnPage.length === 0}
+                    onChange={toggleAll}
+                  />
+                </th>
                 <th scope="col" className="px-4 py-3">
                   Name
                 </th>
                 <th scope="col" className="px-4 py-3">
                   Role
+                </th>
+                {coordinator && (
+                  <th scope="col" className="px-4 py-3">
+                    Department
+                  </th>
+                )}
+                <th scope="col" className="px-4 py-3">
+                  Year · Sem
                 </th>
                 <th scope="col" className="px-4 py-3">
                   Batch
@@ -380,13 +601,28 @@ export function UsersPage() {
               </tr>
             </thead>
             <tbody>
-              {users.data.data.map((u) => (
+              {rows.map((u) => (
                 <tr key={u.id} className="border-b border-line last:border-0">
+                  <td className="px-4 py-2">
+                    {u.role === 'student' && (
+                      <input
+                        type="checkbox"
+                        className="h-5 w-5 accent-navy"
+                        aria-label={`Select ${u.name}`}
+                        checked={selected.has(u.id)}
+                        onChange={() => toggle(u.id)}
+                      />
+                    )}
+                  </td>
                   <td className="px-4 py-2">
                     <span className="block font-semibold text-navy">{u.name}</span>
                     <span className="block text-xs">{u.email}</span>
                   </td>
                   <td className="px-4 py-2">{ROLE_LABEL[u.role]}</td>
+                  {coordinator && (
+                    <td className="px-4 py-2">{deptOf.get(u.departmentId)?.code ?? '–'}</td>
+                  )}
+                  <td className="px-4 py-2">{u.role === 'student' ? termText(u) : '–'}</td>
                   <td className="px-4 py-2">{u.batch ?? '–'}</td>
                   <td className="px-4 py-2">
                     {u.syllabusVersionId
@@ -428,6 +664,9 @@ export function UsersPage() {
             Next
           </Button>
         </div>
+      )}
+      {selected.size > 0 && (
+        <BulkTermBar ids={[...selected]} onDone={() => setSelected(new Set())} />
       )}
 
       <Dialog

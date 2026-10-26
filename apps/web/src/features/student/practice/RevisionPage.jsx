@@ -15,9 +15,15 @@ import {
   StatTile,
   toast,
 } from '../../../components/ui';
-import { keys, useRevisionToday } from '../api';
+import { keys, useRevisionToday, useSubjects } from '../api';
 import { Flashcard, RATING_META } from './Flashcard';
 import { sendRating, useOutbox } from './outbox';
+import { useCelebrateWhen } from '../game/Celebration';
+import { PointsPop } from '../game/GameWidgets';
+
+// Every reviewed card earns the same points, whatever the rating, so the score never
+// tempts anyone to rate "Easy" when they forgot (that would skew the FSRS schedule).
+const POINTS_PER_CARD = 10;
 
 function QuestionBack({ item }) {
   return (
@@ -56,7 +62,10 @@ function Session({ items, onExit }) {
   const [flipped, setFlipped] = useState(false);
   const [busy, setBusy] = useState(false);
   const [tally, setTally] = useState({ again: 0, hard: 0, good: 0, easy: 0 });
+  const [pop, setPop] = useState(0);
   const item = items[index];
+  const reviewed = REVIEW_RATINGS.reduce((n, r) => n + tally[r], 0);
+  useCelebrateWhen(!item && reviewed > 0, { size: 'lg' });
 
   const rate = useCallback(
     async (rating) => {
@@ -72,6 +81,7 @@ function Session({ items, onExit }) {
           });
         }
         setTally((t) => ({ ...t, [rating]: t[rating] + 1 }));
+        setPop((p) => p + 1);
         setFlipped(false);
         setIndex((i) => i + 1);
       } catch (err) {
@@ -88,7 +98,15 @@ function Session({ items, onExit }) {
     return (
       <div className="mx-auto max-w-2xl">
         <EyebrowHeading eyebrow="Session complete" title={`${total} cards reviewed`} level={1} />
-        <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="mt-6">
+          <StatTile
+            label="Session points"
+            value={total * POINTS_PER_CARD}
+            hint={`${POINTS_PER_CARD} points for every card you reviewed`}
+            tone="gold"
+          />
+        </div>
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {REVIEW_RATINGS.map((r) => (
             <StatTile key={r} label={RATING_META[r].label} value={tally[r]} />
           ))}
@@ -126,6 +144,10 @@ function Session({ items, onExit }) {
     <div className="mx-auto max-w-2xl">
       <div className="flex items-center justify-between gap-3">
         <p className="eyebrow">Revision · {item.topicTitle}</p>
+        <span className="relative inline-flex items-center text-sm font-semibold text-brand">
+          {reviewed * POINTS_PER_CARD} pts
+          <PointsPop id={pop} points={POINTS_PER_CARD} className="-top-2 right-0" />
+        </span>
         {pending > 0 && (
           <Badge tone="orange" icon={CloudUpload}>
             {pending} to sync
@@ -155,9 +177,27 @@ function Session({ items, onExit }) {
   );
 }
 
-/** /revision — today's due items grouped by topic, then a focused session (F5). */
+/** Due groups by subject, in the order of the student's subject list. */
+function bySubject(groups, subjects = []) {
+  const known = new Map(subjects.map((s) => [s.id, s]));
+  const out = new Map();
+  for (const g of groups) {
+    const subject = known.get(g.subjectId) ?? { id: g.subjectId, code: '', name: 'Other' };
+    if (!out.has(subject.id)) out.set(subject.id, { subject, groups: [], count: 0 });
+    const entry = out.get(subject.id);
+    entry.groups.push(g);
+    entry.count += g.count;
+  }
+  const order = subjects.map((s) => s.id);
+  return [...out.values()].sort(
+    (a, b) => (order.indexOf(a.subject.id) >>> 0) - (order.indexOf(b.subject.id) >>> 0),
+  );
+}
+
+/** /revision — today's due items by subject and topic, then a focused session (F5). */
 export function RevisionPage() {
   const today = useRevisionToday();
+  const subjects = useSubjects();
   const [session, setSession] = useState(null);
 
   const start = (groups) =>
@@ -203,32 +243,50 @@ export function RevisionPage() {
         <>
           <Card className="mt-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
             <div>
-              <p className="font-heading text-3xl font-extrabold text-navy">{today.data.total}</p>
+              <p className="font-heading text-3xl font-bold text-navy">{today.data.total}</p>
               <p className="text-sm">
                 items due across {today.data.groups.length} topic
-                {today.data.groups.length === 1 ? '' : 's'}
+                {today.data.groups.length === 1 ? '' : 's'} in{' '}
+                {new Set(today.data.groups.map((g) => g.subjectId)).size} subject
+                {new Set(today.data.groups.map((g) => g.subjectId)).size === 1 ? '' : 's'}
               </p>
             </div>
             <Button size="lg" icon={Play} onClick={() => start(today.data.groups)}>
-              Start revision
+              Start revision (all subjects)
             </Button>
           </Card>
-          <ul className="mt-6 grid gap-3 sm:grid-cols-2">
-            {today.data.groups.map((g) => (
-              <li
-                key={g.topicId}
-                className="flex items-center justify-between gap-3 glass rounded-2xl p-4"
-              >
+          {bySubject(today.data.groups, subjects.data).map(({ subject, groups, count }) => (
+            <section key={subject.id} className="mt-8" aria-labelledby={`rev-${subject.id}`}>
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="truncate font-semibold text-navy">{g.title}</p>
-                  <p className="text-xs">{g.count} due</p>
+                  <p className="text-xs font-semibold">{subject.code}</p>
+                  <h2 id={`rev-${subject.id}`} className="text-lg">
+                    {subject.name}{' '}
+                    <span className="text-sm font-normal text-body">· {count} due</span>
+                  </h2>
                 </div>
-                <Button size="sm" variant="secondary" onClick={() => start([g])}>
-                  Revise<span className="sr-only"> {g.title}</span>
+                <Button size="sm" icon={Play} onClick={() => start(groups)}>
+                  Revise this subject<span className="sr-only">: {subject.name}</span>
                 </Button>
-              </li>
-            ))}
-          </ul>
+              </div>
+              <ul className="mt-3 grid gap-3 sm:grid-cols-2">
+                {groups.map((g) => (
+                  <li
+                    key={g.topicId}
+                    className="flex items-center justify-between gap-3 glass rounded-2xl p-4"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-navy">{g.title}</p>
+                      <p className="text-xs">{g.count} due</p>
+                    </div>
+                    <Button size="sm" variant="secondary" onClick={() => start([g])}>
+                      Revise<span className="sr-only"> {g.title}</span>
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
         </>
       )}
     </Page>

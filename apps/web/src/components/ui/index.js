@@ -10,6 +10,7 @@ export { Drawer } from './Drawer';
 export { Toaster, toast, useToastStore } from './Toast';
 export { Avatar, LoadingBlock, ProgressBar, ProgressRing, Skeleton, StatTile } from './Feedback';
 export { EmptyState } from './EmptyState';
+export { AnimatedNumber } from './AnimatedNumber';
 export { Tooltip } from './Tooltip';
 export { Menu } from './Menu';
 export { StepTracker, STEP_META } from './StepTracker';

@@ -1,6 +1,12 @@
 import { z } from 'zod';
 import { RoleSchema } from '../enums.js';
-import { ObjectIdSchema } from './common.js';
+import {
+  ObjectIdSchema,
+  SemesterSchema,
+  TERM_MISMATCH,
+  YearOfStudySchema,
+  termMatchesYear,
+} from './common.js';
 
 export const EmailSchema = z.string().trim().toLowerCase().email().max(200);
 export const PasswordSchema = z
@@ -15,24 +21,32 @@ export const LoginSchema = z.object({
   password: z.string().min(1).max(128),
 });
 
-export const RegisterUserSchema = z.object({
-  name: z.string().trim().min(2).max(120),
-  email: EmailSchema,
-  password: PasswordSchema,
-  role: RoleSchema,
-  departmentId: ObjectIdSchema.optional(),
-  batch: z.string().trim().max(40).optional(),
-  syllabusVersionId: ObjectIdSchema.optional(),
-  mentorId: ObjectIdSchema.optional(),
-});
+export const RegisterUserSchema = z
+  .object({
+    name: z.string().trim().min(2).max(120),
+    email: EmailSchema,
+    password: PasswordSchema,
+    role: RoleSchema,
+    departmentId: ObjectIdSchema.optional(),
+    batch: z.string().trim().max(40).optional(),
+    syllabusVersionId: ObjectIdSchema.optional(),
+    mentorId: ObjectIdSchema.optional(),
+    yearOfStudy: YearOfStudySchema.optional(),
+    semester: SemesterSchema.optional(),
+  })
+  .refine(termMatchesYear, TERM_MISMATCH);
 
 /** Form fields that accompany a student CSV upload. Each CSV row may override batch. */
-export const ImportStudentsSchema = z.object({
-  departmentId: ObjectIdSchema.optional(),
-  syllabusVersionId: ObjectIdSchema.optional(),
-  batch: z.string().trim().max(40).optional(),
-  mentorId: ObjectIdSchema.optional(),
-});
+export const ImportStudentsSchema = z
+  .object({
+    departmentId: ObjectIdSchema.optional(),
+    syllabusVersionId: ObjectIdSchema.optional(),
+    batch: z.string().trim().max(40).optional(),
+    mentorId: ObjectIdSchema.optional(),
+    yearOfStudy: YearOfStudySchema.optional(),
+    semester: SemesterSchema.optional(),
+  })
+  .refine(termMatchesYear, TERM_MISMATCH);
 
 /** One CSV row: name,email[,password][,batch] */
 export const StudentCsvRowSchema = z.object({
@@ -51,6 +65,8 @@ export const PublicUserSchema = z.object({
   batch: z.string().nullable(),
   syllabusVersionId: z.string().nullable(),
   mentorId: z.string().nullable(),
+  yearOfStudy: z.number().int().nullable().optional(),
+  semester: z.number().int().nullable().optional(),
   isActive: z.boolean(),
   createdAt: z.string().optional(),
 });

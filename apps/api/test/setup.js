@@ -7,6 +7,7 @@ import { afterAll, beforeAll, inject } from 'vitest';
 import { ApiEnvSchema, setEnv } from '../src/config/env.js';
 import { connectMongo } from '../src/db/connect.js';
 import { setStorage, LocalDiskStorage } from '../src/lib/storage.js';
+import { closePythonSandbox } from '../src/modules/codelab/pySandbox.js';
 import { closeSandbox } from '../src/modules/codelab/sandbox.js';
 
 const baseUri = inject('mongoUri');
@@ -41,6 +42,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await closeSandbox();
+  await closePythonSandbox();
   await mongoose.connection.dropDatabase();
   await mongoose.disconnect();
   rmSync(uploadDir, { recursive: true, force: true });

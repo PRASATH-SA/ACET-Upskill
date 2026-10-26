@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { LoadingBlock, toast } from '../../components/ui';
+import { roleAllows } from '@acet/shared';
 import { ROLE_HOME, useSession } from './session';
 
 function FullPageLoading() {
@@ -37,10 +38,13 @@ export function RequireAuth() {
   return <Outlet />;
 }
 
-/** Allows only the listed roles; anyone else sees the 403 page (F2). */
+/**
+ * Allows only the listed roles; anyone else sees the 403 page (F2).
+ * The Academic Coordinator passes wherever the HOD (`admin`) does.
+ */
 export function RequireRole({ roles }) {
   const user = useSession((s) => s.user);
-  if (!user || !roles.includes(user.role)) return <Navigate to="/403" replace />;
+  if (!user || !roleAllows(user.role, roles)) return <Navigate to="/403" replace />;
   return <Outlet />;
 }
 

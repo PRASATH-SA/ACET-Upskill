@@ -1,9 +1,11 @@
 import { memo } from 'react';
 import { Handle, Position } from '@xyflow/react';
+import { motion } from 'framer-motion';
 import { Award, Lock, MapPin, RotateCcw, Sparkles } from 'lucide-react';
 import { MAP_NODE_SIZE, MAP_NODE_STYLE } from '@acet/shared';
 import { cn } from '../../../lib/cn';
 import { STATE_LABEL } from './graph';
+import { bouncy } from '../../../lib/motion';
 
 const ICON = { mastered: Award, locked: Lock, needsRevision: RotateCcw };
 
@@ -16,7 +18,7 @@ const SURFACE = {
   needsRevision: 'shadow-[inset_0_1px_0_rgb(255_255_255/0.6),0_4px_0_0_#C9A100]',
   current: 'animate-glow-pulse shadow-[inset_0_1px_0_rgb(255_255_255/0.35)]',
   unlocked:
-    'backdrop-blur-md shadow-[inset_0_1px_0_rgb(255_255_255/0.9),0_4px_0_0_rgb(47_107_234/0.25)]',
+    'backdrop-blur-md shadow-[inset_0_1px_0_rgb(255_255_255/0.9),0_4px_0_0_rgb(200_29_120/0.25)]',
   locked: 'backdrop-blur-md',
 };
 
@@ -63,8 +65,11 @@ export const TopicNode = memo(function TopicNode({ id, data }) {
         isConnectable={false}
       />
 
-      <button
+      <motion.button
         type="button"
+        whileHover={isLocked ? { x: [0, -3, 3, 0] } : { scale: 1.06, y: -3 }}
+        whileTap={isLocked ? undefined : { scale: 0.94 }}
+        transition={bouncy}
         data-topic-id={id}
         data-state={data.state}
         aria-label={`${data.title}. ${STATE_LABEL[data.state]}${data.unitNumber ? `. Unit ${data.unitNumber}` : ''}`}
@@ -79,14 +84,14 @@ export const TopicNode = memo(function TopicNode({ id, data }) {
           if (keyboard) data.onFocusNode?.(id);
         }}
         className={cn(
-          'nodrag nopan flex w-full items-center gap-2.5 rounded-2xl border px-3 text-left text-sm font-semibold leading-snug outline-none transition-[transform,box-shadow] duration-200',
+          'nodrag nopan flex w-full items-center gap-2.5 rounded-2xl border px-3 text-left text-sm font-semibold leading-snug outline-none transition-shadow duration-200',
           'bg-[linear-gradient(180deg,rgb(255_255_255/0.35),rgb(255_255_255/0)_55%)]',
-          'focus-visible:ring-4 focus-visible:ring-blue/40 focus-visible:ring-offset-2',
+          'focus-visible:ring-4 focus-visible:ring-brand/40 focus-visible:ring-offset-2',
           SURFACE[data.state] ?? SURFACE.unlocked,
           data.selected && 'ring-4 ring-navy/30',
           data.highlighted && 'ring-4 ring-gold',
           data.draft && 'border-dashed opacity-60',
-          isLocked ? 'cursor-not-allowed' : 'hover:-translate-y-0.5 active:translate-y-0.5',
+          isLocked && 'cursor-not-allowed',
         )}
         style={{
           minHeight: MAP_NODE_SIZE.height,
@@ -110,7 +115,7 @@ export const TopicNode = memo(function TopicNode({ id, data }) {
           </span>
         )}
         <span className="line-clamp-2">{data.title}</span>
-      </button>
+      </motion.button>
 
       {/* Revision dot (A.8: gold node with an orange dot). */}
       {data.state === 'needsRevision' && (

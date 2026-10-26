@@ -1,70 +1,86 @@
-/** A.8 — ACET design tokens. The Tailwind config (Phase 0 / F1) imports these values. */
+/**
+ * Design tokens: the Achariya "25 years" brand palette (ADR 0010, 2026-10-23), sampled from the
+ * logo in apps/web/public/brand/achariya-25.png, on the E-Learning Kit structure (ADR 0008).
+ * The Tailwind config imports these values.
+ *
+ * The A.8 key names (navy, red, blue, …) are kept so every existing utility class keeps working:
+ * `navy` is the logo's navy, `blue` its magenta (`brand`), `red` the danger red, `gold` its yellow.
+ */
 export const COLORS = {
-  navy: '#0F2D5C',
-  red: '#E0262B',
-  blue: '#2F6BEA',
-  gold: '#F5C000',
-  goldBorder: '#C9A100',
-  goldTint: '#FFF7D6',
-  text: '#5B6577',
-  border: '#ECEFF3',
-  surface: '#F8F9FB',
+  navy: '#22355E', // logo "World Class Education" navy — headings, body copy (11.9:1 on white)
+  red: '#D92D20', // danger — destructive actions and error states only
+  blue: '#C81D78', // brand magenta, deepened for AA — current topic, links, focus (5.4:1 with white)
+  gold: '#F2C014', // logo sunburst yellow — mastered topics and achievements
+  goldBorder: '#C99A00',
+  goldTint: '#FFF6D6',
+  text: '#5B6478', // ink-muted — secondary copy (5.9:1 on white, 5.5:1 on surface)
+  border: '#F1E4CC', // warm hairline
+  surface: '#FFF8EC', // warm cream page background (from the logo's yellow)
   card: '#FFFFFF',
 };
 
+/** The rest of the brand palette. */
+export const BRAND_COLORS = {
+  brand: '#C81D78', // buttons and active states (white on it 5.4:1)
+  brandLogo: '#E02888', // the logo's exact magenta: decoration and large type only (white 4.4:1)
+  brandDeep: '#9E1360',
+  brandSoft: '#FDE8F3',
+  gradStart: '#C81D78', // CTA gradient: magenta → tagline red, like the logo's lettering
+  gradEnd: '#E0452C',
+  accent: '#F29F1B', // logo orange glow: play button, sunburst, highlights (icons only)
+  accentInk: '#A85C00', // orange as text (5.0:1 on white)
+  rating: '#F29F1B',
+  successSoft: '#E8F5E9',
+  inkSubtle: '#9AA0B0',
+  onBrand: '#FFFFFF',
+};
+
 /**
- * Supporting shades (F1), not in A.8. Darker variants keep small text on tinted backgrounds
- * above WCAG AA 4.5:1; success and warning are for status badges and the revision dot only.
+ * Supporting shades. Darker variants keep small text on tinted backgrounds above WCAG AA 4.5:1;
+ * success and warning are for status badges and the revision dot only.
  */
 export const SUPPORT_COLORS = {
-  navyDark: '#0B2247',
-  redDark: '#B3191E',
-  blueDark: '#1F4FB8',
-  success: '#1C6B3C',
+  navyDark: '#16233F',
+  redDark: '#B42318', // danger as small text (6.6:1 on white)
+  blueDark: BRAND_COLORS.brandDeep,
+  success: '#2E7D32', // logo underline green, deepened (5.1:1 on white)
   warning: '#F28C28',
   warningDark: '#8A4A0B',
 };
 
+/** One family, Poppins, for headings and body. */
 export const FONTS = {
-  heading: { family: 'Montserrat', weights: [700, 800] },
-  body: { family: 'Inter', weights: [400, 500, 600], lineHeight: 1.7 },
+  heading: { family: 'Poppins', weights: [600, 700] },
+  body: { family: 'Poppins', weights: [400, 500, 600], lineHeight: 1.6 },
 };
 
-/** Eyebrow label placed above a navy heading. */
+/** Small label placed above a heading, in the brand magenta. */
 export const EYEBROW = {
   fontSizePx: 12,
-  fontWeight: 700,
+  fontWeight: 600,
   textTransform: 'uppercase',
-  letterSpacing: '0.3em',
-  color: COLORS.red,
+  letterSpacing: '0.12em',
+  color: BRAND_COLORS.brand,
 };
 
 /**
- * Radius scale (2026-10-16 "liquid glass" refresh). Large, soft corners: cards 28px, inner
- * tiles 22px, controls 16px, buttons and chips stay pills. Nested surfaces step down one size
- * so the corners stay concentric.
+ * Radius scale: tags and thumbnails 6px, inputs and rows 10px, cards, tiles and the player
+ * 14px; buttons, tabs, progress bars and the FAB stay pills.
  */
 export const RADIUS = {
-  sm: 10,
-  md: 12,
-  lg: 14,
-  xl: 16,
-  '2xl': 22,
-  card: 28,
-  sheet: 32,
+  sm: 6,
+  md: 10,
+  lg: 10,
+  xl: 10,
+  '2xl': 14,
+  card: 14,
+  sheet: 20,
 };
 
-/**
- * Liquid-glass surfaces. Translucent white over a soft ambient backdrop, blurred and saturated,
- * with a bright top rim. Colours are the A.8 palette at reduced alpha; nothing new is introduced.
- */
-export const GLASS = {
-  blurPx: 20,
-  saturate: 1.8,
-  fill: 'rgb(255 255 255 / 0.58)',
-  fillStrong: 'rgb(255 255 255 / 0.82)',
-  fillNavy: 'rgb(15 45 92 / 0.86)',
-  rim: 'rgb(255 255 255 / 0.75)',
+/** Two elevation levels, tinted with the brand magenta. */
+export const SHADOWS = {
+  card: '0 4px 16px rgba(158, 19, 96, 0.07)',
+  cta: '0 8px 20px rgba(200, 29, 120, 0.30)',
 };
 
 export const SHAPE = {
@@ -76,14 +92,14 @@ export const SHAPE = {
 };
 
 /**
- * A.8 — map node colours per state. Locked text is navy (A.8: "locked-state text"), which keeps
- * it above AA contrast on the grey fill. The revision dot is the warning orange.
+ * Map node colours per state. Locked text is navy, which keeps it above AA contrast on the grey
+ * fill. The revision dot is the warning orange.
  */
 export const MAP_NODE_STYLE = {
   mastered: { fill: COLORS.gold, border: COLORS.goldBorder, text: COLORS.navy },
   current: { fill: COLORS.blue, border: COLORS.blue, text: COLORS.card },
   unlocked: { fill: COLORS.card, border: COLORS.blue, text: COLORS.navy },
-  locked: { fill: '#E5E7EB', border: '#C7CCD4', text: COLORS.navy },
+  locked: { fill: '#EFEBE4', border: '#D6CFC2', text: COLORS.navy },
   needsRevision: {
     fill: COLORS.gold,
     border: COLORS.goldBorder,
@@ -92,9 +108,9 @@ export const MAP_NODE_STYLE = {
   },
 };
 
-/** A.8 — map edge styles. Cross-unit related links are red dashed. */
+/** Map edge styles. Cross-unit related links are dashed in the orange accent ink. */
 export const MAP_EDGE_STYLE = {
   prerequisite: { stroke: COLORS.navy, dashed: false, arrow: true },
   related: { stroke: COLORS.blue, dashed: true, arrow: false },
-  crossUnitRelated: { stroke: COLORS.red, dashed: true, arrow: false },
+  crossUnitRelated: { stroke: BRAND_COLORS.accentInk, dashed: true, arrow: false },
 };

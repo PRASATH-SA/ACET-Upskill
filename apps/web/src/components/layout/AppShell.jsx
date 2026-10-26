@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { Download, LogOut, PanelLeftClose, PanelLeftOpen, Search, User } from 'lucide-react';
 import { useInstall } from '../../lib/pwa';
 import { NAV } from '../../app/nav';
@@ -8,12 +9,17 @@ import { useUi } from '../../lib/uiStore';
 import { cn } from '../../lib/cn';
 import { Avatar, IconButton, Menu, focusRing } from '../ui';
 import { OfflineBanner } from './OfflineBanner';
+import { bouncy, soft } from '../../lib/motion';
+import { CelebrationLayer } from '../../features/student/game/Celebration';
+import { LevelBadge } from '../../features/student/game/GameWidgets';
+import { useGame, useLevelUpWatcher } from '../../features/student/game/useGame';
 
 const ROLE_LABEL = {
   student: 'Student',
   faculty: 'Faculty',
   mentor: 'Mentor',
   admin: 'HOD / Admin',
+  coordinator: 'Academic Coordinator',
 };
 
 function Logo() {
@@ -22,13 +28,18 @@ function Logo() {
       to="/"
       className={cn('flex items-center gap-2 rounded-lg text-navy hover:no-underline', focusRing)}
     >
-      <span
-        aria-hidden
-        className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-navy font-heading text-sm font-extrabold text-gold shadow-press-navy-sm"
-      >
-        SU
-      </span>
-      <span className="font-heading text-xl font-extrabold">SkillUp</span>
+      <motion.img
+        src="/brand/achariya-25-320.webp"
+        alt=""
+        width={40}
+        height={40}
+        initial={{ rotate: -20, scale: 0.6 }}
+        animate={{ rotate: 0, scale: 1 }}
+        whileHover={{ rotate: [0, -10, 10, -5, 0], scale: 1.08 }}
+        transition={bouncy}
+        className="h-10 w-10 rounded-md shadow-press-red-sm"
+      />
+      <span className="font-heading text-xl font-bold">SkillUp</span>
       <span className="hidden text-xs font-semibold text-body sm:inline">ACET</span>
     </Link>
   );
@@ -59,10 +70,17 @@ function SearchBox({ className }) {
         value={q}
         onChange={(e) => setQ(e.target.value)}
         placeholder="Search topics…"
-        className="min-h-[44px] w-full rounded-full border border-navy/10 bg-white/60 pl-10 pr-4 text-sm text-navy shadow-[inset_0_1px_2px_rgb(15_45_92/0.06)] placeholder:text-body focus:border-blue focus:bg-white/90 focus:outline-none focus:ring-4 focus:ring-blue/15"
+        className="min-h-[44px] w-full rounded-md border border-line bg-surface pl-10 pr-4 text-sm text-navy placeholder:text-ink-subtle focus:border-brand focus:bg-card focus:outline-none focus:ring-4 focus:ring-brand/15"
       />
     </form>
   );
+}
+
+/** Students see their level, XP and streak in the top bar, and level ups get celebrated. */
+function StudentGame() {
+  const { game, progress } = useGame();
+  useLevelUpWatcher(game);
+  return <LevelBadge game={game} streak={progress.data?.revision.streakDays ?? 0} />;
 }
 
 function TopBar({ user }) {
@@ -70,9 +88,8 @@ function TopBar({ user }) {
   const canInstall = useInstall((s) => Boolean(s.prompt));
   const install = useInstall((s) => s.install);
   return (
-    // Frosted bar; the thin red rule along the bottom edge keeps the ACET brand accent.
-    // 66px tall in total, like the old bar, so sticky offsets elsewhere (top-[66px]) still line up.
-    <header className="glass sticky top-0 z-30 rounded-none border-0 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-red">
+    // White app bar with a line hairline. 66px tall, so sticky offsets elsewhere (top-[66px]) line up.
+    <header className="sticky top-0 z-30 border-b border-line bg-card">
       <div className="flex h-[66px] items-center gap-3 px-4 lg:px-6">
         <Logo />
         <SearchBox className="ml-auto hidden max-w-sm flex-1 sm:block" />
@@ -82,6 +99,7 @@ function TopBar({ user }) {
           className="ml-auto sm:hidden"
           onClick={() => navigate('/search')}
         />
+        {user.role === 'student' && <StudentGame />}
         <Menu
           label="Profile menu"
           trigger={
@@ -118,7 +136,7 @@ function Sidebar({ items }) {
   return (
     <aside
       className={cn(
-        // A floating glass rail, inset from the edges.
+        // A floating card rail, inset from the edges.
         'glass sticky top-[78px] my-3 ml-3 hidden h-[calc(100vh-90px)] shrink-0 flex-col rounded-card transition-[width] md:flex',
         collapsed ? 'w-[76px]' : 'w-60',
       )}
@@ -133,22 +151,39 @@ function Sidebar({ items }) {
                 title={collapsed ? item.label : undefined}
                 className={({ isActive }) =>
                   cn(
-                    'relative flex min-h-[44px] items-center gap-3 rounded-2xl px-3 text-sm font-semibold text-navy transition-[background-color,box-shadow] hover:bg-white/60 hover:no-underline',
-                    isActive &&
-                      'bg-white shadow-press-glass before:absolute before:inset-y-2.5 before:left-1 before:w-1 before:rounded-full before:bg-red',
+                    'relative flex min-h-[44px] items-center gap-3 rounded-md px-3 text-sm font-medium text-body transition-colors hover:text-brand hover:no-underline',
+                    isActive && 'font-semibold text-brand',
                     collapsed && 'justify-center',
                     focusRing,
                   )
                 }
               >
-                <item.icon className="h-5 w-5 shrink-0" aria-hidden />
-                <span className={cn(collapsed && 'sr-only')}>{item.label}</span>
+                {({ isActive }) => (
+                  <>
+                    {isActive && (
+                      <motion.span
+                        layoutId="sidebar-active"
+                        aria-hidden
+                        className="absolute inset-0 rounded-md bg-brand-soft"
+                        transition={bouncy}
+                      />
+                    )}
+                    <motion.span
+                      className="relative inline-flex"
+                      whileHover={{ scale: 1.2, rotate: -8 }}
+                      transition={bouncy}
+                    >
+                      <item.icon className="h-5 w-5 shrink-0" aria-hidden />
+                    </motion.span>
+                    <span className={cn('relative', collapsed && 'sr-only')}>{item.label}</span>
+                  </>
+                )}
               </NavLink>
             </li>
           ))}
         </ul>
       </nav>
-      <div className="border-t border-navy/[0.08] p-3">
+      <div className="border-t border-line p-3">
         <IconButton
           icon={collapsed ? PanelLeftOpen : PanelLeftClose}
           label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
@@ -161,7 +196,7 @@ function Sidebar({ items }) {
   );
 }
 
-/** Mobile tabs: a floating glass pill above the home indicator. */
+/** Mobile tabs: a floating white pill above the home indicator; the active tab is brand. */
 function BottomTabs({ items }) {
   const tabs = items.filter((i) => i.mobile).slice(0, 4);
   return (
@@ -181,16 +216,32 @@ function BottomTabs({ items }) {
               className={({ isActive }) =>
                 cn(
                   'relative flex min-h-[52px] flex-col items-center justify-center gap-0.5 rounded-full text-[11px] font-semibold transition-[background-color,box-shadow] hover:no-underline',
-                  isActive
-                    ? 'bg-white text-navy shadow-press-glass after:absolute after:bottom-1 after:h-1 after:w-1 after:rounded-full after:bg-red'
-                    : 'text-body',
+                  isActive ? 'text-brand' : 'text-body',
                   focusRing,
                   'focus-visible:ring-offset-0',
                 )
               }
             >
-              <item.icon className="h-5 w-5" aria-hidden />
-              {item.label}
+              {({ isActive }) => (
+                <>
+                  {isActive && (
+                    <motion.span
+                      layoutId="bottom-tab-active"
+                      aria-hidden
+                      className="absolute inset-0 rounded-full bg-brand-soft"
+                      transition={bouncy}
+                    />
+                  )}
+                  <motion.span
+                    className="relative inline-flex"
+                    animate={isActive ? { y: [0, -5, 0], scale: [1, 1.2, 1] } : { y: 0, scale: 1 }}
+                    transition={{ duration: 0.4 }}
+                  >
+                    <item.icon className="h-5 w-5" aria-hidden />
+                  </motion.span>
+                  <span className="relative">{item.label}</span>
+                </>
+              )}
             </NavLink>
           </li>
         ))}
@@ -203,6 +254,7 @@ function BottomTabs({ items }) {
 export function AppShell() {
   const user = useSession((s) => s.user);
   const items = NAV[user.role] ?? [];
+  const location = useLocation();
   return (
     <div className="min-h-screen">
       <a
@@ -216,10 +268,20 @@ export function AppShell() {
       <div className="flex">
         <Sidebar items={items} />
         <main id="main" tabIndex={-1} className="min-w-0 flex-1 pb-28 focus:outline-none md:pb-10">
-          <Outlet />
+          {/* Each section fades and rises in, like moving to the next level screen. Keyed on the
+              first path segment only, so moving inside a section (topic to topic) keeps state. */}
+          <motion.div
+            key={location.pathname.split('/')[1] ?? ''}
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={soft}
+          >
+            <Outlet />
+          </motion.div>
         </main>
       </div>
       <BottomTabs items={items} />
+      <CelebrationLayer />
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import { isAdminRole } from '@acet/shared';
 /**
  * JobService (A1.6): create, progress, log, finish, fail, cancel. Pipelines report through
  * the context object built in runner.js; the SSE endpoint reads the same document.
@@ -49,7 +50,7 @@ export async function createJob({ type, input = {}, createdBy, subjectId, topicI
 export async function loadJobFor(user, jobId) {
   const job = await AiJob.findById(jobId).lean();
   if (!job) throw notFound('Job');
-  if (user.role === 'admin' || String(job.createdBy) === user.id) return job;
+  if (isAdminRole(user.role) || String(job.createdBy) === user.id) return job;
   if (user.role === 'faculty' && job.subjectId) {
     await loadSubject(user, String(job.subjectId), 'write');
     return job;
@@ -60,9 +61,9 @@ export async function loadJobFor(user, jobId) {
 export async function listJobs(user, { subjectId, limit = 20 } = {}) {
   const filter = {};
   if (subjectId) {
-    await loadSubject(user, subjectId, user.role === 'admin' ? 'read' : 'write');
+    await loadSubject(user, subjectId, isAdminRole(user.role) ? 'read' : 'write');
     filter.subjectId = subjectId;
-  } else if (user.role !== 'admin') filter.createdBy = user.id;
+  } else if (!isAdminRole(user.role)) filter.createdBy = user.id;
   const jobs = await AiJob.find(filter).sort({ createdAt: -1 }).limit(limit).lean();
   return jobs.map(jobView);
 }

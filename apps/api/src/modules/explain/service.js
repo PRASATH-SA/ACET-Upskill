@@ -4,6 +4,7 @@
  * and their score replaces the AI's. Proof of learning, not proof of watching.
  */
 import {
+  isAdminRole,
   EXPLAIN_LIMITS,
   ExplainTextSchema,
   ExplainVoiceFieldsSchema,
@@ -199,7 +200,7 @@ async function loadExplanation(user, id) {
   const ex = await Explanation.findById(id).lean();
   if (!ex) throw notFound('Explanation');
   if (String(ex.userId) === user.id) return { ex, staff: false };
-  if (user.role === 'faculty' || user.role === 'admin') {
+  if (user.role === 'faculty' || isAdminRole(user.role)) {
     await loadSubject(user, String(ex.subjectId), 'write');
     return { ex, staff: true };
   }
@@ -230,7 +231,7 @@ export async function listExplanations(user, query) {
   if (query.subjectId) {
     await loadSubject(user, query.subjectId, 'write');
     subjectIds = [query.subjectId];
-  } else if (user.role !== 'admin') subjectIds = await facultySubjectIds(user.id);
+  } else if (!isAdminRole(user.role)) subjectIds = await facultySubjectIds(user.id);
   const filter = { status: 'scored' };
   if (subjectIds) filter.subjectId = { $in: subjectIds.map(oid) };
   if (query.topicId) filter.topicId = oid(query.topicId);

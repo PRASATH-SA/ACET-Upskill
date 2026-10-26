@@ -26,6 +26,8 @@ export const appRoutes = {
     { path: 'topics/:topicId/quiz', element: page(student, 'QuizPage') },
     // Code lab problem; staff see drafts as a preview, and their submissions are not recorded.
     { path: 'code/:challengeId', element: page(student, 'CodeLabPage') },
+    // Practical (lab) subject on its theory roadmap (ADR 0012); staff preview it as students see it.
+    { path: 'labs/:subjectId', element: page(student, 'LabPage') },
   ],
   byRole: {
     student: [
@@ -43,6 +45,8 @@ export const appRoutes = {
       { path: 'studio/subjects/:subjectId', element: page(faculty, 'SubjectBuilder') },
       { path: 'studio/subjects/:subjectId/insights', element: page(faculty, 'InsightsPage') },
       { path: 'studio/subjects/:subjectId/overview', element: page(faculty, 'OverviewEditor') },
+      { path: 'studio/subjects/:subjectId/content', element: page(faculty, 'ContentCsvPage') },
+      { path: 'studio/labs/:subjectId', element: page(faculty, 'LabEditor') },
       { path: 'studio/topics/:topicId', element: page(faculty, 'TopicEditor') },
       { path: 'studio/review', element: page(faculty, 'ReviewQueue') },
       { path: 'studio/questions', element: page(faculty, 'QuestionBank') },
@@ -58,9 +62,10 @@ export const appRoutes = {
       { path: 'admin', element: page(admin, 'AdminHome') },
       { path: 'admin/users', element: page(admin, 'UsersPage') },
       { path: 'admin/syllabus', element: page(admin, 'SyllabusPage') },
-      { path: 'admin/departments', element: page(admin, 'DepartmentsPage') },
       { path: 'admin/co-po', element: page(admin, 'CoPoPage') },
       { path: 'admin/ai', element: page(admin, 'AiSettingsPage') },
     ],
+    // Only the Academic Coordinator creates and edits departments.
+    coordinator: [{ path: 'admin/departments', element: page(admin, 'DepartmentsPage') }],
   },
 };

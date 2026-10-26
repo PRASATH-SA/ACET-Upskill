@@ -1,4 +1,4 @@
-import { CONTENT_SOURCES, CONTENT_STATUSES, LINK_TYPES } from '@acet/shared';
+import { CONTENT_SOURCES, CONTENT_STATUSES, LINK_TYPES, SUBJECT_KINDS } from '@acet/shared';
 import { mongoose, ObjectId, ref, Schema } from '../../db/mongoose.js';
 
 const subjectSchema = new Schema(
@@ -8,6 +8,9 @@ const subjectSchema = new Schema(
     code: { type: String, required: true, uppercase: true, trim: true },
     name: { type: String, required: true, trim: true },
     facultyIds: [{ type: ObjectId, ref: 'User', index: true }],
+    /** ADR 0012: a practical (lab) subject reuses its theory subject's roadmap. */
+    kind: { type: String, enum: SUBJECT_KINDS, default: 'theory', index: true },
+    theorySubjectId: { type: ObjectId, ref: 'Subject', default: null, index: true },
   },
   { timestamps: true },
 );

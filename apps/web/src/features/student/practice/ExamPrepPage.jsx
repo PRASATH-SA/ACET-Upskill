@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link, Navigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { BookOpen, CalendarDays, FileText, Target, Trophy } from 'lucide-react';
 import { Page } from '../../../components/layout/AppShell';
 import {
@@ -11,12 +11,18 @@ import {
   LoadingBlock,
   Select,
 } from '../../../components/ui';
-import { useExamPrep, useSubjectMap, useSubjects } from '../api';
+import { theoryOnly, useExamPrep, useSubjectMap, useSubjects } from '../api';
+import { SubjectTabs } from '../SubjectTabs';
 
 const fmt = (d) => new Date(d).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
 
-/** /exam-prep — pick a subject (or jump straight in when there is only one). */
-export function ExamPrepIndex() {
+/**
+ * /exam-prep and /exam-prep/:subjectId — one page with a tab per subject; each tab is a
+ * self-contained SubjectExamPrep component. The URL remembers the open subject.
+ */
+export function ExamPrepPage() {
+  const { subjectId } = useParams();
+  const navigate = useNavigate();
   const subjects = useSubjects();
   if (subjects.isPending) {
     return (
@@ -25,12 +31,12 @@ export function ExamPrepIndex() {
       </Page>
     );
   }
-  const list = subjects.data ?? [];
-  if (list.length === 1) return <Navigate to={`/exam-prep/${list[0].id}`} replace />;
+  const list = theoryOnly(subjects.data);
+  const current = list.find((s) => s.id === subjectId) ?? list[0];
   return (
     <Page>
       <EyebrowHeading eyebrow="Exam prep" title="Previous-year questions" level={1}>
-        <p>See which topics are asked most, then open their 10-mark answers.</p>
+        <p>Each subject has its own tab: the most asked topics, then every question by unit.</p>
       </EyebrowHeading>
       {list.length === 0 ? (
         <EmptyState
@@ -45,29 +51,27 @@ export function ExamPrepIndex() {
           }
         />
       ) : (
-        <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {list.map((s) => (
-            <li key={s.id}>
-              <Link
-                to={`/exam-prep/${s.id}`}
-                className="block glass rounded-card p-5 glass-hover hover:no-underline"
-              >
-                <p className="text-xs font-semibold text-body">
-                  {s.code} · Semester {s.semester}
-                </p>
-                <h2 className="mt-1 text-lg">{s.name}</h2>
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <div className="mt-6">
+          <SubjectTabs
+            label="Subjects"
+            subjects={list}
+            value={current.id}
+            onChange={(id) => navigate(`/exam-prep/${id}`, { replace: true })}
+          >
+            {(s) => <SubjectExamPrep key={s.id} subject={s} />}
+          </SubjectTabs>
+        </div>
       )}
     </Page>
   );
 }
 
-/** /exam-prep/:subjectId — PYQs by unit with marks and frequency filters (F5). */
-export function ExamPrepPage() {
-  const { subjectId } = useParams();
+/** Kept as a route name: the index is the same page with the first subject open. */
+export const ExamPrepIndex = ExamPrepPage;
+
+/** One subject's exam prep: PYQs by unit with marks and frequency filters (F5). */
+function SubjectExamPrep({ subject }) {
+  const subjectId = subject.id;
   const [unitId, setUnitId] = useState('');
   const [marks, setMarks] = useState('');
   const [minFrequency, setMinFrequency] = useState('');
@@ -93,14 +97,14 @@ export function ExamPrepPage() {
   }
 
   return (
-    <Page>
-      <EyebrowHeading
-        eyebrow="Exam prep"
-        title={map.data ? map.data.subject.name : 'Previous-year questions'}
-        level={1}
-      >
-        <p>Questions from the last 5 years, most asked first.</p>
-      </EyebrowHeading>
+    <section aria-labelledby={`prep-${subjectId}`}>
+      <p className="text-xs font-semibold">
+        {subject.code} · Semester {subject.semester}
+      </p>
+      <h2 id={`prep-${subjectId}`} className="mt-1 text-xl">
+        {subject.name}
+      </h2>
+      <p className="mt-1 text-sm">Questions from the last 5 years, most asked first.</p>
 
       <div className="mt-5 grid gap-3 sm:grid-cols-3">
         <Select
@@ -137,6 +141,14 @@ export function ExamPrepPage() {
           description={prep.error.message}
           action={<Button onClick={() => prep.refetch()}>Try again</Button>}
         />
+      ) : rows.length === 0 && !(unitId || marks || minFrequency) ? (
+        <Card className="mt-6" tone="surface">
+          <p className="font-semibold text-navy">No previous-year questions added yet</p>
+          <p className="mt-1 text-sm">
+            Your faculty hasn&apos;t added past papers for this subject. Meanwhile, prepare each
+            topic with its 10-mark answer from the subject&apos;s topic pages.
+          </p>
+        </Card>
       ) : rows.length === 0 ? (
         <EmptyState
           className="mt-6"
@@ -158,6 +170,15 @@ export function ExamPrepPage() {
         />
       ) : (
         <>
+          {asked.length === 0 && !marks && !minFrequency && (
+            <Card className="mt-6" tone="surface">
+              <p className="font-semibold text-navy">No previous-year questions added yet</p>
+              <p className="mt-1 text-sm">
+                Your faculty hasn&apos;t added past papers for this subject. Meanwhile, prepare each
+                topic with its 10-mark answer below.
+              </p>
+            </Card>
+          )}
           {asked.length > 0 && (
             <Card tone="navy" className="mt-6">
               <p className="eyebrow text-gold">Most asked</p>
@@ -185,16 +206,16 @@ export function ExamPrepPage() {
               className="mt-8"
               aria-label={unit ? `Unit ${unit.number}` : 'Other'}
             >
-              <h2 className="text-lg">
+              <h3 className="text-lg">
                 {unit ? `Unit ${unit.number} · ${unit.title}` : 'Other topics'}
-              </h2>
+              </h3>
               <ul className="mt-3 space-y-3">
                 {unitRows.map((r) => (
                   <li key={r.topicId}>
                     <Card padded={false} className="p-4 sm:p-5">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
-                          <h3>{r.title}</h3>
+                          <h4>{r.title}</h4>
                           <div className="mt-1 flex flex-wrap gap-1.5">
                             <Badge tone={r.frequency > 0 ? 'navy' : 'neutral'}>
                               Asked {r.frequency}×
@@ -244,6 +265,6 @@ export function ExamPrepPage() {
           )}
         </>
       )}
-    </Page>
+    </section>
   );
 }

@@ -25,8 +25,11 @@ export const useChallenge = (id) =>
   useQuery({ queryKey: codeLabKeys.challenge(id), queryFn: () => get(`/code-lab/${id}`) });
 
 /** Run on the sample data. Errors in the SQL come back as data ({ ok: false }), not as a failure. */
+/** `input` (Python only) is the program's stdin; omitted, the server uses the first example. */
 export const useRunCode = (id) =>
-  useMutation({ mutationFn: (code) => post(`/code-lab/${id}/run`, { code }) });
+  useMutation({
+    mutationFn: ({ code, input }) => post(`/code-lab/${id}/run`, { code, input }),
+  });
 
 export function useSubmitCode(id, topicId) {
   const qc = useQueryClient();

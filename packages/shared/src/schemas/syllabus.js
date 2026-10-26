@@ -4,6 +4,7 @@ import {
   LinkTypeSchema,
   MapNodeStateSchema,
   MasteryStateSchema,
+  SubjectKindSchema,
 } from '../enums.js';
 import { ObjectIdSchema, PositionSchema } from './common.js';
 
@@ -13,6 +14,9 @@ export const CreateSubjectSchema = z.object({
   code: z.string().trim().toUpperCase().min(2).max(20),
   name: z.string().trim().min(2).max(160),
   facultyIds: z.array(ObjectIdSchema).max(20).default([]),
+  /** ADR 0012: a practical (lab) subject names the theory subject whose roadmap it uses. */
+  kind: SubjectKindSchema.default('theory'),
+  theorySubjectId: ObjectIdSchema.nullable().optional(),
 });
 export const UpdateSubjectSchema = CreateSubjectSchema.partial();
 

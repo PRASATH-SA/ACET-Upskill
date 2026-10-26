@@ -1,8 +1,6 @@
 import { useRef } from 'react';
 import { cn } from '../../../lib/cn';
 
-const INDENT = '  ';
-
 /**
  * A small code editor: a plain textarea (so screen readers, mobile keyboards and autofill
  * behave) with a line-number gutter. Tab indents, Shift+Tab outdents, Ctrl/Cmd+Enter runs
@@ -15,6 +13,9 @@ export function CodeEditor({
   onRun,
   onSubmit,
   label = 'Your SQL',
+  placeholder = 'SELECT …',
+  /** Python uses 4 spaces (PEP 8); SQL 2. */
+  indent = '  ',
   className,
 }) {
   const ref = useRef(null);
@@ -40,12 +41,14 @@ export function CodeEditor({
     const { selectionStart: s, selectionEnd: end } = el;
     const lineStart = value.lastIndexOf('\n', s - 1) + 1;
     if (!e.shiftKey && s === end) {
-      replaceSelection(INDENT, s + INDENT.length, s + INDENT.length);
+      replaceSelection(indent, s + indent.length, s + indent.length);
       return;
     }
     // Indent or outdent every selected line.
     const block = value.slice(lineStart, end);
-    const changed = e.shiftKey ? block.replace(/^ {1,2}/gm, '') : block.replace(/^/gm, INDENT);
+    const changed = e.shiftKey
+      ? block.replace(new RegExp(`^ {1,${indent.length}}`, 'gm'), '')
+      : block.replace(/^/gm, indent);
     const next = value.slice(0, lineStart) + changed + value.slice(end);
     onChange(next);
     requestAnimationFrame(() => el.setSelectionRange(lineStart, lineStart + changed.length));
@@ -86,7 +89,7 @@ export function CodeEditor({
         rows={lines}
         aria-describedby={`${id}-keys`}
         className="min-h-[220px] w-full resize-y whitespace-pre bg-transparent px-3 py-3 text-white caret-gold outline-none placeholder:text-white/40"
-        placeholder="SELECT …"
+        placeholder={placeholder}
       />
       <span id={`${id}-keys`} className="sr-only">
         Tab indents. Control plus Enter runs. Control plus Shift plus Enter submits.

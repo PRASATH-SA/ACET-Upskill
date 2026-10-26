@@ -1,6 +1,8 @@
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { Activity, Brain, Flame } from 'lucide-react';
-import { MASTERY_STATES } from '@acet/shared';
+import { MASTERY_STATES, gamify } from '@acet/shared';
 import { Page } from '../../../components/layout/AppShell';
 import {
   Badge,
@@ -13,6 +15,8 @@ import {
 } from '../../../components/ui';
 import { useProgress } from '../api';
 import { MASTERY_LABEL } from '../map/graph';
+import { soft } from '../../../lib/motion';
+import { AchievementGrid, LevelCard } from '../game/GameWidgets';
 
 const STATE_COLOR = {
   confident: 'bg-gold',
@@ -22,7 +26,7 @@ const STATE_COLOR = {
   notStarted: 'bg-line',
 };
 
-/** A stacked bar of mastery states for one subject, with the numbers spelled out. */
+/** A stacked bar of mastery states for one subject, with the numbers spelled out. Segments grow in. */
 export function MasteryBar({ counts, total }) {
   const order = ['confident', 'practicing', 'learning', 'needsRevision', 'notStarted'];
   return (
@@ -30,10 +34,12 @@ export function MasteryBar({ counts, total }) {
       <div className="flex h-3 overflow-hidden rounded-full bg-line" aria-hidden>
         {order.map((s) =>
           counts[s] ? (
-            <div
+            <motion.div
               key={s}
               className={STATE_COLOR[s]}
-              style={{ width: `${(counts[s] / Math.max(total, 1)) * 100}%` }}
+              initial={{ width: 0 }}
+              animate={{ width: `${(counts[s] / Math.max(total, 1)) * 100}%` }}
+              transition={soft}
             />
           ) : null,
         )}
@@ -56,6 +62,7 @@ export function MasteryBar({ counts, total }) {
 /** /me/progress (F5): mastery per subject, a light revision streak, and weakest topics. */
 export function ProgressPage() {
   const progress = useProgress();
+  const game = useMemo(() => (progress.data ? gamify(progress.data) : null), [progress.data]);
   if (progress.isPending) {
     return (
       <Page>
@@ -83,6 +90,9 @@ export function ProgressPage() {
   return (
     <Page>
       <EyebrowHeading eyebrow="Progress" title="How you are doing" level={1} />
+      <div className="mt-6">
+        <LevelCard game={game} streak={p.revision.streakDays} />
+      </div>
       <div className="mt-6 grid gap-4 sm:grid-cols-3">
         <StatTile label="Topics mastered" value={`${mastered} / ${total}`} tone="gold" />
         <StatTile
@@ -98,6 +108,16 @@ export function ProgressPage() {
           hint="Nice to keep, not the goal"
         />
       </div>
+
+      <section aria-labelledby="badges-h" className="mt-8">
+        <div className="mb-4 flex items-baseline justify-between gap-3">
+          <h2 id="badges-h">Achievements</h2>
+          <span className="text-sm font-semibold text-navy">
+            {game.unlockedCount} of {game.achievements.length} unlocked
+          </span>
+        </div>
+        <AchievementGrid achievements={game.achievements} />
+      </section>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         <section aria-labelledby="by-subject">

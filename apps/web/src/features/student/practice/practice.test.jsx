@@ -181,7 +181,7 @@ describe('revision session (F5)', () => {
     });
     renderApp('/revision');
     const user = userEvent.setup();
-    await user.click(await screen.findByRole('button', { name: 'Start revision' }));
+    await user.click(await screen.findByRole('button', { name: /Start revision/ }));
 
     online = false; // the network drops mid-session
     await user.click(screen.getByRole('button', { name: /What is 1NF\?/ }));
@@ -209,6 +209,17 @@ describe('revision session (F5)', () => {
 describe('exam prep (F5)', () => {
   it('ranks the most asked topics and sends filters to the API', async () => {
     const fetchMock = mockApi({
+      'GET /subjects': [
+        { id: 's0', code: 'CSC26103', name: 'Problem Solving and Python Programming', semester: 1 },
+        { id: 's1', code: 'CS', name: 'Database Management Systems', semester: 5 },
+      ],
+      'GET /subjects/s0/exam-prep': { subjectId: 's0', years: 5, untaggedCount: 0, topics: [] },
+      'GET /subjects/s0/map': {
+        subject: { id: 's0', code: 'CSC26103', name: 'PSPP', semester: 1 },
+        units: [],
+        topics: [],
+        links: [],
+      },
       'GET /subjects/s1/map': {
         subject: { id: 's1', code: 'CS', name: 'DBMS', semester: 5 },
         units: [{ id: 'u3', number: 3, title: 'Design' }],
@@ -255,5 +266,23 @@ describe('exam prep (F5)', () => {
         ),
       ).toBe(true),
     );
-  });
+
+    // One tab per subject: the URL opened DBMS; PSPP is its own component.
+    expect(screen.getByRole('tab', { name: 'Database Management Systems' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'Database Management Systems' }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: 'Problem Solving and Python Programming' }));
+    expect(
+      await screen.findByRole('heading', {
+        level: 2,
+        name: 'Problem Solving and Python Programming',
+      }),
+    ).toBeInTheDocument();
+    expect(await screen.findByText('No previous-year questions added yet')).toBeInTheDocument();
+    expect(screen.queryByText('Most asked')).not.toBeInTheDocument();
+  }, 20_000);
 });

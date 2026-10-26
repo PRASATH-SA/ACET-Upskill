@@ -177,7 +177,7 @@ function MapCanvas({
             position="bottom-right"
             ariaLabel="Mini map"
             nodeColor={(n) => MAP_NODE_STYLE[n.data.state]?.fill ?? '#fff'}
-            nodeStrokeColor={(n) => MAP_NODE_STYLE[n.data.state]?.border ?? '#2F6BEA'}
+            nodeStrokeColor={(n) => MAP_NODE_STYLE[n.data.state]?.border ?? '#C81D78'}
             nodeStrokeWidth={3}
             maskColor="rgba(15,45,92,0.08)"
           />

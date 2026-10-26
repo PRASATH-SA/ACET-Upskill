@@ -4,6 +4,7 @@ import { loadEnv } from './config/env.js';
 import { connectMongo, disconnectMongo } from './db/connect.js';
 import { logger } from './lib/logger.js';
 import { createApp } from './app.js';
+import { closePythonSandbox } from './modules/codelab/pySandbox.js';
 import { closeSandbox } from './modules/codelab/sandbox.js';
 
 try {
@@ -28,6 +29,7 @@ async function serve(cfg) {
     logger.info({ signal }, 'shutting down');
     server.close();
     await closeSandbox();
+    await closePythonSandbox();
     await disconnectMongo();
     process.exit(0);
   };

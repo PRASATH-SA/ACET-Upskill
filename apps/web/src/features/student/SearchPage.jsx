@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { BookOpen, Search } from 'lucide-react';
+import { isAdminRole } from '@acet/shared';
 import { Page } from '../../components/layout/AppShell';
 import { Button, EmptyState, EyebrowHeading, Input, LoadingBlock } from '../../components/ui';
 import { useSession } from '../auth/session';
@@ -10,12 +11,12 @@ import { QueryError } from '../../components/QueryError';
 /** Where a topic result opens for each role. */
 function topicHref(role, t) {
   if (role === 'student') return `/learn/${t.subjectId}?topic=${t.id}`;
-  if (role === 'faculty' || role === 'admin') return `/studio/topics/${t.id}`;
+  if (role === 'faculty' || isAdminRole(role)) return `/studio/topics/${t.id}`;
   return `/learn/${t.subjectId}?topic=${t.id}`;
 }
 
 function subjectHref(role, s) {
-  if (role === 'faculty' || role === 'admin') return `/studio/subjects/${s.id}`;
+  if (role === 'faculty' || isAdminRole(role)) return `/studio/subjects/${s.id}`;
   return `/learn/${s.id}`;
 }
 

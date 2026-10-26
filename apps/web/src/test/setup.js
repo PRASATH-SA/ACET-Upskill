@@ -1,6 +1,10 @@
 import '@testing-library/jest-dom/vitest';
 import { afterEach } from 'vitest';
 import { cleanup, configure } from '@testing-library/react';
+import { MotionGlobalConfig } from 'framer-motion';
+
+// framer-motion: finish every animation instantly so tests see final states.
+MotionGlobalConfig.skipAnimations = true;
 
 // Lazy route chunks compile on first use, which can take over the 1 s default.
 configure({ asyncUtilTimeout: 5000 });
@@ -14,5 +18,8 @@ if (!window.matchMedia) {
     media: query,
     addEventListener: () => {},
     removeEventListener: () => {},
+    // Legacy listener API, used by framer-motion's reduced-motion check.
+    addListener: () => {},
+    removeListener: () => {},
   });
 }

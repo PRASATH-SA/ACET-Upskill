@@ -23,7 +23,9 @@ import {
   StepTracker,
 } from '../../../components/ui';
 import { useSession } from '../../auth/session';
-import { useMyMap, useOpenTopic, useTopicPage } from '../api';
+import { AnimatePresence, motion } from 'framer-motion';
+import { soft } from '../../../lib/motion';
+import { useLearningOrder, useMyMap, useOpenTopic, useSaveTopicSteps, useTopicPage } from '../api';
 import { MASTERY_LABEL } from '../map/graph';
 import { Curiosity } from './Curiosity';
 import { FlashcardDeck } from './FlashcardDeck';
@@ -40,6 +42,8 @@ const MASTERY_TONE = {
   needsRevision: 'orange',
 };
 const PRACTICED = ['practicing', 'confident', 'needsRevision'];
+/** Height of the header + sticky step bar above a section (matches the sections' scroll-mt-24). */
+const STICKY_OFFSET = 96;
 
 /** Which of the six steps have content on this page. Empty steps are hidden (F4). */
 export function availableSteps(page) {
@@ -130,6 +134,48 @@ function Pyqs({ pyqs }) {
   );
 }
 
+/**
+ * Once every step is done: a floating button, bottom right, to the next topic in the subject's
+ * learning order (which runs on into the next unit), or back to the map after the last topic.
+ */
+function NextTopicButton({ show, next, mapHref }) {
+  return (
+    <AnimatePresence>
+      {show && (
+        <motion.div
+          initial={{ opacity: 0, y: 24, scale: 0.9 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 24, scale: 0.9 }}
+          transition={soft}
+          className="no-print fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] right-4 z-30 md:bottom-6 md:right-6"
+        >
+          {next ? (
+            <Button
+              as={Link}
+              to={`/topics/${next.topicId}`}
+              size="lg"
+              icon={ArrowRight}
+              className="max-w-[calc(100vw-2rem)] shadow-glass-lg hover:no-underline"
+            >
+              <span className="truncate">Next: {next.title}</span>
+            </Button>
+          ) : (
+            <Button
+              as={Link}
+              to={mapHref}
+              size="lg"
+              icon={ArrowRight}
+              className="shadow-glass-lg hover:no-underline"
+            >
+              Subject complete · Back to map
+            </Button>
+          )}
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
 /** Scroll spy: the step whose section is nearest the top of the viewport. */
 function useCurrentStep(steps) {
   const [current, setCurrent] = useState(steps[0]);
@@ -164,20 +210,67 @@ export function TopicPage() {
   const subjectId = page.data?.topic.subject.id;
   const me = useMyMap(subjectId, isStudent);
   const node = me.data?.nodes.find((n) => n.topicId === topicId);
+  const order = useLearningOrder(subjectId, isStudent);
   const [tutorOpen, setTutorOpen] = useState(false);
   const [done, setDone] = useState([]);
+  // Where to return to, from the server ({ step, offset } or null): undefined until the open call
+  // answers. `readyFor` is the topic whose position has been restored, so saving can start.
+  const [resumeAt, setResumeAt] = useState(undefined);
+  const [readyFor, setReadyFor] = useState(null);
   const opened = useRef(null);
+  const saveSteps = useSaveTopicSteps(topicId);
+  const saveRef = useRef(saveSteps.mutate);
+  saveRef.current = saveSteps.mutate;
 
-  // Opening the page marks the topic as learning (B4). Once per topic per visit.
+  // Moving from topic to topic keeps this component, so reset the per-topic state. The router
+  // keeps the window's scroll position between pages, so start each topic at the top; only real
+  // input (wheel, touch, keys, clicks) counts as the student moving before the restore.
+  const interacted = useRef(false);
+  useEffect(() => {
+    setDone([]);
+    setResumeAt(isStudent ? undefined : null);
+    interacted.current = false;
+    if (!window.location.hash) window.scrollTo(0, 0);
+    const mark = () => {
+      interacted.current = true;
+    };
+    const events = ['wheel', 'touchmove', 'keydown', 'pointerdown'];
+    for (const e of events) window.addEventListener(e, mark, { passive: true });
+    return () => {
+      for (const e of events) window.removeEventListener(e, mark);
+    };
+  }, [topicId, isStudent]);
+
+  // Opening the page marks the topic as learning (B4) and returns the saved step progress, so the
+  // page continues where the student stopped, on any device. Once per topic per visit.
   useEffect(() => {
     if (!isStudent || !page.data || opened.current === topicId) return;
     opened.current = topicId;
-    open.mutate(topicId);
+    // The promise, not mutate()'s per-call callbacks: those are dropped when the page data was
+    // already cached (a reopened topic), which left the saved position unused.
+    open
+      .mutateAsync(topicId)
+      .then((r) => {
+        if (opened.current !== topicId) return;
+        const saved = r?.steps;
+        if (saved?.done?.length) setDone((d) => [...new Set([...d, ...saved.done])]);
+        setResumeAt(saved?.last ? { step: saved.last, offset: saved.offset ?? 0 } : null);
+      })
+      .catch(() => {
+        if (opened.current === topicId) setResumeAt(null);
+      });
   }, [isStudent, page.data, topicId, open]);
 
   const steps = useMemo(() => (page.data ? availableSteps(page.data) : []), [page.data]);
   const [current, setCurrent] = useCurrentStep(steps);
-  const markDone = useCallback((s) => setDone((d) => (d.includes(s) ? d : [...d, s])), []);
+  const markDone = useCallback(
+    (s) => {
+      setDone((d) => (d.includes(s) ? d : [...d, s]));
+      // Only the finished step: the reading position comes from scrolling, so it is not reset.
+      if (isStudent) saveRef.current({ done: [s] });
+    },
+    [isStudent],
+  );
   const doneSteps = useMemo(() => {
     const d = [...done];
     if (node && PRACTICED.includes(node.mastery)) {
@@ -186,13 +279,18 @@ export function TopicPage() {
     }
     return d.filter((s) => steps.includes(s));
   }, [done, node, steps]);
+  const allDone = isStudent && steps.length > 0 && doneSteps.length === steps.length;
+  const orderIdx = order.data?.findIndex((o) => o.topicId === topicId) ?? -1;
+  const nextTopic = orderIdx >= 0 ? order.data[orderIdx + 1] : undefined;
 
   const jump = useCallback(
-    (step) => {
+    // `focus: false` for automatic moves (resuming), so no focus ring appears unasked.
+    (step, { focus = true } = {}) => {
       const el = document.getElementById(`step-${step}`);
       if (!el) return;
       setCurrent(step);
       el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (!focus) return;
       el.querySelector('h2')?.setAttribute('tabindex', '-1');
       el.querySelector('h2')?.focus({ preventScroll: true });
     },
@@ -205,6 +303,70 @@ export function TopicPage() {
     const step = hash.startsWith('#step-') ? hash.slice(6) : null;
     if (step && steps.includes(step)) requestAnimationFrame(() => jump(step));
   }, [hash, steps, jump]);
+
+  // Otherwise return to the exact spot the student was reading last time.
+  useEffect(() => {
+    if (resumeAt === undefined || !steps.length || readyFor === topicId) return undefined;
+    const { step, offset = 0 } = resumeAt ?? {};
+    const restore = !hash.startsWith('#step-') && step && steps.includes(step);
+    // A short wait lets the sections lay out (video, cards) before measuring.
+    const timer = setTimeout(() => {
+      const el = restore && document.getElementById(`step-${step}`);
+      // If the student already moved while the saved position was loading, leave them there.
+      if (el && !interacted.current && (step !== steps[0] || offset > 0)) {
+        setCurrent(step);
+        const top = el.getBoundingClientRect().top + window.scrollY - STICKY_OFFSET + offset;
+        window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+        // Steps near the end cannot scroll to the top, so the scroll spy may pick the step above;
+        // keep the one the student was on once the scroll settles.
+        setTimeout(() => {
+          if (!interacted.current) setCurrent(step);
+        }, 900);
+      }
+      setReadyFor(topicId);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [resumeAt, steps, topicId, hash, readyFor, setCurrent]);
+
+  // Remember the step being read and how far into it, once scrolling settles.
+  const currentRef = useRef(current);
+  currentRef.current = current;
+  const lastSaved = useRef(null);
+  const scheduleSave = useRef(null);
+  useEffect(() => {
+    if (!isStudent || readyFor !== topicId) return undefined;
+    let timer;
+    const save = () => {
+      const step = currentRef.current;
+      const el = step && document.getElementById(`step-${step}`);
+      if (!el) return;
+      const offset = Math.max(0, Math.round(STICKY_OFFSET - el.getBoundingClientRect().top));
+      const key = `${topicId}:${step}:${Math.round(offset / 40)}`;
+      if (lastSaved.current === key) return;
+      lastSaved.current = key;
+      saveRef.current({ last: step, offset });
+    };
+    const onScroll = () => {
+      clearTimeout(timer);
+      timer = setTimeout(save, 1000);
+    };
+    scheduleSave.current = onScroll;
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('pagehide', save);
+    // Scrolling the student did before saving started (a slow open call) still counts.
+    if (interacted.current && window.scrollY > 0) onScroll();
+    return () => {
+      scheduleSave.current = null;
+      clearTimeout(timer);
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('pagehide', save);
+    };
+  }, [isStudent, readyFor, topicId]);
+  // Choosing a step near the end may not scroll at all (the page is already at the bottom), so a
+  // change of step also saves.
+  useEffect(() => {
+    scheduleSave.current?.();
+  }, [current]);
 
   const printTenMark = () => {
     document.body.dataset.print = 'step-prepare';
@@ -326,8 +488,14 @@ export function TopicPage() {
         </>
       ) : (
         <>
-          <div className="no-print sticky top-[66px] z-20 -mx-4 mt-5 border-b border-line bg-surface/95 px-4 py-2 backdrop-blur sm:mx-0 sm:rounded-card sm:border sm:bg-card">
-            <StepTracker current={current} done={doneSteps} available={steps} onSelect={jump} />
+          <div className="no-print sticky top-[66px] z-20 -mx-4 mt-4 border-b border-line bg-surface/95 px-4 py-1.5 backdrop-blur sm:mx-0 sm:rounded-full sm:border sm:bg-card sm:px-5">
+            <StepTracker
+              compact
+              current={current}
+              done={doneSteps}
+              available={steps}
+              onSelect={jump}
+            />
           </div>
 
           <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
@@ -437,7 +605,8 @@ export function TopicPage() {
                   {p.codeChallengeCount > 0 && (
                     <div className={p.questionCount > 0 ? 'mt-6 border-t border-line pt-5' : ''}>
                       <h3 className="flex items-center gap-2">
-                        <Code2 className="h-5 w-5 text-navy" aria-hidden /> Code lab: SQL problems
+                        <Code2 className="h-5 w-5 text-navy" aria-hidden /> Code lab: practice
+                        problems
                       </h3>
                       <TopicCodeLab topicId={t.id} subjectId={t.subject?.id} />
                     </div>
@@ -458,6 +627,14 @@ export function TopicPage() {
                       <Workshops brief={p.workshop} workshops={p.workshops} />
                     </div>
                   )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="no-print mt-3"
+                    onClick={() => markDone('apply')}
+                  >
+                    I can apply this
+                  </Button>
                 </StepSection>
               )}
             </div>
@@ -469,6 +646,8 @@ export function TopicPage() {
           </div>
         </>
       )}
+
+      <NextTopicButton show={allDone && order.isSuccess} next={nextTopic} mapHref={mapHref} />
 
       <TutorDrawer
         open={tutorOpen}

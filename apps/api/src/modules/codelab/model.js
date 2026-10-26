@@ -2,8 +2,8 @@ import { CODE_LANGUAGES, COLLECTIONS } from '@acet/shared';
 import { mongoose, ref, reviewFields, Schema } from '../../db/mongoose.js';
 
 /**
- * A code-lab problem on one topic (LeetCode-style SQL practice). Goes through the normal
- * content review (draft → published). `solution`, `hiddenSql` and `checkSql` never reach students.
+ * A code-lab problem on one topic (LeetCode-style SQL or Python practice). Goes through the normal
+ * content review (draft → published). `solution`, `hiddenSql`, `checkSql` and hidden tests never reach students.
  */
 const codeChallengeSchema = new Schema(
   {
@@ -13,12 +13,15 @@ const codeChallengeSchema = new Schema(
     prompt: { type: String, required: true },
     difficulty: { type: String, enum: ['easy', 'medium', 'hard'], default: 'easy' },
     language: { type: String, enum: CODE_LANGUAGES, default: 'sql' },
-    setupSql: { type: String, required: true },
+    /** SQL only. */
+    setupSql: { type: String, default: '' },
     hiddenSql: { type: String, default: '' },
     starterCode: { type: String, default: '' },
     solution: { type: String, required: true },
     checkSql: { type: String, default: '' },
     orderMatters: { type: Boolean, default: false },
+    /** Python only: stdin per test case (expected output comes from running the solution). */
+    tests: { type: [{ _id: false, input: String, hidden: Boolean }], default: [] },
     hints: { type: [String], default: [] },
     /** Display order within the topic. */
     order: { type: Number, default: 0 },

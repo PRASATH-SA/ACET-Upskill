@@ -61,6 +61,11 @@ async function updateMastery(userId, topic, fn) {
 // ---------- topic open ----------
 
 /** POST /topics/:id/open — notStarted → learning for students. */
+/** The student's place on a topic's step page: `{ done, last, offset }`. */
+function stepsOf(m) {
+  return { done: m?.stepsDone ?? [], last: m?.lastStep ?? null, offset: m?.lastStepOffset ?? 0 };
+}
+
 export async function openTopic(user, topicId) {
   const { topic } = await loadTopic(user, topicId, 'read');
   if (user.role !== 'student') return null;
@@ -70,6 +75,27 @@ export async function openTopic(user, topicId) {
     { $set: { openedAt: new Date() } },
   );
   return after;
+}
+
+/** Steps already saved for this student and topic (read with the open call). */
+export async function topicSteps(user, topicId) {
+  if (user.role !== 'student') return stepsOf(null);
+  return stepsOf(await Mastery.findOne({ userId: user.id, topicId }).lean());
+}
+
+/** PUT /topics/:id/steps — adds finished steps and remembers the step being read. */
+export async function saveTopicSteps(user, topicId, { done = [], last, offset }) {
+  const { topic } = await loadTopic(user, topicId, 'read');
+  const m = await Mastery.findOneAndUpdate(
+    { userId: user.id, topicId: topic._id },
+    {
+      $setOnInsert: { subjectId: topic.subjectId },
+      ...(done.length ? { $addToSet: { stepsDone: { $each: done } } } : {}),
+      ...(last ? { $set: { lastStep: last, lastStepOffset: offset ?? 0 } } : {}),
+    },
+    { upsert: true, new: true },
+  ).lean();
+  return stepsOf(m);
 }
 
 // ---------- quiz ----------
@@ -491,6 +517,8 @@ export async function studentAsAuthUser(studentId) {
     syllabusVersionId: u.syllabusVersionId ? String(u.syllabusVersionId) : null,
     mentorId: u.mentorId ? String(u.mentorId) : null,
     batch: u.batch ?? null,
+    yearOfStudy: u.yearOfStudy ?? null,
+    semester: u.semester ?? null,
   };
 }
 
@@ -510,11 +538,19 @@ export function revisionStreak(dayKeys, now = new Date()) {
   return streak;
 }
 
-/** GET /me/progress (and mentor/faculty views of a student): mastery counts per subject, streak, weakest topics. */
+/**
+ * GET /me/progress (and mentor/faculty views of a student): mastery counts per subject, streak,
+ * weakest topics. Covers the student's current semester once the HOD has set one.
+ */
 export async function progressFor(student, now = new Date()) {
   await sweepOverdue({ userId: student.id, now });
   const subjects = student.syllabusVersionId
-    ? await Subject.find({ syllabusVersionId: student.syllabusVersionId })
+    ? await Subject.find({
+        syllabusVersionId: student.syllabusVersionId,
+        // Labs have no topics of their own (ADR 0012); their progress is experiments done.
+        kind: { $ne: 'practical' },
+        ...(student.semester ? { semester: student.semester } : {}),
+      })
         .sort({ semester: 1, code: 1 })
         .lean()
     : [];

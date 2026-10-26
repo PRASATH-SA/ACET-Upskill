@@ -55,17 +55,18 @@ Unknown routes return 401 to anonymous callers and 404 to signed-in users.
 | POST | `/auth/refresh` | public (cookie) | Rotates the refresh token. Reusing an old token revokes the whole session family |
 | POST | `/auth/logout` | public (cookie) | Revokes the session family and clears the cookie |
 | GET | `/auth/me` | any | Current user |
-| POST | `/auth/register` | admin | `RegisterUserSchema`. Creates any role |
-| POST | `/auth/import-students` | admin | Multipart `file` (CSV `name,email[,password][,batch]`) plus optional `departmentId`, `syllabusVersionId`, `batch`, `mentorId`. Returns created users, per-row errors and one-time temporary passwords |
+| POST | `/auth/register` | admin | `RegisterUserSchema` (incl. `yearOfStudy`, `semester`). A HOD creates student/faculty/mentor users, always in the HOD's department; only the coordinator creates `admin`/`coordinator` accounts or picks the department |
+| POST | `/auth/import-students` | admin | Multipart `file` (CSV `name,email[,password][,batch]`) plus optional `syllabusVersionId`, `batch`, `mentorId`, `yearOfStudy`, `semester` and (coordinator only) `departmentId`; a HOD's imports join the HOD's department. Returns created users, per-row errors and one-time temporary passwords |
 
 ## Users (B1)
 
 | Method | Path | Roles | Notes |
 |---|---|---|---|
-| GET | `/users` | admin | `?role&departmentId&syllabusVersionId&q&page&limit` |
+| GET | `/users` | admin | `?role&departmentId&syllabusVersionId&yearOfStudy&semester&q&page&limit`. A HOD sees only their department (never coordinators); the coordinator sees everyone. A HOD without a department gets 403 |
 | GET | `/users/:id` | any | Self, admin, the student's mentor, or faculty teaching the student's syllabus version. Access to another user is audited |
-| PATCH | `/users/:id` | admin | `AdminUpdateUserSchema`. Role changes are audited. Deactivation revokes sessions |
-| DELETE | `/users/:id` | admin | Deactivates (soft delete) |
+| PATCH | `/users/:id` | admin | `AdminUpdateUserSchema`. Role changes are audited. Deactivation revokes sessions. A HOD edits only their department's non-HOD users and cannot move them out of it; `semester` must belong to `yearOfStudy` (year y → 2y−1 or 2y), checked against stored values on partial updates |
+| DELETE | `/users/:id` | admin | Deactivates (soft delete). Same scope as PATCH |
+| POST | `/users/term` | admin | `SetStudentTermSchema` `{ userIds[], yearOfStudy, semester }`. Sets the term of many students; ids outside the HOD's department or not students are skipped. Returns `{ updated, skipped }`. Audited as `user.setTerm` |
 | PATCH | `/users/me` | any | `{ name }` |
 | POST | `/users/me/password` | any | `{ currentPassword, newPassword }`. Logs out other sessions |
 
@@ -74,15 +75,18 @@ Unknown routes return 401 to anonymous callers and 404 to signed-in users.
 | Method | Path | Roles |
 |---|---|---|
 | GET | `/departments`, `/syllabus-versions` | any |
-| POST, PATCH `/:id`, DELETE `/:id` | `/departments`, `/syllabus-versions` | admin |
+| POST, PATCH `/:id`, DELETE `/:id` | `/departments` | coordinator |
+| POST, PATCH `/:id`, DELETE `/:id` | `/syllabus-versions` | admin |
+
+Roles: `admin` is a department's HOD; `coordinator` (Academic Coordinator) passes every `admin` check and also manages departments and HOD accounts.
 
 ## Syllabus and concept map (B2)
 
 | Method | Path | Roles | Notes |
 |---|---|---|---|
 | GET | `/search?q=&limit=` | any | Subjects and topics the user may open, matched on title/code (plain text, not a regex). Students: approved topics of their syllabus version only (F1 top-bar search) |
-| GET | `/subjects` | any | Students: their syllabus version only. Faculty: own subjects. `?syllabusVersionId&semester` |
-| POST | `/subjects` | admin | `CreateSubjectSchema` (assign `facultyIds`) |
+| GET | `/subjects` | any | Students: their syllabus version only, and only their current `semester` once the HOD has set one (`?semester=` reaches other semesters). Faculty: own subjects. `?syllabusVersionId&semester` |
+| POST | `/subjects` | admin | `CreateSubjectSchema` (assign `facultyIds`). `kind: theory|practical`; a practical subject needs `theorySubjectId` (a theory subject of the same version) and cannot have units (ADR 0012) |
 | GET, PATCH, DELETE | `/subjects/:id` | read: any with access; write: admin | |
 | GET | `/subjects/:id/map` | any with access | `{ subject, units, topics, links }`. Topics and links carry `status` and `source` (`ai` drafts are outlined in the studio). Links include `crossUnit`. Students get approved items only |
 | PATCH | `/subjects/:id/map` | owning faculty, admin | `SaveMapSchema`: node positions/order/unit/title plus edge upserts and deletes, validated as a whole and written in one transaction |
@@ -119,11 +123,21 @@ Unknown routes return 401 to anonymous callers and 404 to signed-in users.
 | POST | `/review-queue/bulk` | faculty, admin | `{ action: approve\|publish\|reject, reason?, items: [{ type, id }] }`. All-or-nothing; every change is audited |
 | GET | `/topics/:id/page` | any with access | Student topic page: `topic`, `curiosity`, `video`, `easy`, `tenMark`, `realWorld`, `workshop`, `workshops`, `pyqs`, `flashcardCount`, `questionCount`, `prerequisites`, `unlocks`. Published only; missing kinds are omitted |
 
+### Content & quiz CSV (per unit, separated by topics)
+
+One row per item: a lesson resource (`curiosity`, `video`, `easy`, `tenMark`, `realWorld`, `workshop`), a `curiosity_question`, a `flashcard` or an `mcq`. Columns are `CONTENT_CSV_COLUMNS` in `@acet/shared` (`unit, unit_title, topic, type, id, status, title, url, body, front, back, question, option_a…option_f, correct, explanation, why_a…why_f, difficulty`). Export and import use the same file, so a download can be edited and uploaded back. Cells that look like spreadsheet formulas (`= + - @`) are written with a leading `'`, which import removes. Studio page: `/studio/subjects/:id/content`.
+
+| Method | Path | Roles | Notes |
+|---|---|---|---|
+| GET | `/subjects/:id/content.csv?unitId&template` | owning faculty, admin | The whole subject in one file (or one unit), every topic in unit and map order, all statuses, with quiz answers. A topic with no content gets one empty row; `template=true` adds a blank row per missing type |
+| POST | `/subjects/:id/content-import?unitId&publish` | owning faculty, admin | Multipart `file` (max 5 MB, 5000 rows). Topics are matched by title (and `unit` when given; with `unitId` every row must be in that unit). A row updates the item named by `id`, else the topic's item of the same kind / flashcard front / question text, else creates a `draft` (`source: faculty`). Blank template rows are skipped; nothing is deleted. Every row is checked first: any bad row → 422 `details.errors: [{ row, topic, message }]` and nothing is saved. `publish=true` (owning faculty only, else 403) then publishes every imported item through the review rules, so MCQs need `explanation` and every `why_`. Returns `{ summary: { created, updated, unchanged, skipped, published }, byType }`; audited as `content.csvImport` |
+
 ## Practice engine (B4)
 
 | Method | Path | Roles | Notes |
 |---|---|---|---|
-| POST | `/topics/:id/open` | any with access | Students: notStarted → learning |
+| POST | `/topics/:id/open` | any with access | Students: notStarted → learning. Returns `{ mastery, steps: { done[], last, offset } }` so the topic page resumes where the student stopped |
+| PUT | `/topics/:id/steps` | student | `TopicStepsSchema` `{ done?: step[], last?: step, offset?: px }`. Adds finished steps (never removes) and remembers the step being read and how far into it. Returns `{ done, last, offset }` |
 | GET | `/topics/:id/quiz?limit=10` | any with access | Random published MCQs with `id, stem, options, difficulty` only. Never answers |
 | POST | `/topics/:id/quiz-sessions` | any with access | `{ limit? }` (1–30, default 10). One published question per concept pool, preferring variants the student has not seen in 30 days, options shuffled per student. `201` with the session and its questions (no answers). Expires after 3 hours |
 | GET | `/quiz-sessions/:id` | the session's owner | Resume a session: the same questions in the same option order |
@@ -134,7 +148,7 @@ Unknown routes return 401 to anonymous callers and 404 to signed-in users.
 | GET | `/revision/today` | student | Due items grouped by topic, each with front/back |
 | POST | `/revision/:id/rate` | student | `{ rating: again\|hard\|good\|easy }` → next due date (FSRS) and mastery |
 | GET | `/subjects/:id/map/me` | student | Node state per topic: `mastered`, `current`, `unlocked`, `locked`, `needsRevision`, plus `missingPrerequisites` |
-| GET | `/me/progress` | student | Mastery counts per subject, revision due and streak, weakest topics |
+| GET | `/me/progress` | student | Mastery counts per subject (the student's current semester once set), revision due and streak, weakest topics |
 | GET | `/subjects/:id/map/students/:studentId` | faculty, mentor, admin | Ownership-checked and audited |
 | GET | `/students/:id/progress` | faculty, mentor, admin | Ownership-checked and audited |
 
@@ -195,19 +209,33 @@ Students reach only published videos of topics they can read. Captions are store
 | POST | `/resources/:id/progress` | student | Player heartbeat `{ positionSec, seenBuckets, ended }`. Counts 10-second slices played; completed at 90 % of slices or when the player reports the end |
 | GET | `/resources/:id/progress/me` | student | Resume position, share watched, completed |
 
-## Code lab (LeetCode-style SQL practice)
+## Practical (lab) subjects (ADR 0012)
 
-Problems are authored with the content routes (`<type>` = `code-challenges`; body `CreateCodeChallengeSchema`: `title, prompt, difficulty, setupSql, hiddenSql?, starterCode?, solution, checkSql?, orderMatters?, hints?`) and go through the normal draft → published review and the review queue (`kind=challenge`). Saving runs the solution against the sample and hidden data and returns 400 with the SQL error if it fails. Students never receive `solution`, `hiddenSql` or `checkSql`; the generic `GET /topics/:id/code-challenges` is staff-only (403 for students).
+A lab is a subject with `kind: practical` and a `theorySubjectId`. It has no units or topics: its experiments sit on topics of the theory subject's roadmap. `/me/progress` ignores labs.
 
-SQL runs in a sandbox: SQLite compiled to WebAssembly (sql.js) in worker threads, a fresh in-memory database per run, a 2 s time limit (the worker is killed and replaced), a 64 MB SQLite heap cap and no file-system or network access. Runs and submits share a limit of 40 per user per minute.
+| Method | Path | Roles | Notes |
+|---|---|---|---|
+| GET | `/subjects/:id/lab` | any with access to the lab | `{ subject, theorySubject, roadmap: { units, topics }, experiments, summary }`. Experiments: `number, title, aim, procedure, topicId, challenges[]`. Students: published experiments on approved topics, with `challenges[].solved`, `markedDone`, `done` and `summary.done`. Lab staff: every experiment with `status`, plus `availableChallenges` (published problems of each theory topic). 400 for a theory subject |
+| POST | `/subjects/:id/experiments` | lab faculty, admin | `CreateExperimentSchema`. Created as `draft`; `number` defaults to the next one (409 if taken). `topicId` must be a theory topic; `challengeIds` must be problems of that topic |
+| PATCH, DELETE | `/experiments/:id` | lab faculty, admin | Changing `topicId` without `challengeIds` clears the linked problems |
+| POST | `/experiments/:id/status` | see note | `{ status: draft|published }`. Publishing: faculty assigned to the lab only |
+| POST | `/experiments/:id/done` | student | `{ done }`. Marks a published experiment done (work done in the lab). An experiment is also done when all its linked problems are solved |
+
+## Code lab (LeetCode-style SQL and Python practice)
+
+Problems are authored with the content routes (`<type>` = `code-challenges`; body `CreateCodeChallengeSchema`: `language: sql|python, title, prompt, difficulty, setupSql?, hiddenSql?, tests?, starterCode?, solution, checkSql?, orderMatters?, hints?`) and go through the normal draft → published review and the review queue (`kind=challenge`). SQL problems need `setupSql`; Python problems need `tests` (`[{ input, hidden }]`, at most 10, at least one visible). Saving runs the solution against every case and returns 400 with the error if it fails. Students never receive `solution`, `hiddenSql`, `checkSql` or hidden test inputs; the generic `GET /topics/:id/code-challenges` is staff-only (403 for students).
+
+SQL runs in a sandbox: SQLite compiled to WebAssembly (sql.js) in worker threads, a fresh in-memory database per run, a 2 s time limit (the worker is killed and replaced), a 64 MB SQLite heap cap and no file-system or network access.
+
+Python runs in Pyodide (CPython compiled to WebAssembly) inside a separate Node process started with the permission model (it may read only the Pyodide files), an empty environment, no JavaScript bridge, and `os`/`subprocess`/`socket`-style modules blocked. Interpreter state is reset between runs, the process is killed and replaced after 3 s, output is capped at 64 KB, and the process is recycled after 100 runs and stopped after 10 idle minutes. Details: [ADR 0007](decisions/0007-python-code-lab.md). Runs and submits share a limit of 40 per user per minute.
 
 | Method | Path | Roles | Notes |
 |---|---|---|---|
 | GET | `/topics/:id/code-lab` | any with access | Published problems of the topic with my `solved` and `attempts` |
 | GET | `/subjects/:id/code-lab` | any with access | All published problems grouped by topic in syllabus order, plus `total` and `solved` |
-| GET | `/code-lab/:id` | any with access | Problem, `tables` (columns, primary keys, first 5 rows, row count), `starterCode`, `hints`, `lastSubmission`. Drafts: subject staff only (`preview: true`) |
-| POST | `/code-lab/:id/run` | any with access | `{ code }` → `{ ok, columns, rows, rowCount, truncated, timeMs }` on the sample data, or `{ ok: false, stage, error }` for SQL errors and timeouts (still 200) |
-| POST | `/code-lab/:id/submit` | any with access | `{ code }` → `{ passed, verdict: accepted|wrongAnswer|hiddenTests|error|timeout, cases, timeMs, firstSolve }`. Compared by value (column names ignored; row order only when `orderMatters`). The sample case shows expected vs actual; the hidden case shows only pass/fail and a reason. Students' submissions are stored (`codeSubmissions`); staff runs are previews and are not stored |
+| GET | `/code-lab/:id` | any with access | Problem, `language`, `starterCode`, `hints`, `lastSubmission`. SQL: `tables` (columns, primary keys, first 5 rows, row count). Python: `examples` (visible inputs with expected output) and `hiddenTestCount`. Drafts: subject staff only (`preview: true`) |
+| POST | `/code-lab/:id/run` | any with access | SQL: `{ code }` → `{ ok, columns, rows, rowCount, truncated, timeMs }` on the sample data. Python: `{ code, input? }` → `{ ok, stdout, truncated, timeMs }` with `input` as stdin. Errors and timeouts → `{ ok: false, stage, error }` (still 200) |
+| POST | `/code-lab/:id/submit` | any with access | `{ code }` → `{ passed, verdict: accepted|wrongAnswer|hiddenTests|error|timeout, cases, timeMs, firstSolve }`. SQL is compared by value (column names ignored; row order only when `orderMatters`). Python compares stdout with the solution's output after normalising line endings, trailing spaces and trailing blank lines. Visible cases show expected vs actual; hidden cases show only pass/fail and a reason. Students' submissions are stored (`codeSubmissions`); staff runs are previews and are not stored |
 
 `GET /topics/:id/page` also returns `codeChallengeCount`.
 

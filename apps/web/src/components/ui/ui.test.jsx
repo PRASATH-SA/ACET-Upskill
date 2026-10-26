@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Plus } from 'lucide-react';
 import {
@@ -190,7 +190,8 @@ describe('feedback components', () => {
     toast.error('Upload failed', 'File is over 25 MB');
     expect(await screen.findByRole('alert')).toHaveTextContent('Upload failed');
     await user.click(screen.getByRole('button', { name: 'Dismiss notification' }));
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    // The toast slides out first (framer-motion exit), then unmounts.
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
   });
 
   it('StepTracker marks the current step and announces done steps', () => {

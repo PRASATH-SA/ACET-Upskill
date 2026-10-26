@@ -30,4 +30,6 @@ export const COLLECTIONS = {
   codeChallenges: 'codeChallenges',
   codeSubmissions: 'codeSubmissions',
   subjectOverviews: 'subjectOverviews',
+  labExperiments: 'labExperiments',
+  labCompletions: 'labCompletions',
 };

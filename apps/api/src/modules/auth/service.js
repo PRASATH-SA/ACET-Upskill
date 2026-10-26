@@ -6,6 +6,7 @@ import { env } from '../../config/env.js';
 import { AppError, badRequest, conflict, unauthorized } from '../../lib/errors.js';
 import { audit } from '../audit/service.js';
 import { User, toPublicUser } from '../users/model.js';
+import { assertCanAssign, hodDepartment } from '../users/service.js';
 import { RefreshToken } from './model.js';
 import {
   durationToSeconds,
@@ -19,13 +20,20 @@ export async function hashPassword(password) {
   return bcrypt.hash(password, env().BCRYPT_ROUNDS);
 }
 
-/** Admin-only user creation. */
-export async function registerUser(input, actorId) {
+/**
+ * HOD/coordinator user creation. A HOD's new users always land in the HOD's department.
+ */
+export async function registerUser(input, actor) {
+  assertCanAssign(actor, input);
   if (await User.exists({ email: input.email })) throw conflict('Email is already registered');
   const { password, ...rest } = input;
-  const user = await User.create({ ...rest, passwordHash: await hashPassword(password) });
+  const user = await User.create({
+    ...rest,
+    departmentId: hodDepartment(actor) ?? rest.departmentId,
+    passwordHash: await hashPassword(password),
+  });
   await audit({
-    actorId,
+    actorId: actor.id,
     action: 'user.create',
     target: { type: 'user', id: String(user._id) },
     meta: { role: user.role },
@@ -38,7 +46,9 @@ export async function registerUser(input, actorId) {
  * Rows without a password get a generated temporary one, returned once in the response.
  * Valid rows are created; invalid or duplicate rows are reported and skipped.
  */
-export async function importStudents(csv, defaults, actorId) {
+export async function importStudents(csv, defaults, actor) {
+  assertCanAssign(actor, defaults);
+  const departmentId = hodDepartment(actor) ?? defaults.departmentId ?? null;
   let rows;
   try {
     rows = parseCsv(csv, {
@@ -88,10 +98,12 @@ export async function importStudents(csv, defaults, actorId) {
       email: r.email,
       role: 'student',
       passwordHash: await hashPassword(r.password ?? temporaryPassword),
-      departmentId: defaults.departmentId ?? null,
+      departmentId,
       syllabusVersionId: defaults.syllabusVersionId ?? null,
       mentorId: defaults.mentorId ?? null,
       batch: r.batch ?? defaults.batch ?? null,
+      yearOfStudy: defaults.yearOfStudy ?? null,
+      semester: defaults.semester ?? null,
     });
     created.push({
       row: rowNo,
@@ -100,7 +112,7 @@ export async function importStudents(csv, defaults, actorId) {
     });
   }
   await audit({
-    actorId,
+    actorId: actor.id,
     action: 'user.import',
     target: { type: 'user' },
     meta: { created: created.length, failed: errors.length },

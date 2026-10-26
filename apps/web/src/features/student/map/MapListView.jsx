@@ -44,7 +44,7 @@ export function MapListView({ map, me, order, onSelect, selectedId }) {
                 selectedId === id ? 'border-navy' : 'border-line'
               }`}
             >
-              <span className="font-heading text-lg font-extrabold text-navy" aria-hidden>
+              <span className="font-heading text-lg font-bold text-navy" aria-hidden>
                 {i + 1}
               </span>
               <div className="min-w-0 flex-1">

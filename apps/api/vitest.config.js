@@ -17,6 +17,9 @@ export default defineConfig({
     testTimeout: 30_000,
     hookTimeout: 120_000,
     pool: 'forks',
+    // Each test process may start SQL and Python WebAssembly sandboxes; one per CPU core (16+)
+    // exhausts memory on a busy laptop. Four keeps the run fast and stable.
+    poolOptions: { forks: { maxForks: 4, minForks: 1 } },
     include: ['src/**/*.test.js', 'test/**/*.test.js'],
   },
 });

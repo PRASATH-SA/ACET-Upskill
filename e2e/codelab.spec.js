@@ -11,7 +11,7 @@ test('code lab: a student solves a SQL problem from the topic page', async ({ pa
   // Every topic now has a video, notes and practice.
   await expect(page.getByRole('heading', { level: 1, name: 'Keys' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'In simple words' })).toBeVisible();
-  await expect(page.getByText('Code lab: SQL problems')).toBeVisible();
+  await expect(page.getByText('Code lab: practice problems')).toBeVisible();
   await page.getByRole('link', { name: /Can phone be a key\?/ }).click();
 
   await expect(page.getByRole('heading', { level: 1, name: 'Can phone be a key?' })).toBeVisible();

@@ -43,8 +43,16 @@ export const NAV = {
     { to: '/admin', label: 'Overview', icon: BarChart3, mobile: true, end: true },
     { to: '/admin/users', label: 'Users', icon: Users, mobile: true },
     { to: '/admin/syllabus', label: 'Syllabus', icon: BookOpen, mobile: true },
-    { to: '/admin/departments', label: 'Departments', icon: Building2 },
     { to: '/admin/co-po', label: 'CO–PO', icon: Target },
     { to: '/admin/ai', label: 'AI settings', icon: Bot, mobile: true },
+  ],
+  // Academic Coordinator: the HOD screens across every department, plus departments.
+  coordinator: [
+    { to: '/admin', label: 'Overview', icon: BarChart3, mobile: true, end: true },
+    { to: '/admin/users', label: 'Users', icon: Users, mobile: true },
+    { to: '/admin/departments', label: 'Departments', icon: Building2, mobile: true },
+    { to: '/admin/syllabus', label: 'Syllabus', icon: BookOpen, mobile: true },
+    { to: '/admin/co-po', label: 'CO–PO', icon: Target },
+    { to: '/admin/ai', label: 'AI settings', icon: Bot },
   ],
 };

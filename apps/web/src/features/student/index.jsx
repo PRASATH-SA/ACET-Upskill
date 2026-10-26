@@ -9,3 +9,4 @@ export { ProgressPage } from './practice/ProgressPage';
 export { CodeLabPage } from './codelab/CodeLabPage';
 export { SubjectOverviewPage } from './overview/SubjectOverviewPage';
 export { CodeLabIndex, SubjectCodeLabPage } from './codelab/CodeLabList';
+export { LabPage } from './LabPage';

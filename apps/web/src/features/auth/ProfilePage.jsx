@@ -14,6 +14,10 @@ const PasswordFormSchema = ChangePasswordSchema.extend({ confirm: z.string() }).
   { message: 'Passwords do not match', path: ['confirm'] },
 );
 
+const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'];
+// Every ACET syllabus version is a Pondicherry University B.Tech programme; there is no degree field.
+const DEGREE = 'B.Tech';
+
 function Detail({ label, value }) {
   return (
     <div className="flex justify-between gap-4 border-t border-line py-3 first:border-t-0">
@@ -111,7 +115,7 @@ function PasswordForm() {
   );
 }
 
-/** F2 profile: name, batch, syllabus version, password; F7 adds the low-data toggle. */
+/** F2 profile: name, university/degree/branch/year/semester (students), batch, syllabus version, password; F7 adds the low-data toggle. */
 export function ProfilePage() {
   const user = useSession((s) => s.user);
   const lowData = useUi((s) => s.lowData);
@@ -141,6 +145,18 @@ export function ProfilePage() {
           </div>
           <dl className="mt-5">
             <Detail label="Role" value={user.role} />
+            {user.role === 'student' && (
+              <>
+                <Detail label="University" value={version?.university} />
+                <Detail label="Degree" value={DEGREE} />
+                <Detail label="Branch" value={version?.branch} />
+                <Detail
+                  label="Year"
+                  value={ROMAN[(user.yearOfStudy ?? Math.ceil(user.semester / 2)) - 1]}
+                />
+                <Detail label="Semester" value={ROMAN[user.semester - 1]} />
+              </>
+            )}
             <Detail label="Batch" value={user.batch} />
             <Detail label="Syllabus version" value={versionLabel} />
           </dl>

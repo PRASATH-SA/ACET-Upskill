@@ -8,7 +8,10 @@ import { Subject } from '../syllabus/model.js';
 import { User } from '../users/model.js';
 import { Department, SyllabusVersion } from './model.js';
 
-/** Departments and syllabus versions: everyone signed in can read; admins manage. */
+/**
+ * Departments and syllabus versions: everyone signed in can read. Only the Academic Coordinator
+ * creates, renames or deletes departments; HODs and the coordinator manage syllabus versions.
+ */
 export function orgRoutes() {
   const r = Router();
 
@@ -20,7 +23,7 @@ export function orgRoutes() {
   );
   r.post(
     '/departments',
-    requireRole('admin'),
+    requireRole('coordinator'),
     validate({ body: DepartmentSchema }),
     asyncHandler(async (req, res) => {
       const d = await Department.create(req.body);
@@ -34,7 +37,7 @@ export function orgRoutes() {
   );
   r.patch(
     '/departments/:id',
-    requireRole('admin'),
+    requireRole('coordinator'),
     validate({ params: IdParamsSchema, body: DepartmentSchema.partial() }),
     asyncHandler(async (req, res) => {
       const d = await Department.findByIdAndUpdate(
@@ -48,7 +51,7 @@ export function orgRoutes() {
   );
   r.delete(
     '/departments/:id',
-    requireRole('admin'),
+    requireRole('coordinator'),
     validate({ params: IdParamsSchema }),
     asyncHandler(async (req, res) => {
       if (await User.exists({ departmentId: req.params.id }))

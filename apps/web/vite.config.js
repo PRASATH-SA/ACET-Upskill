@@ -11,10 +11,12 @@ const proxy = {
 
 export default defineConfig({
   plugins: [react()],
-  server: { port: 5173, host: true, proxy,
-        allowedHosts: ['artificial-burn-sensitive-philadelphia.trycloudflare.com'],
+  server: {
+    port: 5173,
+    host: true,
+    proxy,
+    allowedHosts: ['artificial-burn-sensitive-philadelphia.trycloudflare.com','dedicated-elsewhere-matt-rug.trycloudflare.com'],
   },
   // "vite preview" serves the production build (service worker included) with the same proxy.
   preview: { port: 4173, host: true, proxy },
-  
 });

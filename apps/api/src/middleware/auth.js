@@ -1,3 +1,4 @@
+import { roleAllows } from '@acet/shared';
 import { AppError, forbidden, unauthorized } from '../lib/errors.js';
 import { verifyAccessToken } from '../modules/auth/tokens.js';
 import { User } from '../modules/users/model.js';
@@ -6,13 +7,15 @@ import { User } from '../modules/users/model.js';
  * The signed-in user attached to `req.user` by requireAuth.
  * @typedef {object} AuthUser
  * @property {string} id
- * @property {'student'|'faculty'|'mentor'|'admin'} role
+ * @property {'student'|'faculty'|'mentor'|'admin'|'coordinator'} role
  * @property {string} name
  * @property {string} email
  * @property {string|null} departmentId
  * @property {string|null} syllabusVersionId
  * @property {string|null} mentorId
  * @property {string|null} batch
+ * @property {number|null} yearOfStudy
+ * @property {number|null} semester
  */
 
 const ACTIVITY_WRITE_INTERVAL_MS = 5 * 60 * 1000;
@@ -34,6 +37,8 @@ export async function requireAuth(req, _res, next) {
       syllabusVersionId: user.syllabusVersionId ? String(user.syllabusVersionId) : null,
       mentorId: user.mentorId ? String(user.mentorId) : null,
       batch: user.batch ?? null,
+      yearOfStudy: user.yearOfStudy ?? null,
+      semester: user.semester ?? null,
     };
     const now = Date.now();
     if (
@@ -48,11 +53,14 @@ export async function requireAuth(req, _res, next) {
   }
 }
 
-/** Allows only the listed roles. Must run after requireAuth. */
+/**
+ * Allows only the listed roles. Must run after requireAuth.
+ * The coordinator passes wherever `admin` (HOD) is allowed (see roleAllows).
+ */
 export function requireRole(...roles) {
   return (req, _res, next) => {
     if (!req.user) return next(unauthorized());
-    if (!roles.includes(req.user.role)) return next(forbidden());
+    if (!roleAllows(req.user.role, roles)) return next(forbidden());
     next();
   };
 }

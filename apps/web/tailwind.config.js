@@ -1,8 +1,10 @@
 // Import the token file directly (it has no imports) so Tailwind can load it without a build step.
 import {
+  BRAND_COLORS,
   COLORS,
   FONTS,
   RADIUS,
+  SHADOWS,
   SHAPE,
   SUPPORT_COLORS,
 } from '../../packages/shared/src/design-tokens.js';
@@ -13,26 +15,38 @@ export default {
   content: ['./index.html', './src/**/*.{js,jsx}'],
   theme: {
     extend: {
+      // The A.8 names (navy, red, blue, body, line, surface) carry the E-Learning Kit values
+      // (ADR 0008), so existing classes restyle in place. `brand`, `accent`, `ink` are the kit's names.
       colors: {
         navy: { DEFAULT: COLORS.navy, dark: SUPPORT_COLORS.navyDark },
         red: { DEFAULT: COLORS.red, dark: SUPPORT_COLORS.redDark },
         blue: { DEFAULT: COLORS.blue, dark: SUPPORT_COLORS.blueDark },
+        brand: {
+          DEFAULT: BRAND_COLORS.brand,
+          deep: BRAND_COLORS.brandDeep,
+          soft: BRAND_COLORS.brandSoft,
+          logo: BRAND_COLORS.brandLogo,
+        },
+        grad: { start: BRAND_COLORS.gradStart, end: BRAND_COLORS.gradEnd },
+        accent: { DEFAULT: BRAND_COLORS.accent, ink: BRAND_COLORS.accentInk },
+        rating: BRAND_COLORS.rating,
         gold: { DEFAULT: COLORS.gold, border: COLORS.goldBorder, tint: COLORS.goldTint },
-        success: SUPPORT_COLORS.success,
+        success: { DEFAULT: SUPPORT_COLORS.success, soft: BRAND_COLORS.successSoft },
         warning: { DEFAULT: SUPPORT_COLORS.warning, dark: SUPPORT_COLORS.warningDark },
+        ink: { DEFAULT: COLORS.navy, muted: COLORS.text, subtle: BRAND_COLORS.inkSubtle },
         body: COLORS.text,
         line: COLORS.border,
         surface: COLORS.surface,
         card: COLORS.card,
       },
       fontFamily: {
-        heading: [FONTS.heading.family, 'system-ui', 'sans-serif'],
-        sans: [FONTS.body.family, 'system-ui', 'sans-serif'],
+        heading: [FONTS.heading.family, 'Segoe UI', 'system-ui', 'sans-serif'],
+        sans: [FONTS.body.family, 'Segoe UI', 'system-ui', 'sans-serif'],
       },
       // The whole radius scale is remapped, so existing rounded-xl / rounded-2xl usages pick it up.
       borderRadius: {
-        sm: px(RADIUS.sm - 4),
-        md: px(RADIUS.sm),
+        sm: px(RADIUS.sm),
+        md: px(RADIUS.md),
         lg: px(RADIUS.lg),
         xl: px(RADIUS.xl),
         '2xl': px(RADIUS['2xl']),
@@ -40,22 +54,22 @@ export default {
         card: px(RADIUS.card),
         sheet: px(RADIUS.sheet),
       },
+      // The kit has two elevation levels: shadow-card (resting cards) and shadow-cta (under brand
+      // pills). The older glass/press names map onto them so existing screens follow.
       boxShadow: {
-        // Soft, navy-tinted elevation plus a bright inner top rim: the glass edge.
-        glass:
-          'inset 0 1px 0 0 rgb(255 255 255 / 0.9), inset 0 -1px 0 0 rgb(255 255 255 / 0.25), 0 1px 2px 0 rgb(15 45 92 / 0.04), 0 10px 30px -12px rgb(15 45 92 / 0.18)',
-        'glass-lg':
-          'inset 0 1px 0 0 rgb(255 255 255 / 0.9), 0 2px 6px 0 rgb(15 45 92 / 0.05), 0 24px 60px -20px rgb(15 45 92 / 0.32)',
-        // Gamified "press" edge under pill buttons; it collapses when the button is pressed.
-        'press-red': `inset 0 1px 0 0 rgb(255 255 255 / 0.35), 0 4px 0 0 ${SUPPORT_COLORS.redDark}`,
-        'press-red-sm': `inset 0 1px 0 0 rgb(255 255 255 / 0.35), 0 1px 0 0 ${SUPPORT_COLORS.redDark}`,
-        'press-navy': `inset 0 1px 0 0 rgb(255 255 255 / 0.2), 0 4px 0 0 ${SUPPORT_COLORS.navyDark}`,
-        'press-navy-sm': `inset 0 1px 0 0 rgb(255 255 255 / 0.2), 0 1px 0 0 ${SUPPORT_COLORS.navyDark}`,
-        'press-glass': `inset 0 1px 0 0 rgb(255 255 255 / 0.9), 0 3px 0 0 rgb(15 45 92 / 0.12)`,
-        'press-glass-sm': `inset 0 1px 0 0 rgb(255 255 255 / 0.9), 0 1px 0 0 rgb(15 45 92 / 0.12)`,
-        'glow-blue': '0 0 0 6px rgb(47 107 234 / 0.16), 0 8px 24px -6px rgb(47 107 234 / 0.55)',
+        card: SHADOWS.card,
+        cta: SHADOWS.cta,
+        glass: SHADOWS.card,
+        'glass-lg': '0 12px 32px rgba(158, 19, 96, 0.13)',
+        'press-red': SHADOWS.cta,
+        'press-red-sm': '0 4px 10px rgba(200, 29, 120, 0.24)',
+        'press-navy': '0 6px 16px rgba(34, 53, 94, 0.22)',
+        'press-navy-sm': '0 3px 8px rgba(34, 53, 94, 0.18)',
+        'press-glass': SHADOWS.card,
+        'press-glass-sm': 'none',
+        'glow-blue': '0 0 0 6px rgb(200 29 120 / 0.14), 0 8px 20px -6px rgb(200 29 120 / 0.45)',
         'glow-gold': '0 0 0 6px rgb(245 192 0 / 0.2), 0 8px 24px -6px rgb(201 161 0 / 0.55)',
-        'glow-red': '0 8px 24px -8px rgb(224 38 43 / 0.55)',
+        'glow-red': SHADOWS.cta,
       },
       keyframes: {
         'glass-pop': {
@@ -64,10 +78,10 @@ export default {
         },
         'glow-pulse': {
           '0%, 100%': {
-            boxShadow: '0 0 0 4px rgb(47 107 234 / 0.18), 0 8px 24px -6px rgb(47 107 234 / 0.45)',
+            boxShadow: '0 0 0 4px rgb(200 29 120 / 0.16), 0 8px 20px -6px rgb(200 29 120 / 0.4)',
           },
           '50%': {
-            boxShadow: '0 0 0 10px rgb(47 107 234 / 0.08), 0 8px 28px -4px rgb(47 107 234 / 0.6)',
+            boxShadow: '0 0 0 10px rgb(200 29 120 / 0.06), 0 8px 24px -4px rgb(200 29 120 / 0.5)',
           },
         },
         shine: {

@@ -1,8 +1,10 @@
 /**
- * Code lab (LeetCode-style SQL practice). Students write a query, Run it against the sample
- * data, then Submit: the server runs their code and the hidden reference solution on the
- * sample data and on the sample plus hidden rows, and compares the results. Students only
- * ever see published challenges, and never the solution, the hidden rows or the check query.
+ * Code lab (LeetCode-style practice). SQL: students Run a query on the sample data and Submit;
+ * the server compares it with the hidden reference solution on the sample data and on the
+ * sample plus hidden rows. Python: students Run a program with their own input and Submit; it
+ * runs on every test input and its output is compared with the reference program's output.
+ * Students only ever see published challenges, and never the solution, hidden rows, check
+ * query or hidden test inputs.
  */
 import { STUDENT_VISIBLE_STATUS } from '@acet/shared';
 import { oid } from '../../db/mongoose.js';
@@ -10,6 +12,7 @@ import { isStaff, loadSubject, loadTopic } from '../../lib/access.js';
 import { AppError, badRequest, notFound } from '../../lib/errors.js';
 import { Topic, Unit } from '../syllabus/model.js';
 import { CodeChallenge, CodeSubmission } from './model.js';
+import { runPython } from './pySandbox.js';
 import { runSql } from './sandbox.js';
 
 const PUBLISHED = STUDENT_VISIBLE_STATUS;
@@ -141,8 +144,117 @@ function tablesOf(c) {
   });
 }
 
+// ---------- Python grading ----------
+
+/** Output as compared: Windows newlines, trailing spaces and trailing blank lines don't matter. */
+export function normalizeOutput(s) {
+  return String(s ?? '')
+    .replace(/\r\n?/g, '\n')
+    .split('\n')
+    .map((l) => l.replace(/[ \t]+$/, ''))
+    .join('\n')
+    .replace(/\n+$/, '');
+}
+
+/** @returns {{ equal: boolean, reason?: string }} */
+export function compareOutput(expected, got) {
+  const a = normalizeOutput(expected).split('\n');
+  const b = normalizeOutput(got).split('\n');
+  if (a.join('\n') === b.join('\n')) return { equal: true };
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    if (a[i] === b[i]) continue;
+    if (b[i] === undefined)
+      return {
+        equal: false,
+        reason: `Your output stops after line ${i}; ${a.length - i} more line(s) expected.`,
+      };
+    if (a[i] === undefined)
+      return { equal: false, reason: `Your output has extra lines from line ${i + 1}.` };
+    const spacing = a[i].replace(/\s+/g, '') === b[i].replace(/\s+/g, '');
+    return {
+      equal: false,
+      reason: `Line ${i + 1} is different${spacing ? ' (only the spaces differ: check sep= and end=)' : ''}.`,
+    };
+  }
+  return { equal: false, reason: 'The output is different.' };
+}
+
+/** The reference program's output for every test (cached until the challenge changes). */
+function pythonExpected(c) {
+  return cached(`py:${version(c)}`, async () => {
+    const out = [];
+    for (const [i, t] of c.tests.entries()) {
+      const res = await runPython(c.solution, t.input);
+      if (!res.ok)
+        throw new AppError(
+          'UNPROCESSABLE',
+          `This challenge is broken (test ${i + 1}: ${res.error}). Ask your faculty to fix it.`,
+        );
+      out.push(res.stdout);
+    }
+    return out;
+  });
+}
+
+async function assertPythonWorks(c) {
+  for (const [i, t] of c.tests.entries()) {
+    const res = await runPython(c.solution, t.input);
+    if (!res.ok) throw badRequest(`The solution failed on test ${i + 1}: ${res.error}`);
+    if (!normalizeOutput(res.stdout))
+      throw badRequest(`The solution prints nothing for test ${i + 1}`);
+  }
+}
+
+/** Runs the program on every test in order and stops at the first failure, like LeetCode. */
+async function gradePython(c, code) {
+  const expected = await pythonExpected(c);
+  const cases = [];
+  let example = 0;
+  let hiddenNo = 0;
+  for (const [i, t] of c.tests.entries()) {
+    const name = t.hidden ? `Hidden test ${++hiddenNo}` : `Example ${++example}`;
+    const input = t.hidden ? null : t.input;
+    const got = await runPython(code, t.input);
+    if (!got.ok) {
+      cases.push({
+        name,
+        input,
+        passed: false,
+        error: got.error,
+        stage: got.stage,
+        ...(t.hidden ? {} : { got: got.stdout }),
+      });
+      return { verdict: got.stage === 'timeout' ? 'timeout' : 'error', cases };
+    }
+    const cmp = compareOutput(expected[i], got.stdout);
+    if (!cmp.equal) {
+      cases.push(
+        t.hidden
+          ? {
+              name,
+              input,
+              passed: false,
+              reason: `${cmp.reason} Your program works on the examples but not on other input. Read the input instead of printing fixed values.`,
+            }
+          : {
+              name,
+              input,
+              passed: false,
+              reason: cmp.reason,
+              expected: expected[i],
+              got: got.stdout,
+            },
+      );
+      return { verdict: t.hidden ? 'hiddenTests' : 'wrongAnswer', cases };
+    }
+    cases.push({ name, input, passed: true, ...(t.hidden ? {} : { got: got.stdout }) });
+  }
+  return { verdict: 'accepted', cases };
+}
+
 /** Staff check on create/update: the setup and the solution must run cleanly. */
 export async function assertChallengeWorks(c) {
+  if (c.language === 'python') return assertPythonWorks(c);
   for (const hidden of [false, true]) {
     const res = await runSql(gradingSteps(c, c.solution, { hidden }));
     if (!res.ok)
@@ -247,23 +359,32 @@ export async function listForSubject(user, subjectId) {
 /** GET /code-lab/:id — the problem, its tables and my last submission. Never the solution. */
 export async function getChallenge(user, id) {
   const { c, staff } = await loadChallenge(user, id);
-  const [tables, progress, last] = await Promise.all([
-    tablesOf(c),
+  const python = c.language === 'python';
+  const [tables, progress, last, expected] = await Promise.all([
+    python ? [] : tablesOf(c),
     progressFor(user.id, [String(c._id)]),
     CodeSubmission.findOne({ userId: user.id, challengeId: c._id })
       .sort({ createdAt: -1 })
       .select('code passed verdict createdAt')
       .lean(),
+    python ? pythonExpected(c) : null,
   ]);
   const p = progress.get(String(c._id));
   return {
     ...listView(c, p),
     prompt: c.prompt,
-    setupSql: c.setupSql,
     starterCode: c.starterCode,
     hints: c.hints,
-    orderMatters: c.orderMatters,
-    tables,
+    ...(python
+      ? {
+          // Visible tests are the examples (input and expected output); hidden ones are counted only.
+          examples: c.tests
+            .map((t, i) => ({ t, i }))
+            .filter(({ t }) => !t.hidden)
+            .map(({ t, i }) => ({ input: t.input, output: normalizeOutput(expected[i]) })),
+          hiddenTestCount: c.tests.filter((t) => t.hidden).length,
+        }
+      : { setupSql: c.setupSql, orderMatters: c.orderMatters, tables }),
     lastSubmission: last
       ? { code: last.code, passed: last.passed, verdict: last.verdict, at: last.createdAt }
       : null,
@@ -272,9 +393,15 @@ export async function getChallenge(user, id) {
 }
 
 /** POST /code-lab/:id/run — runs the code on the sample data and returns its output. */
-export async function runCode(user, id, { code }) {
+export async function runCode(user, id, { code, input }) {
   const { c } = await loadChallenge(user, id);
   const t0 = Date.now();
+  if (c.language === 'python') {
+    // The student's own input, or the first example's.
+    const stdin = input ?? c.tests.find((t) => !t.hidden)?.input ?? '';
+    const res = await runPython(code, stdin);
+    return { ...res, input: stdin, timeMs: Date.now() - t0 };
+  }
   // Runs show the student's own output, even for tasks graded with a check query.
   const res = await runSql(gradingSteps(c, code, { check: false }));
   return { ...res, timeMs: Date.now() - t0 };
@@ -293,41 +420,43 @@ const preview = (r) => ({
 export async function submitCode(user, id, { code }) {
   const { c, staff } = await loadChallenge(user, id);
   const t0 = Date.now();
-  const cases = [];
+  let cases = [];
   let verdict = 'accepted';
 
-  for (const hidden of [false, true]) {
-    const name = hidden ? 'Hidden tests' : 'Sample data';
-    const expected = await solutionResult(c, hidden);
-    const got = await runSql(gradingSteps(c, code, { hidden }), { maxRows: 100_000 });
-    if (!got.ok) {
-      verdict = got.stage === 'timeout' ? 'timeout' : 'error';
-      cases.push({ name, passed: false, error: got.error, stage: got.stage });
-      break;
+  if (c.language === 'python') ({ verdict, cases } = await gradePython(c, code));
+  else
+    for (const hidden of [false, true]) {
+      const name = hidden ? 'Hidden tests' : 'Sample data';
+      const expected = await solutionResult(c, hidden);
+      const got = await runSql(gradingSteps(c, code, { hidden }), { maxRows: 100_000 });
+      if (!got.ok) {
+        verdict = got.stage === 'timeout' ? 'timeout' : 'error';
+        cases.push({ name, passed: false, error: got.error, stage: got.stage });
+        break;
+      }
+      const cmp = compareResults(expected, got, c.orderMatters);
+      if (!cmp.equal) {
+        verdict = hidden ? 'hiddenTests' : 'wrongAnswer';
+        // Hidden data is never shown; say what kind of mistake it is instead.
+        const orderOnly = c.orderMatters && compareResults(expected, got, false).equal;
+        const hiddenReason = orderOnly
+          ? 'The rows are right but in the wrong order on other data. Check your ORDER BY.'
+          : `${cmp.reason} Your query works on the sample but not on other data. Avoid hard-coding values.`;
+        cases.push(
+          hidden
+            ? { name, passed: false, reason: hiddenReason }
+            : {
+                name,
+                passed: false,
+                reason: cmp.reason,
+                expected: preview(expected),
+                got: preview(got),
+              },
+        );
+        break;
+      }
+      cases.push({ name, passed: true, ...(hidden ? {} : { got: preview(got) }) });
     }
-    const cmp = compareResults(expected, got, c.orderMatters);
-    if (!cmp.equal) {
-      verdict = hidden ? 'hiddenTests' : 'wrongAnswer';
-      // Hidden data is never shown; say what kind of mistake it is instead.
-      const orderOnly = c.orderMatters && compareResults(expected, got, false).equal;
-      const hiddenReason = orderOnly
-        ? 'The rows are right but in the wrong order on other data. Check your ORDER BY.'
-        : `${cmp.reason} Your query works on the sample but not on other data. Avoid hard-coding values.`;
-      cases.push(
-        hidden
-          ? { name, passed: false, reason: hiddenReason }
-          : {
-              name,
-              passed: false,
-              reason: cmp.reason,
-              expected: preview(expected),
-              got: preview(got),
-            },
-      );
-      break;
-    }
-    cases.push({ name, passed: true, ...(hidden ? {} : { got: preview(got) }) });
-  }
 
   const passed = verdict === 'accepted';
   const timeMs = Date.now() - t0;

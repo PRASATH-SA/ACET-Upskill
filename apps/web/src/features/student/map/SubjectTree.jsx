@@ -15,11 +15,11 @@ export function SubjectTree({ subjects, progress, currentSubjectId, units, unitI
   const progressOf = new Map((progress?.subjects ?? []).map((p) => [p.subjectId, p]));
 
   return (
-    <nav aria-label="Subjects" className="space-y-5">
+    <nav aria-label="Subjects" className="space-y-8">
       {[...bySemester.entries()].map(([sem, list]) => (
         <div key={sem}>
           <p className="eyebrow">Semester {sem}</p>
-          <ul className="mt-2 space-y-1">
+          <ul className="mt-3 space-y-3">
             {list.map((s) => {
               const p = progressOf.get(s.id);
               const pct = p?.totalTopics ? (p.counts.confident / p.totalTopics) * 100 : 0;
@@ -29,15 +29,17 @@ export function SubjectTree({ subjects, progress, currentSubjectId, units, unitI
                   <NavLink
                     to={`/learn/${s.id}`}
                     className={cn(
-                      'block rounded-xl px-3 py-2 hover:bg-surface hover:no-underline',
-                      active && 'bg-surface',
+                      'block rounded-2xl border border-transparent p-4 transition-colors hover:border-line hover:bg-surface hover:no-underline',
+                      active && 'border-blue/20 bg-brand-soft/60',
                     )}
                   >
                     <span className="block text-xs font-semibold text-body">{s.code}</span>
-                    <span className="block text-sm font-semibold text-navy">{s.name}</span>
+                    <span className="mt-1 block text-sm font-semibold leading-snug text-navy">
+                      {s.name}
+                    </span>
                     {p && (
                       <ProgressBar
-                        className="mt-2"
+                        className="mt-3"
                         size="sm"
                         tone="gold"
                         value={pct}
@@ -47,7 +49,7 @@ export function SubjectTree({ subjects, progress, currentSubjectId, units, unitI
                   </NavLink>
                   {active && units?.length > 0 && (
                     <ul
-                      className="ml-3 mt-1 space-y-0.5 border-l border-line pl-3"
+                      className="ml-4 mt-3 space-y-1 border-l-2 border-line pl-3"
                       aria-label="Units"
                     >
                       <li>
@@ -56,8 +58,8 @@ export function SubjectTree({ subjects, progress, currentSubjectId, units, unitI
                           aria-pressed={!unitId}
                           onClick={() => onUnit(null)}
                           className={cn(
-                            'min-h-[40px] w-full rounded-lg px-2 text-left text-sm hover:bg-surface',
-                            !unitId ? 'font-semibold text-navy' : 'text-body',
+                            'min-h-[44px] w-full rounded-xl px-3 py-2 text-left text-sm leading-snug hover:bg-surface',
+                            !unitId ? 'bg-surface font-semibold text-navy' : 'text-body',
                           )}
                         >
                           All units
@@ -70,8 +72,8 @@ export function SubjectTree({ subjects, progress, currentSubjectId, units, unitI
                             aria-pressed={unitId === u.id}
                             onClick={() => onUnit(u.id)}
                             className={cn(
-                              'min-h-[40px] w-full rounded-lg px-2 text-left text-sm hover:bg-surface',
-                              unitId === u.id ? 'font-semibold text-navy' : 'text-body',
+                              'min-h-[44px] w-full rounded-xl px-3 py-2 text-left text-sm leading-snug hover:bg-surface',
+                              unitId === u.id ? 'bg-surface font-semibold text-navy' : 'text-body',
                             )}
                           >
                             Unit {u.number} · {u.title}

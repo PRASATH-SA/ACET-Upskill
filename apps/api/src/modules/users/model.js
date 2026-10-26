@@ -11,6 +11,9 @@ const userSchema = new Schema(
     batch: { type: String, default: null, index: true },
     syllabusVersionId: { type: ObjectId, ref: 'SyllabusVersion', index: true, default: null },
     mentorId: { type: ObjectId, ref: 'User', index: true, default: null },
+    // Students only: set by the HOD. The learn page lists subjects of `semester`.
+    yearOfStudy: { type: Number, min: 1, max: 4, default: null, index: true },
+    semester: { type: Number, min: 1, max: 8, default: null, index: true },
     isActive: { type: Boolean, default: true, index: true },
     lastLoginAt: Date,
     lastActiveAt: { type: Date, index: true },
@@ -31,6 +34,8 @@ export function toPublicUser(u) {
     batch: u.batch ?? null,
     syllabusVersionId: u.syllabusVersionId ? String(u.syllabusVersionId) : null,
     mentorId: u.mentorId ? String(u.mentorId) : null,
+    yearOfStudy: u.yearOfStudy ?? null,
+    semester: u.semester ?? null,
     isActive: u.isActive ?? true,
     createdAt: u.createdAt ? new Date(u.createdAt).toISOString() : undefined,
   };
