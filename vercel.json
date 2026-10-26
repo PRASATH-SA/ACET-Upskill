@@ -12,7 +12,7 @@
       "buildCommand": "npm run build"
     },
     "worker": {
-      "root": "apps/worker",
+      "root": ".",
       "runtime": "container"
     }
   },

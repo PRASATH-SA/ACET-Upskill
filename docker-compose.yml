@@ -87,7 +87,7 @@ services:
       retries: 10
 
   worker:
-    build: { context: ., dockerfile: apps/worker/Dockerfile }
+    build: { context: ., dockerfile: Dockerfile }
     environment:
       <<: *node-env
       # The worker runs AI jobs; ingestion reads uploaded material from the shared volume.

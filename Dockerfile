@@ -1,4 +1,5 @@
-# ACET SkillUp worker (Agenda jobs). Build from the repo root: docker build -f apps/worker/Dockerfile .
+# ACET SkillUp worker (Agenda jobs). Lives at the repo root because the build needs the whole
+# monorepo as context: docker build .  (Vercel builds the `worker` service from this file.)
 FROM node:20-alpine
 ENV NODE_ENV=production
 WORKDIR /app

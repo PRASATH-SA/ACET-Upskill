@@ -160,10 +160,21 @@ dc up -d --build
 - Student data never leaves the server: the LLM and speech models run locally (A.7.9).
 - `npm run check:secrets` and `npm audit --omit=dev --audit-level=high` run in CI.
 
-## Frontend on Vercel (optional)
+## Vercel (services)
 
-The web app can be hosted on Vercel while the API runs on this stack. `apps/web/vercel.json`
-serves the single-page app and rewrites `/api/*` to the API's public URL, so the browser still sees
-one origin (refresh cookie and offline caching keep working). Set the API URL in that file's
-rewrite. The backend itself does not run on Vercel: it needs the worker, persistent uploads and the
-local LLM.
+The root `vercel.json` deploys one Vercel project with three services on one domain:
+
+| Service | Root | Public path | Notes |
+|---|---|---|---|
+| `web` | `apps/web` | `/*` | Vite static build |
+| `api` | `apps/api` | `/api/*` | Express as a function; entry `src/vercel.js` exports the app and connects MongoDB once per instance |
+| `worker` | `.` (repo root) | none (internal) | Agenda jobs in a container built from the root `Dockerfile`, which needs the whole monorepo as context |
+
+No bindings are declared: the browser reaches the API through the same-origin `/api` rewrite, and
+the worker talks to the API only through MongoDB (Agenda jobs and shared services), never over HTTP.
+
+Set at least `MONGO_URI` (a hosted replica set, e.g. Atlas), `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`,
+`LLM_BASE_URL` (an LLM server reachable from Vercel) and `NODE_ENV=production`. `WEB_ORIGIN` defaults
+to the deployment's own URL. Uploads go to local disk (`UPLOAD_DIR`), which Vercel functions neither
+keep nor share with the worker, so material and video uploads need object storage before they work
+there. Test locally with `vercel dev`.

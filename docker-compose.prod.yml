@@ -115,7 +115,7 @@ services:
     restart: unless-stopped
 
   worker:
-    build: { context: ., dockerfile: apps/worker/Dockerfile }
+    build: { context: ., dockerfile: Dockerfile }
     environment:
       <<: *node-env
     volumes: ['uploads:/data/uploads']
