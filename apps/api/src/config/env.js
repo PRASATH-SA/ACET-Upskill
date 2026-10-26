@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ServerEnvSchema, parseEnv } from '@acet/shared';
+import { ServerEnvSchema, corsOrigins, parseEnv } from '@acet/shared';
 
 /**
  * API configuration. The shared ServerEnvSchema covers A.3/A.7 variables; this adds
@@ -64,7 +64,13 @@ const noMockInProduction = [
   },
 ];
 
-export const ApiEnvSchema = ApiEnvBase.refine(...noMockInProduction);
+export const ApiEnvSchema = ApiEnvBase.refine(...noMockInProduction).refine(
+  (e) => corsOrigins(e).length > 0,
+  {
+    message: 'set CORS_ORIGIN (or WEB_ORIGIN) to the web app URL(s) allowed to call the API',
+    path: ['CORS_ORIGIN'],
+  },
+);
 
 let cached;
 
@@ -88,7 +94,6 @@ export function env() {
  * so those variables are optional there.
  */
 export const WorkerEnvSchema = ApiEnvBase.partial({
-  WEB_ORIGIN: true,
   JWT_ACCESS_SECRET: true,
   JWT_REFRESH_SECRET: true,
 }).refine(...noMockInProduction);

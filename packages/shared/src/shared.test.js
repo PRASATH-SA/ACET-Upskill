@@ -15,6 +15,7 @@ import {
   paginatedSchema,
   parseEnv,
   ServerEnvSchema,
+  corsOrigins,
 } from './index.js';
 import { z } from 'zod';
 
@@ -102,7 +103,29 @@ describe('env validation (A.3, A.7, A.9)', () => {
   });
 
   it('fails fast with every missing server variable listed', () => {
-    expect(() => parseEnv(ServerEnvSchema, {})).toThrowError(/WEB_ORIGIN[\s\S]*MONGO_URI/);
+    expect(() => parseEnv(ServerEnvSchema, {})).toThrowError(/MONGO_URI[\s\S]*JWT_ACCESS_SECRET/);
+  });
+
+  it('merges CORS_ORIGIN and WEB_ORIGIN into one origin list', () => {
+    expect(
+      corsOrigins({
+        CORS_ORIGIN: 'https://acet.vercel.app/, https://admin.example.com',
+        WEB_ORIGIN: 'http://localhost:5173,https://acet.vercel.app',
+      }),
+    ).toEqual(['https://acet.vercel.app', 'https://admin.example.com', 'http://localhost:5173']);
+    expect(corsOrigins({})).toEqual([]);
+  });
+
+  it('treats a blank CORS_ORIGIN as unset and rejects a non-URL one', () => {
+    const base = {
+      MONGO_URI: 'mongodb://localhost:27017/acet_skillup',
+      JWT_ACCESS_SECRET: 'a'.repeat(32),
+      JWT_REFRESH_SECRET: 'b'.repeat(32),
+    };
+    expect(parseEnv(ServerEnvSchema, { ...base, CORS_ORIGIN: '' }).CORS_ORIGIN).toBeUndefined();
+    expect(() => parseEnv(ServerEnvSchema, { ...base, CORS_ORIGIN: 'acet.vercel.app' })).toThrowError(
+      /CORS_ORIGIN must be one or more comma-separated URLs/,
+    );
   });
 
   it('parses a complete server env', () => {
