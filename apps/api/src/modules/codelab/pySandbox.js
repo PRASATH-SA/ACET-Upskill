@@ -19,6 +19,21 @@ const BOOT_TIMEOUT_MS = 60_000;
 
 const PYODIDE_DIR = path.dirname(require.resolve('pyodide/package.json'));
 
+/**
+ * Never called. The runner loads Pyodide from a folder passed at run time, which Vercel's file
+ * tracer (@vercel/nft) cannot follow, so without these literal require() calls the deployed
+ * API has no Pyodide and every Python challenge fails with a 500.
+ */
+export function bundledPyodideFiles() {
+  return [
+    require('pyodide/pyodide.js'),
+    require('pyodide/pyodide.asm.js'),
+    require('pyodide/pyodide.asm.wasm'),
+    require('pyodide/python_stdlib.zip'),
+    require('pyodide/pyodide-lock.json'),
+  ];
+}
+
 function permissionArgs() {
   // Read: the runner, the package.json that makes it an ES module, and Pyodide. Nothing else,
   // and no write access at all.

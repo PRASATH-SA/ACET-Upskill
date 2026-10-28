@@ -11,6 +11,13 @@ const require = createRequire(import.meta.url);
 const initSqlJs = require('sql.js');
 const SQL = await initSqlJs({ locateFile: (f) => require.resolve(`sql.js/dist/${f}`) });
 
+/**
+ * Never called. sql.js finds its .wasm through locateFile, which Vercel's file tracer
+ * (@vercel/nft) cannot follow, so without this literal require() the deployed API has no
+ * SQLite and every SQL challenge fails with a 500.
+ */
+export const bundledSqlWasm = () => require('sql.js/dist/sql-wasm.wasm');
+
 /** SQLite's own allocator cap. The pragma can lower this limit but never raise it. */
 const HEAP_LIMIT_BYTES = 64 * 1024 * 1024;
 
