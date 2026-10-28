@@ -54,7 +54,7 @@ const CONTENT_COLUMNS = CONTENT_CSV_COLUMNS.filter(
  * One CSV cell. Text that Excel would run as a formula (= + - @) gets a leading apostrophe,
  * which readRows() strips again, so markdown bullets ("- point") survive a round trip.
  */
-function cell(value) {
+export function csvCell(value) {
   let s = value == null ? '' : String(value);
   if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
   return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
@@ -63,7 +63,7 @@ function cell(value) {
 /** CSV text (with a UTF-8 BOM so Excel shows ’ and ₹) for rows keyed by column name. */
 export function writeCsv(rows) {
   const lines = [CONTENT_CSV_COLUMNS.join(',')];
-  for (const row of rows) lines.push(CONTENT_CSV_COLUMNS.map((c) => cell(row[c])).join(','));
+  for (const row of rows) lines.push(CONTENT_CSV_COLUMNS.map((c) => csvCell(row[c])).join(','));
   const BOM = String.fromCharCode(0xfeff);
   return `${BOM}${lines.join('\r\n')}\r\n`;
 }

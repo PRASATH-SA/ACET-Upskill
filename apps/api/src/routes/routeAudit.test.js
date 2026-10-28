@@ -34,6 +34,16 @@ const BODY_EXEMPT = new Map([
   ['POST /ai/topics/:id/draft-rubric', 'no body'],
   ['PATCH /subjects/:id/map/approve', 'no body'],
   ['POST /ai/subjects/:id/draft-overview', 'no body'],
+  [
+    'POST /forms/:id/responses',
+    'JSON or multipart (answers + file:<questionId> parts), checked in the service',
+  ],
+  ['POST /forms/:id/publish', 'no body'],
+  ['POST /forms/:id/unpublish', 'no body'],
+  ['POST /forms/:id/duplicate', 'no body'],
+  ['POST /forms/:id/release-scores', 'no body'],
+  ['POST /notifications/read-all', 'no body'],
+  ['POST /notifications/:id/read', 'no body'],
 ]);
 
 /** "/^\/users\/?(?=\/|$)/i" → "/users" (Express 4 mount paths). */

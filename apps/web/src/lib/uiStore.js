@@ -18,10 +18,31 @@ function writePref(key, value) {
   }
 }
 
+const prefersDark = () =>
+  typeof window !== 'undefined' &&
+  Boolean(window.matchMedia?.('(prefers-color-scheme: dark)').matches);
+
+/** "light" or "dark": the saved choice, else the device setting (ADR 0014). */
+export const initialTheme = () => readPref('theme', null) ?? (prefersDark() ? 'dark' : 'light');
+
+/** Switches the page palette: Tailwind's `dark` class on <html> flips the theme variables. */
+export function applyTheme(theme) {
+  if (typeof document === 'undefined') return;
+  document.documentElement.classList.toggle('dark', theme === 'dark');
+}
+
 /** UI-only state (A.3: Zustand for UI state, TanStack Query for server state). */
 export const useUi = create((set) => ({
   sidebarCollapsed: readPref('sidebarCollapsed', false),
   lowData: readPref('lowData', false),
+  theme: initialTheme(),
+  toggleTheme: () =>
+    set((s) => {
+      const theme = s.theme === 'dark' ? 'light' : 'dark';
+      writePref('theme', theme);
+      applyTheme(theme);
+      return { theme };
+    }),
   toggleSidebar: () =>
     set((s) => {
       writePref('sidebarCollapsed', !s.sidebarCollapsed);

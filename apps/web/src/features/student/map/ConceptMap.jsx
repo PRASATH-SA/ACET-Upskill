@@ -168,7 +168,8 @@ function MapCanvas({
         zoomOnDoubleClick={false}
         aria-label={`Concept map for ${map.subject.name}`}
       >
-        <Background gap={24} size={1} color="#E3E7EE" />
+        {/* Dot grid: a theme line colour, so it shows on light and dark pages. */}
+        <Background gap={24} size={1} color="rgb(var(--c-line))" />
         <Controls showInteractive={false} position="bottom-left" />
         {!isMobile && (
           <MiniMap

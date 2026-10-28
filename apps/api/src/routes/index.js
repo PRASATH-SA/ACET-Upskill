@@ -23,6 +23,8 @@ import { videoRoutes } from '../modules/video/routes.js';
 import { codeLabRoutes } from '../modules/codelab/routes.js';
 import { overviewRoutes } from '../modules/overview/routes.js';
 import { leaderboardRoutes } from '../modules/leaderboard/routes.js';
+import { formRoutes } from '../modules/forms/routes.js';
+import { notificationRoutes } from '../modules/notifications/routes.js';
 import { healthRoutes } from './health.js';
 import { mediaRoutes } from './media.js';
 
@@ -59,6 +61,8 @@ export function apiRouter() {
   r.use('/', codeLabRoutes());
   r.use('/', overviewRoutes());
   r.use('/', leaderboardRoutes());
+  r.use('/', formRoutes());
+  r.use('/', notificationRoutes());
   r.use('/ai', aiRoutes());
   return r;
 }

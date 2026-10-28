@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import { LoginSchema } from '@acet/shared';
 import { ApiError } from '../../api/client';
 import { Button, Input } from '../../components/ui';
+import { ThemeToggle } from '../../components/layout/AppShell';
 import { login, ROLE_HOME, useSession } from './session';
 import { safeReturnPath } from '../../lib/safePath';
 import { bouncy, soft } from '../../lib/motion';
@@ -106,7 +107,8 @@ export function LoginPage() {
         </p>
       </section>
 
-      <main className="flex items-center justify-center px-1 py-8 sm:px-12">
+      <main className="relative flex items-center justify-center px-1 py-8 sm:px-12">
+        <ThemeToggle className="absolute right-1 top-1" />
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}

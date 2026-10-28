@@ -92,3 +92,23 @@ test('tutor: a question about the topic streams an answer with a citation that j
   await drawer.getByRole('button', { name: 'Ask' }).click();
   await expect(drawer.getByText(/I can only answer questions about "Normalization"/)).toBeVisible();
 });
+
+test('the Remember step draws the topic cheat sheet as a downloadable image', async ({ page }) => {
+  await openNormalization(page, 'student07@acet.test');
+  await page.getByRole('button', { name: 'Cheat sheet' }).click();
+  await expect(page.getByRole('tab', { name: /Cheat sheet/ })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  const img = page.getByRole('img', { name: /Cheat sheet for Normalization/ });
+  await expect(img).toBeVisible({ timeout: 20_000 });
+  // A real PNG of the 3:2 poster (1500 x 1000 CSS px or taller, drawn at 2x), not an empty capture.
+  const size = await img.evaluate((el) => ({ w: el.naturalWidth, h: el.naturalHeight }));
+  expect(size.w).toBe(3000);
+  expect(size.h).toBeGreaterThanOrEqual(2000);
+  const download = page.waitForEvent('download');
+  await page.getByRole('link', { name: 'Download image' }).click();
+  const file = await download;
+  expect(file.suggestedFilename()).toMatch(/normalization-cheat-sheet\.png$/);
+  if (process.env.CHEAT_SHEET_OUT) await file.saveAs(process.env.CHEAT_SHEET_OUT);
+});

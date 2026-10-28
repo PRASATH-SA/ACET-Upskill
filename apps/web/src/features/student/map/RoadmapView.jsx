@@ -43,7 +43,7 @@ const FACE = {
   unlocked:
     'border-blue bg-white/85 text-blue-dark backdrop-blur-md shadow-[inset_0_2px_0_rgb(255_255_255/0.9),0_6px_0_0_rgb(200_29_120/0.35)]',
   locked:
-    'border-[#CFCDE0] bg-[#ECEBF3]/85 text-navy/70 backdrop-blur-md shadow-[inset_0_2px_0_rgb(255_255_255/0.6),0_6px_0_0_#CFCDE0]',
+    'border-[#CFCDE0] bg-[#ECEBF3]/85 text-navy/70 backdrop-blur-md shadow-[inset_0_2px_0_rgb(255_255_255/0.6),0_6px_0_0_#CFCDE0] dark:border-[#45405A] dark:bg-[#2A2735]/85 dark:shadow-[0_6px_0_0_#45405A]',
 };
 const ICON = {
   mastered: Check,
@@ -428,7 +428,7 @@ function UnitTrail({
           'absolute inline-flex animate-node-in items-center justify-center rounded-3xl border-2',
           complete
             ? 'shine animate-wobble border-gold-border bg-gold text-navy shadow-[inset_0_2px_0_rgb(255_255_255/0.55),0_6px_0_0_#C9A100,0_0_30px_rgb(245_192_0/0.5)]'
-            : 'border-[#CFCDE0] bg-[#ECEBF3]/85 text-navy/50 shadow-[0_6px_0_0_#CFCDE0]',
+            : 'border-[#CFCDE0] bg-[#ECEBF3]/85 text-navy/50 shadow-[0_6px_0_0_#CFCDE0] dark:border-[#45405A] dark:bg-[#2A2735]/85 dark:shadow-[0_6px_0_0_#45405A]',
         )}
         style={{
           width: NODE + 8,

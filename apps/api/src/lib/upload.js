@@ -7,10 +7,11 @@ import { AppError } from './errors.js';
 import { storage } from './storage.js';
 
 /** Multer in memory: files are sniffed, then handed to StorageService. Max size from UPLOAD_MAX_MB. */
-export function memoryUpload(maxMb = env().UPLOAD_MAX_MB) {
+/** `maxFiles` > 1 is for forms with several file questions (ADR 0015). */
+export function memoryUpload(maxMb = env().UPLOAD_MAX_MB, maxFiles = 1) {
   return multer({
     storage: multer.memoryStorage(),
-    limits: { fileSize: maxMb * 1024 * 1024, files: 1 },
+    limits: { fileSize: maxMb * 1024 * 1024, files: maxFiles },
   });
 }
 

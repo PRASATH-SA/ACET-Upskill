@@ -143,7 +143,7 @@ export const TOP3 = [
     glow: 'shadow-[0_10px_28px_-8px_rgba(225,29,72,0.65)]',
   },
   {
-    fill: 'bg-gradient-to-b from-[#FFE14D] to-[#F5B400] text-navy',
+    fill: 'bg-gradient-to-b from-[#FFE14D] to-[#F5B400] text-[#22355E]',
     ring: 'ring-[#F5B400]',
     glow: 'shadow-[0_10px_28px_-8px_rgba(245,180,0,0.65)]',
   },

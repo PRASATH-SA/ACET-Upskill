@@ -9,6 +9,12 @@ import { useSession } from '../../auth/session';
 import { availableSteps } from './TopicPage';
 import { youTubeId } from './VideoPlayer';
 
+// jsdom cannot paint, so the PNG step of the cheat-sheet image is stubbed.
+vi.mock('html-to-image', () => ({
+  getFontEmbedCSS: vi.fn(async () => ''),
+  toPng: vi.fn(async () => 'data:image/png;base64,iVBORw0KGgo='),
+}));
+
 const basePage = {
   topic: {
     id: 't1',
@@ -121,6 +127,53 @@ describe('topic page (F4)', () => {
         ),
       ).toBe(true),
     );
+  });
+
+  it('shows the infographic cheat sheet as a Remember tab beside the flashcards', async () => {
+    setup({
+      ...fullPage,
+      tenMark: {
+        id: 'tm1',
+        body: '## Normal forms\n- **1NF:** atomic values\n- **2NF:** no partial dependency\n## Conclusion\nEach fact lives once.',
+      },
+      shortAnswers: [{ id: 'f1', question: 'What is 1NF?', answer: 'Atomic values only.' }],
+    });
+    const user = userEvent.setup();
+    renderApp('/topics/t1');
+    const tab = await screen.findByRole('tab', { name: /Cheat sheet/ });
+    expect(screen.getByRole('tab', { name: /Flashcards/ })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    expect(screen.queryByRole('article', { name: 'Normalization' })).not.toBeInTheDocument();
+    await user.click(tab);
+    expect(tab).toHaveAttribute('aria-selected', 'true');
+    // The infographic is drawn into a PNG, ready to download.
+    const img = await screen.findByRole('img', { name: /Cheat sheet for Normalization/ });
+    expect(img).toHaveAttribute('src', 'data:image/png;base64,iVBORw0KGgo=');
+    expect(screen.getByRole('link', { name: 'Download image' })).toHaveAttribute(
+      'download',
+      'cs-t53-normalization-cheat-sheet.png',
+    );
+    // The same sheet as text, for screen readers and copying.
+    await user.click(screen.getByRole('button', { name: 'Text version' }));
+    const sheet = screen.getByRole('article', { name: 'Normalization' });
+    // The header button opens the same tab.
+    expect(screen.getByRole('button', { name: 'Cheat sheet' })).toBeInTheDocument();
+    expect(within(sheet).getByText('Split tables so each fact lives once.')).toBeInTheDocument();
+    expect(within(sheet).getByRole('heading', { name: /Normal forms/ })).toBeInTheDocument();
+    expect(within(sheet).getByText('no partial dependency')).toBeInTheDocument();
+    expect(within(sheet).getByText('What is 1NF?')).toBeInTheDocument();
+    expect(within(sheet).getByText('Functional Dependency')).toBeInTheDocument();
+    expect(within(sheet).getByText('Each fact lives once.')).toBeInTheDocument();
+    expect(within(sheet).getByText('10 marks')).toBeInTheDocument();
+  });
+
+  it('has no cheat sheet button when nothing is published', async () => {
+    setup(basePage);
+    renderApp('/topics/t1');
+    await screen.findByText('Content is on its way');
+    expect(screen.queryByRole('button', { name: 'Cheat sheet' })).not.toBeInTheDocument();
   });
 
   it('reveals the curiosity answer only after a pick', async () => {

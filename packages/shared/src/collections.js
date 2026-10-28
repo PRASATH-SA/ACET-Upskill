@@ -32,4 +32,7 @@ export const COLLECTIONS = {
   subjectOverviews: 'subjectOverviews',
   labExperiments: 'labExperiments',
   labCompletions: 'labCompletions',
+  forms: 'forms',
+  formResponses: 'formResponses',
+  notifications: 'notifications',
 };

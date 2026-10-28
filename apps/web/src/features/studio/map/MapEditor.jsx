@@ -129,7 +129,8 @@ function Canvas({ state, units, selected, onSelect, dispatch, onConnectRequest }
         proOptions={{ hideAttribution: true }}
         aria-label="Editable concept map"
       >
-        <Background gap={24} size={1} color="#E3E7EE" />
+        {/* Dot grid: a theme line colour, so it shows on light and dark pages. */}
+        <Background gap={24} size={1} color="rgb(var(--c-line))" />
         <Controls showInteractive={false} position="bottom-left" />
         <MiniMap pannable zoomable position="bottom-right" ariaLabel="Mini map" />
       </ReactFlow>

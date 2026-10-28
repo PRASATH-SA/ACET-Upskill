@@ -7,37 +7,53 @@ import {
   SHADOWS,
   SHAPE,
   SUPPORT_COLORS,
+  THEME_COLORS,
+  themeCssVar,
+  themeCssVars,
 } from '../../packages/shared/src/design-tokens.js';
 
 const px = (n) => `${n}px`;
 
+/** A themeable colour (ADR 0014): its value comes from :root or .dark. */
+const themed = (key) => `rgb(var(${themeCssVar(key)}) / <alpha-value>)`;
+
+/** Writes the light palette on :root and the dark one on .dark (dark mode, ADR 0014). */
+function themePlugin({ addBase }) {
+  addBase({
+    ':root': { ...themeCssVars(THEME_COLORS.light), colorScheme: 'light' },
+    '.dark': { ...themeCssVars(THEME_COLORS.dark), colorScheme: 'dark' },
+  });
+}
+
 export default {
+  // The theme toggle puts `dark` on <html> (lib/theme.js).
+  darkMode: 'class',
   content: ['./index.html', './src/**/*.{js,jsx}'],
   theme: {
     extend: {
       // The A.8 names (navy, red, blue, body, line, surface) carry the E-Learning Kit values
       // (ADR 0008), so existing classes restyle in place. `brand`, `accent`, `ink` are the kit's names.
       colors: {
-        navy: { DEFAULT: COLORS.navy, dark: SUPPORT_COLORS.navyDark },
-        red: { DEFAULT: COLORS.red, dark: SUPPORT_COLORS.redDark },
+        navy: { DEFAULT: themed('navy'), dark: SUPPORT_COLORS.navyDark },
+        red: { DEFAULT: COLORS.red, dark: themed('redDark') },
         blue: { DEFAULT: COLORS.blue, dark: SUPPORT_COLORS.blueDark },
         brand: {
           DEFAULT: BRAND_COLORS.brand,
           deep: BRAND_COLORS.brandDeep,
-          soft: BRAND_COLORS.brandSoft,
+          soft: themed('brandSoft'),
           logo: BRAND_COLORS.brandLogo,
         },
         grad: { start: BRAND_COLORS.gradStart, end: BRAND_COLORS.gradEnd },
         accent: { DEFAULT: BRAND_COLORS.accent, ink: BRAND_COLORS.accentInk },
         rating: BRAND_COLORS.rating,
-        gold: { DEFAULT: COLORS.gold, border: COLORS.goldBorder, tint: COLORS.goldTint },
-        success: { DEFAULT: SUPPORT_COLORS.success, soft: BRAND_COLORS.successSoft },
-        warning: { DEFAULT: SUPPORT_COLORS.warning, dark: SUPPORT_COLORS.warningDark },
-        ink: { DEFAULT: COLORS.navy, muted: COLORS.text, subtle: BRAND_COLORS.inkSubtle },
-        body: COLORS.text,
-        line: COLORS.border,
-        surface: COLORS.surface,
-        card: COLORS.card,
+        gold: { DEFAULT: COLORS.gold, border: COLORS.goldBorder, tint: themed('goldTint') },
+        success: { DEFAULT: themed('success'), soft: themed('successSoft') },
+        warning: { DEFAULT: SUPPORT_COLORS.warning, dark: themed('warningDark') },
+        ink: { DEFAULT: themed('navy'), muted: themed('body'), subtle: themed('inkSubtle') },
+        body: themed('body'),
+        line: themed('line'),
+        surface: themed('surface'),
+        card: themed('card'),
       },
       fontFamily: {
         heading: [FONTS.heading.family, 'Segoe UI', 'system-ui', 'sans-serif'],
@@ -135,5 +151,5 @@ export default {
       screens: { xs: `${SHAPE.mobileMinWidthPx}px` },
     },
   },
-  plugins: [],
+  plugins: [themePlugin],
 };

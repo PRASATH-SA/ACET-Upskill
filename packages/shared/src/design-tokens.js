@@ -48,6 +48,42 @@ export const SUPPORT_COLORS = {
   warningDark: '#8A4A0B',
 };
 
+/**
+ * Themeable colours (dark mode, ADR 0014). The web app turns each key into a CSS variable, so
+ * `bg-card`, `text-navy`, `border-line` … switch with the `dark` class on <html>. Brand magenta,
+ * gold and the CTA colours do not change. Dark values keep text above WCAG AA on `card`.
+ */
+export const THEME_COLORS = {
+  light: {
+    navy: COLORS.navy,
+    body: COLORS.text,
+    line: COLORS.border,
+    surface: COLORS.surface,
+    card: COLORS.card,
+    goldTint: COLORS.goldTint,
+    brandSoft: BRAND_COLORS.brandSoft,
+    successSoft: BRAND_COLORS.successSoft,
+    inkSubtle: BRAND_COLORS.inkSubtle,
+    success: SUPPORT_COLORS.success,
+    warningDark: SUPPORT_COLORS.warningDark,
+    redDark: SUPPORT_COLORS.redDark,
+  },
+  dark: {
+    navy: '#ECEAF5', // headings and strong text (14.6:1 on card)
+    body: '#BAB7C8', // body copy (8.4:1 on card)
+    line: '#34303F',
+    surface: '#131118', // page
+    card: '#1E1B26',
+    goldTint: '#3A3016',
+    brandSoft: '#3E1B30',
+    successSoft: '#17361E',
+    inkSubtle: '#8A879A',
+    success: '#5BC266',
+    warningDark: '#F5A25B',
+    redDark: '#FF8A80',
+  },
+};
+
 /** One family, Poppins, for headings and body. */
 export const FONTS = {
   heading: { family: 'Poppins', weights: [600, 700] },
@@ -113,4 +149,35 @@ export const MAP_EDGE_STYLE = {
   prerequisite: { stroke: COLORS.navy, dashed: false, arrow: true },
   related: { stroke: COLORS.blue, dashed: true, arrow: false },
   crossUnitRelated: { stroke: BRAND_COLORS.accentInk, dashed: true, arrow: false },
+};
+
+/** "#22355E" → "34 53 94", for rgb(var(--x) / <alpha-value>) so opacity modifiers keep working. */
+const channels = (hex) => {
+  const h = hex.replace('#', '');
+  return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16)).join(' ');
+};
+/** The CSS variable behind a themeable colour: `cardHover` → `--c-card-hover`. */
+export const themeCssVar = (key) => `--c-${key.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}`;
+/** A palette from THEME_COLORS as CSS variables (Tailwind base styles, or an inline style). */
+export const themeCssVars = (palette) =>
+  Object.fromEntries(Object.entries(palette).map(([k, v]) => [themeCssVar(k), channels(v)]));
+
+/**
+ * Pastel card colours of the cheat-sheet poster image (ADR 0016). The poster is always drawn on
+ * white, so these are fixed values, not theme variables. `ink` keeps WCAG AA on `tint`; `wash` is
+ * the card body, `tint` its header and inner boxes.
+ */
+export const CHEAT_POSTER_COLORS = {
+  blue: { wash: '#F5F8FF', tint: '#E8F0FE', border: '#BFD3FB', ink: '#1D4ED8' },
+  green: { wash: '#F4FBF6', tint: '#E6F6EC', border: '#B5E3C5', ink: '#15803D' },
+  orange: { wash: '#FFF9F2', tint: '#FFF0E0', border: '#FBD2A6', ink: '#C2410C' },
+  purple: { wash: '#F9F6FF', tint: '#F1EAFE', border: '#D5C3FA', ink: '#6D28D9' },
+  sky: { wash: '#F3FAFD', tint: '#E3F5FC', border: '#AEE0F4', ink: '#0369A1' },
+  pink: { wash: '#FFF5F9', tint: '#FDE8F1', border: '#F7BCD6', ink: '#BE185D' },
+  yellow: { wash: '#FFFCF0', tint: '#FFF8DB', border: '#F5DE85', ink: '#A16207' },
+  mint: { wash: '#F3FCF8', tint: '#E3F8EF', border: '#A8E6C9', ink: '#047857' },
+  marker: '#FDE047',
+  /** The title bar: navy with the key words in marker yellow, and pink pills. */
+  bar: { bg: '#14254A', pill: '#F9A8D4', pillText: '#14254A' },
+  code: { keyword: '#1D4ED8', string: '#DC2626', number: '#15803D', comment: '#64748B' },
 };

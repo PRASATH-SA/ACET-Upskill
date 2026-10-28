@@ -1,7 +1,17 @@
 import { useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Download, LogOut, PanelLeftClose, PanelLeftOpen, Search, User } from 'lucide-react';
+import {
+  ClipboardList,
+  Download,
+  LogOut,
+  Moon,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Search,
+  Sun,
+  User,
+} from 'lucide-react';
 import { useInstall } from '../../lib/pwa';
 import { NAV } from '../../app/nav';
 import { logout, useSession } from '../../features/auth/session';
@@ -13,6 +23,8 @@ import { bouncy, soft } from '../../lib/motion';
 import { CelebrationLayer } from '../../features/student/game/Celebration';
 import { LevelBadge } from '../../features/student/game/GameWidgets';
 import { useGame, useLevelUpWatcher } from '../../features/student/game/useGame';
+import { NotificationBell } from '../../features/notifications/NotificationBell';
+import { useMyForms } from '../../features/forms/api';
 
 const ROLE_LABEL = {
   student: 'Student',
@@ -83,6 +95,20 @@ function StudentGame() {
   return <LevelBadge game={game} streak={progress.data?.revision.streakDays ?? 0} />;
 }
 
+/** Light / dark switch in the top bar (ADR 0014). */
+export function ThemeToggle({ className }) {
+  const dark = useUi((s) => s.theme === 'dark');
+  const toggle = useUi((s) => s.toggleTheme);
+  return (
+    <IconButton
+      icon={dark ? Sun : Moon}
+      label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+      onClick={toggle}
+      className={className}
+    />
+  );
+}
+
 function TopBar({ user }) {
   const navigate = useNavigate();
   const canInstall = useInstall((s) => Boolean(s.prompt));
@@ -99,6 +125,8 @@ function TopBar({ user }) {
           className="ml-auto sm:hidden"
           onClick={() => navigate('/search')}
         />
+        <NotificationBell />
+        <ThemeToggle />
         {user.role === 'student' && <StudentGame />}
         <Menu
           label="Profile menu"
@@ -113,6 +141,9 @@ function TopBar({ user }) {
           }
           items={[
             { label: 'My profile', icon: User, onSelect: () => navigate('/profile') },
+            ...(user.role === 'student'
+              ? [{ label: 'My forms', icon: ClipboardList, onSelect: () => navigate('/forms') }]
+              : []),
             ...(canInstall ? [{ label: 'Install app', icon: Download, onSelect: install }] : []),
             {
               label: 'Sign out',
@@ -130,7 +161,13 @@ function TopBar({ user }) {
   );
 }
 
-function Sidebar({ items }) {
+/** Counts shown on nav links with a `badge` key: a student's forms still to fill in. */
+function useNavBadges(role) {
+  const forms = useMyForms({ enabled: role === 'student' });
+  return { forms: (forms.data ?? []).filter((f) => f.open.open && !f.responded).length };
+}
+
+function Sidebar({ items, badges = {} }) {
   const collapsed = useUi((s) => s.sidebarCollapsed);
   const toggle = useUi((s) => s.toggleSidebar);
   return (
@@ -176,6 +213,17 @@ function Sidebar({ items }) {
                       <item.icon className="h-5 w-5 shrink-0" aria-hidden />
                     </motion.span>
                     <span className={cn('relative', collapsed && 'sr-only')}>{item.label}</span>
+                    {badges[item.badge] > 0 && (
+                      <span
+                        className={cn(
+                          'relative ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-brand px-1.5 text-[11px] font-bold text-white',
+                          collapsed && 'absolute right-1.5 top-1.5 ml-0',
+                        )}
+                      >
+                        {badges[item.badge]}
+                        <span className="sr-only"> to do</span>
+                      </span>
+                    )}
                   </>
                 )}
               </NavLink>
@@ -254,6 +302,7 @@ function BottomTabs({ items }) {
 export function AppShell() {
   const user = useSession((s) => s.user);
   const items = NAV[user.role] ?? [];
+  const badges = useNavBadges(user.role);
   const location = useLocation();
   return (
     <div className="min-h-screen">
@@ -266,7 +315,7 @@ export function AppShell() {
       <TopBar user={user} />
       <OfflineBanner />
       <div className="flex">
-        <Sidebar items={items} />
+        <Sidebar items={items} badges={badges} />
         <main id="main" tabIndex={-1} className="min-w-0 flex-1 pb-28 focus:outline-none md:pb-10">
           {/* Each section fades and rises in, like moving to the next level screen. Keyed on the
               first path segment only, so moving inside a section (topic to topic) keeps state. */}

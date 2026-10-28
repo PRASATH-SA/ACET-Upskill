@@ -11,6 +11,7 @@ const faculty = () => import('../features/studio');
 const mentor = () => import('../features/mentor');
 const admin = () => import('../features/admin');
 const progress = () => import('../features/progress');
+const forms = () => import('../features/forms');
 
 /**
  * Screens by role. Keys are comma-separated role lists for RequireRole.
@@ -31,6 +32,8 @@ export const appRoutes = {
     { path: 'labs/:subjectId', element: page(student, 'LabPage') },
     // Every role; the API ranks only the viewer's own cohort (ADR 0013).
     { path: 'leaderboard', element: page(progress, 'LeaderboardPage') },
+    // The shareable form link (ADR 0015): students in the audience fill it, editors preview it.
+    { path: 'forms/:formId', element: page(forms, 'FormFillPage') },
   ],
   byRole: {
     student: [
@@ -42,6 +45,7 @@ export const appRoutes = {
       { path: 'me/progress', element: page(student, 'ProgressPage') },
       { path: 'code-lab', element: page(student, 'CodeLabIndex') },
       { path: 'code-lab/:subjectId', element: page(student, 'SubjectCodeLabPage') },
+      { path: 'forms', element: page(forms, 'MyFormsPage') },
     ],
     'faculty,admin': [
       { path: 'studio', element: page(faculty, 'StudioHome') },
@@ -56,6 +60,8 @@ export const appRoutes = {
       { path: 'studio/workshops', element: page(faculty, 'WorkshopReview') },
       { path: 'studio/students', element: page(progress, 'ClassProgressPage') },
       { path: 'studio/students/:id', element: page(progress, 'StudentReportPage') },
+      { path: 'studio/forms', element: page(forms, 'FormStudioPage') },
+      { path: 'studio/forms/:formId', element: page(forms, 'FormEditor') },
     ],
     // Admins may open a mentor's view of a student too (the API audits it).
     'mentor,admin': [

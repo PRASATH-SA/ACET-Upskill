@@ -4,12 +4,15 @@ import {
   ArrowLeft,
   ArrowRight,
   Bot,
+  Brain,
   CalendarDays,
   ChevronRight,
   Code2,
   FileQuestion,
+  LayoutGrid,
   Printer,
 } from 'lucide-react';
+import { buildCheatSheet } from '@acet/shared';
 import { ApiError } from '../../../api/client';
 import { Page } from '../../../components/layout/AppShell';
 import { Markdown } from '../../../components/Markdown';
@@ -21,12 +24,14 @@ import {
   EyebrowHeading,
   LoadingBlock,
   StepTracker,
+  Tabs,
 } from '../../../components/ui';
 import { useSession } from '../../auth/session';
 import { AnimatePresence, motion } from 'framer-motion';
 import { soft } from '../../../lib/motion';
 import { useLearningOrder, useMyMap, useOpenTopic, useSaveTopicSteps, useTopicPage } from '../api';
 import { MASTERY_LABEL } from '../map/graph';
+import { CheatSheetImage } from './CheatSheetImage';
 import { Curiosity } from './Curiosity';
 import { FlashcardDeck } from './FlashcardDeck';
 import { TutorDrawer } from './TutorDrawer';
@@ -51,7 +56,8 @@ export function availableSteps(page) {
   if (page.curiosity) steps.push('curiosity');
   if (page.video || page.easy) steps.push('understand');
   if (page.tenMark || page.shortAnswers) steps.push('prepare');
-  if (page.flashcardCount > 0) steps.push('remember');
+  // Remember holds the flashcards and the derived cheat sheet (ADR 0016).
+  if (page.flashcardCount > 0 || buildCheatSheet(page)) steps.push('remember');
   if (page.questionCount > 0 || page.codeChallengeCount > 0) steps.push('practice');
   if (page.realWorld || page.workshop || page.workshops?.length) steps.push('apply');
   return steps;
@@ -237,6 +243,8 @@ export function TopicPage() {
   const node = me.data?.nodes.find((n) => n.topicId === topicId);
   const order = useLearningOrder(subjectId, isStudent);
   const [tutorOpen, setTutorOpen] = useState(false);
+  const [rememberView, setRememberView] = useState('cards');
+  const sheet = useMemo(() => (page.data ? buildCheatSheet(page.data) : null), [page.data]);
   const [done, setDone] = useState([]);
   // Where to return to, from the server ({ step, offset } or null): undefined until the open call
   // answers. `readyFor` is the topic whose position has been restored, so saving can start.
@@ -253,6 +261,7 @@ export function TopicPage() {
   const interacted = useRef(false);
   useEffect(() => {
     setDone([]);
+    setRememberView(window.location.hash === '#cheat-sheet' ? 'sheet' : 'cards');
     setResumeAt(isStudent ? undefined : null);
     interacted.current = false;
     if (!window.location.hash) window.scrollTo(0, 0);
@@ -325,7 +334,9 @@ export function TopicPage() {
   // Links such as /topics/:id#step-prepare (from exam prep) land on that section.
   const { hash } = useLocation();
   useEffect(() => {
-    const step = hash.startsWith('#step-') ? hash.slice(6) : null;
+    // `#cheat-sheet` opens the Remember step on its cheat sheet tab.
+    const step =
+      hash === '#cheat-sheet' ? 'remember' : hash.startsWith('#step-') ? hash.slice(6) : null;
     if (step && steps.includes(step)) requestAnimationFrame(() => jump(step));
   }, [hash, steps, jump]);
 
@@ -333,7 +344,8 @@ export function TopicPage() {
   useEffect(() => {
     if (resumeAt === undefined || !steps.length || readyFor === topicId) return undefined;
     const { step, offset = 0 } = resumeAt ?? {};
-    const restore = !hash.startsWith('#step-') && step && steps.includes(step);
+    const linked = hash.startsWith('#step-') || hash === '#cheat-sheet';
+    const restore = !linked && step && steps.includes(step);
     // A short wait lets the sections lay out (video, cards) before measuring.
     const timer = setTimeout(() => {
       const el = restore && document.getElementById(`step-${step}`);
@@ -393,8 +405,9 @@ export function TopicPage() {
     scheduleSave.current?.();
   }, [current]);
 
-  const printTenMark = () => {
-    document.body.dataset.print = 'step-prepare';
+  /** Prints only one part of the page: the exam notes or the cheat sheet (see index.css). */
+  const printOnly = (part) => {
+    document.body.dataset.print = part;
     const clear = () => {
       delete document.body.dataset.print;
       window.removeEventListener('afterprint', clear);
@@ -487,6 +500,18 @@ export function TopicPage() {
           >
             Back to map
           </Button>
+          {sheet && (
+            <Button
+              variant="secondary"
+              icon={LayoutGrid}
+              onClick={() => {
+                setRememberView('sheet');
+                jump('remember');
+              }}
+            >
+              Cheat sheet
+            </Button>
+          )}
           <Button variant="navy" icon={Bot} onClick={() => setTutorOpen(true)}>
             Ask why
           </Button>
@@ -579,7 +604,7 @@ export function TopicPage() {
                       variant="secondary"
                       size="sm"
                       icon={Printer}
-                      onClick={printTenMark}
+                      onClick={() => printOnly('step-prepare')}
                       className="no-print"
                     >
                       Print
@@ -606,13 +631,45 @@ export function TopicPage() {
                 </StepSection>
               )}
 
-              {p.flashcardCount > 0 && (
-                <StepSection
-                  id="remember"
-                  eyebrow="Remember"
-                  title={`Flashcards (${p.flashcardCount})`}
-                >
-                  <FlashcardDeck topicId={t.id} onDone={() => markDone('remember')} />
+              {steps.includes('remember') && (
+                <StepSection id="remember" eyebrow="Remember" title="Lock it in">
+                  <Tabs
+                    label="Ways to remember"
+                    value={p.flashcardCount > 0 ? rememberView : 'sheet'}
+                    onChange={setRememberView}
+                    tabs={[
+                      p.flashcardCount > 0 && {
+                        value: 'cards',
+                        label: 'Flashcards',
+                        icon: Brain,
+                        count: p.flashcardCount,
+                        content: (
+                          <FlashcardDeck topicId={t.id} onDone={() => markDone('remember')} />
+                        ),
+                      },
+                      sheet && {
+                        value: 'sheet',
+                        label: 'Cheat sheet',
+                        icon: LayoutGrid,
+                        content: (
+                          <>
+                            <CheatSheetImage
+                              sheet={sheet}
+                              onPrint={() => printOnly('cheat-sheet')}
+                            />
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="no-print mt-3"
+                              onClick={() => markDone('remember')}
+                            >
+                              I&apos;ve revised this
+                            </Button>
+                          </>
+                        ),
+                      },
+                    ].filter(Boolean)}
+                  />
                 </StepSection>
               )}
 

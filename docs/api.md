@@ -254,6 +254,39 @@ Every subject has a root page (`/subjects/:id` in the web app). The unit journey
 | POST | `/subject-overviews/:id/status` | see content status rules | `{ status }`. Approve and publish: owning faculty only |
 | POST | `/ai/subjects/:id/draft-overview` | owning faculty, admin | `202 { jobId }` (`subject.overview` job). Drafted from the syllabus PDF and the unit/topic list only; no readable syllabus → `result: "needsMaterial"`. A faculty-written, edited or approved overview is never replaced (`result: "skipped"`) |
 
+## Form Studio and notifications (ADR 0015)
+
+Faculty, HODs and the coordinator build forms; students in a form's audience fill them. The body of
+`PUT /forms/:id` is `UpdateFormSchema` in `packages/shared/src/forms.js` (title, description, headerColor,
+sections[].questions[], settings, audience). "Editors" = owner, collaborators, the owner's HOD, coordinator.
+
+| Method | Path | Roles | Notes |
+|---|---|---|---|
+| GET | `/forms` | faculty, admin | Forms the user owns or collaborates on (HOD: also their department's; coordinator: all), with `responseCount` and `open: { open, reason }` |
+| POST | `/forms` | faculty, admin | `{ title?, description? }` → a draft with one question. The audience defaults to the creator's department |
+| GET | `/forms/:id` | editors | Full form with answer key, `owner`, `collaborators`, `responseCount`, `open` |
+| PUT | `/forms/:id` | editors | Saves the whole form (the editor autosaves). Branch targets must exist. A HOD's audience stays in their department (403 otherwise). Widening a published form's audience notifies the new students (`notified`) |
+| DELETE | `/forms/:id` | owner, their HOD, coordinator | Deletes the form, its responses, files and notifications |
+| POST | `/forms/:id/publish` | editors | Needs at least one titled question. Notifies each student in the audience once: `{ ...form, notified }` |
+| POST | `/forms/:id/unpublish` | editors | Back to draft; students no longer see it |
+| POST | `/forms/:id/duplicate` | editors | `201`, "Copy of …" as a draft owned by the caller |
+| POST | `/forms/:id/collaborators` | editors | `{ email }` of an active faculty or HOD account |
+| DELETE | `/forms/:id/collaborators/:userId` | editors | |
+| GET | `/forms/:id/responses` | editors | `{ total, anonymous, summary: { [questionId]: { answered, counts?, average?, grid?, texts?, files? } }, quiz: { maxScore, average, median, correctByQuestion } or null, responses[] }`. Anonymous forms omit `student` |
+| GET | `/forms/:id/export` | editors | CSV (UTF-8 BOM), one column per question and per grid row; cells that look like formulas are escaped |
+| DELETE | `/forms/:id/responses` | editors | Deletes every response and file: `{ deleted }` |
+| DELETE | `/forms/:id/responses/:responseId` | editors | |
+| PATCH | `/forms/:id/responses/:responseId/grade` | editors | `{ grades: { [questionId]: points or null }, feedback? }` → `{ score, maxScore }` |
+| POST | `/forms/:id/release-scores` | editors | Quiz only. Releases marks and notifies each respondent: `{ released, notified }` |
+| GET | `/forms/:id/view` | students in the audience; editors (preview) | `{ form (no answer key), open, preview, myResponse, canRespond, canEdit, confirmationMessage }`. Draft → 404, not in the audience → 403 |
+| POST | `/forms/:id/responses` | student in the audience | JSON `{ answers }`, or multipart with an `answers` JSON field and `file:<questionId>` parts. Only answers on the section path are kept. `400` with `details.errors[questionId]`; `409` if already responded (one response, no editing); `403` when closed. With "allow edit", submitting again replaces the response (`200`, `edited: true`) |
+| GET | `/forms/:id/summary` | respondents (when the form shares results), editors | `{ total, summary }` |
+| GET | `/forms/:id/responses/:responseId/files/:fileId` | editors, the respondent | Streams the uploaded file |
+| GET | `/me/forms` | student | Published forms for the student: `{ open, responded, submittedAt, canEdit, score? }` |
+| GET | `/notifications?limit=` | any | The caller's own `{ items: [{ id, type, title, body, link, readAt, updatedAt }], unread }` |
+| POST | `/notifications/:id/read` | owner | 404 for someone else's notification |
+| POST | `/notifications/read-all` | any | `{ updated }` |
+
 ## Media links
 
 | Method | Path | Roles | Notes |

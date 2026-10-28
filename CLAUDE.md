@@ -31,6 +31,15 @@ Repo-specific notes (added on top of Part A):
 - **Leaderboard and progress reports (2026-10-27):** `GET /leaderboard`, `/reports/progress`, `/reports/students/:id`
   rank students by mastery XP (same as `gamify()`), scoped by role (class / faculty subjects / mentees / HOD department).
   Pages `/leaderboard`, `/studio/students[/:id]`, `/admin/progress` — see `docs/decisions/0013-leaderboard-and-cohort-progress.md`.
+- **Dark mode (2026-10-27):** top-bar sun/moon toggle; themeable colours are CSS variables from `THEME_COLORS`
+  in `@acet/shared` (Tailwind `darkMode: 'class'`). Use token classes, not hex — see `docs/decisions/0014-dark-mode.md`.
+- **Form Studio and notifications (2026-10-27):** faculty/HOD build Google-Forms-style forms at `/studio/forms`
+  (sections, branching, quiz mode, validation, file uploads, CSV export); the share link is `/forms/:id`.
+  Publishing notifies the audience through the top-bar bell (`notifications`); students see `/forms`. Branching,
+  answer checks and scoring are shared in `packages/shared/src/forms.js` — see `docs/decisions/0015-form-studio-and-notifications.md`.
+- **Topic cheat sheet (2026-10-27):** a "Cheat sheet" tab in the Remember step (beside Flashcards) shows a downloadable study-poster PNG in the faculty reference style (navy title bar, numbered pastel cards with tables, steps, flowcharts and code from `blocksOf()`; `cheatPoster()` in `@acet/shared`, `CheatSheetPoster.jsx`, html-to-image)
+  derived from the published page by `buildCheatSheet()` in `@acet/shared` (no stored content, no approval step);
+  `/topics/:id#cheat-sheet` opens it — see `docs/decisions/0016-topic-cheat-sheet.md`.
 - `docs/requirements.md` is a placeholder until the real requirements document is added.
 - **Status (2026-10-21):** Phase 0, B1–B5, A1–A5 and F1–F7 are built and tested, plus extras outside Part B
   (question variants/quiz sessions, video learning, explain-it-back, liquid-glass UI — ADR 0004, and the

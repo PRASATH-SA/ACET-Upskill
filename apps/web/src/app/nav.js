@@ -6,6 +6,7 @@ import {
   Brain,
   Building2,
   ClipboardCheck,
+  ClipboardList,
   Code2,
   FileQuestion,
   GraduationCap,
@@ -21,7 +22,8 @@ import {
 
 /**
  * Role-based navigation (F1). `mobile: true` items appear in the bottom tab bar (max 4).
- * `end` makes the link active only on an exact match.
+ * `end` makes the link active only on an exact match. `badge` names a count shown on the link
+ * (see useNavBadges in AppShell).
  */
 export const NAV = {
   // Ordered by the learner's need: take in something new, keep it (revision is due daily),
@@ -32,6 +34,7 @@ export const NAV = {
     { to: '/revision', label: 'Revision', icon: Brain, mobile: true },
     { to: '/code-lab', label: 'Code lab', icon: Code2 },
     { to: '/exam-prep', label: 'Exam prep', icon: Target, mobile: true },
+    { to: '/forms', label: 'Forms', icon: ClipboardList, badge: 'forms' },
     { to: '/me/progress', label: 'Progress', icon: Activity, mobile: true },
     { to: '/leaderboard', label: 'Leaderboard', icon: Trophy },
   ],
@@ -40,6 +43,7 @@ export const NAV = {
     { to: '/studio/review', label: 'Review queue', icon: ClipboardCheck, mobile: true },
     { to: '/studio/questions', label: 'Question bank', icon: FileQuestion, mobile: true },
     { to: '/studio/workshops', label: 'Workshops', icon: Wrench, mobile: true },
+    { to: '/studio/forms', label: 'Form studio', icon: ClipboardList },
     { to: '/studio/students', label: 'Student progress', icon: TrendingUp },
     { to: '/leaderboard', label: 'Leaderboard', icon: Trophy },
   ],
@@ -53,6 +57,7 @@ export const NAV = {
     { to: '/admin/users', label: 'Users', icon: Users, mobile: true },
     { to: '/admin/progress', label: 'Department progress', icon: TrendingUp, mobile: true },
     { to: '/admin/syllabus', label: 'Syllabus', icon: BookOpen, mobile: true },
+    { to: '/studio/forms', label: 'Form studio', icon: ClipboardList },
     { to: '/leaderboard', label: 'Leaderboard', icon: Trophy },
     { to: '/admin/co-po', label: 'CO–PO', icon: Target },
     { to: '/admin/ai', label: 'AI settings', icon: Bot },
@@ -64,6 +69,7 @@ export const NAV = {
     { to: '/admin/departments', label: 'Departments', icon: Building2, mobile: true },
     { to: '/admin/progress', label: 'Department progress', icon: TrendingUp, mobile: true },
     { to: '/admin/syllabus', label: 'Syllabus', icon: BookOpen },
+    { to: '/studio/forms', label: 'Form studio', icon: ClipboardList },
     { to: '/leaderboard', label: 'Leaderboard', icon: Trophy },
     { to: '/admin/co-po', label: 'CO–PO', icon: Target },
     { to: '/admin/ai', label: 'AI settings', icon: Bot },

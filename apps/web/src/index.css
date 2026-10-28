@@ -47,6 +47,10 @@
   .eyebrow {
     @apply text-xs font-semibold uppercase tracking-[0.12em] text-brand;
   }
+  /* Lighter magenta on the dark page; a colour utility on the element still wins. */
+  :where(.dark) .eyebrow {
+    color: #f472b6;
+  }
   /*
    * Kit surfaces. The old "glass" class names are kept so every screen restyles in place:
    * white cards with a 1px line hairline and shadow-card, resting on the surface-alt page.
@@ -104,7 +108,11 @@
   .bg-sunburst {
     background-color: #f2c014;
     background-image:
-      repeating-conic-gradient(from 0deg at 50% 38%, rgb(255 255 255 / 0.13) 0deg 6deg, transparent 6deg 18deg),
+      repeating-conic-gradient(
+        from 0deg at 50% 38%,
+        rgb(255 255 255 / 0.13) 0deg 6deg,
+        transparent 6deg 18deg
+      ),
       radial-gradient(circle at 50% 38%, #fcf024 0%, #f2c014 38%, #f0a818 78%, #e49c18 100%);
   }
   .bg-cta-gradient {
@@ -165,7 +173,7 @@
   height: 36px;
   border-bottom-color: #f1e4cc;
   background: transparent;
-  color: #22355E;
+  color: #22355e;
 }
 .react-flow .react-flow__controls-button:hover {
   background: #fde8f3;
@@ -205,11 +213,63 @@
     visibility: hidden;
   }
   body[data-print='step-prepare'] #step-prepare,
-  body[data-print='step-prepare'] #step-prepare * {
+  body[data-print='step-prepare'] #step-prepare *,
+  body[data-print='cheat-sheet'] #cheat-sheet,
+  body[data-print='cheat-sheet'] #cheat-sheet * {
     visibility: visible;
   }
-  body[data-print='step-prepare'] #step-prepare {
+  body[data-print='step-prepare'] #step-prepare,
+  body[data-print='cheat-sheet'] #cheat-sheet {
     position: absolute;
     inset: 0 0 auto 0;
   }
+  /* The cheat sheet is an infographic: keep its colour fills on paper. */
+  .cheat-sheet,
+  .cheat-sheet * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+/*
+ * Dark mode (ADR 0014). The theme variables flip page, cards, lines and text; these rules cover
+ * the few classes whose colour is fixed on purpose and would lose contrast on a dark page.
+ */
+.dark * {
+  --tw-ring-offset-color: #131118;
+}
+/* Ink panels, badges and buttons keep a dark fill so their white text stays readable. */
+.dark .bg-navy {
+  background-color: #2b3866;
+}
+.dark .border-navy {
+  border-color: #2b3866;
+}
+/* White pills and rows become cards. */
+.dark .bg-white {
+  background-color: rgb(var(--c-card));
+}
+/* Yellow fills (mastered, gold badges, sunburst) keep navy text, as in light mode. */
+.dark :is(.bg-gold, .bg-sunburst),
+.dark :is(.bg-gold, .bg-sunburst) :is(.text-navy, h1, h2, h3, h4) {
+  color: #22355e;
+}
+/* …and eyebrows on yellow stay the deep magenta. */
+.dark :is(.bg-gold, .bg-sunburst) .eyebrow {
+  color: #9e1360;
+}
+/* Brand magenta as text is too dark on the dark page; lighten it (links, eyebrows, tabs). */
+:where(.dark) a,
+:where(.dark) .text-brand {
+  color: #f472b6;
+}
+.dark .text-brand-deep {
+  color: #f9a8d4;
+}
+/* The cheat-sheet image is always drawn in the light theme (ADR 0016). */
+.dark .cheat-poster .bg-navy {
+  background-color: #22355e;
+}
+.dark .cheat-poster .text-brand {
+  color: #c81d78;
 }
