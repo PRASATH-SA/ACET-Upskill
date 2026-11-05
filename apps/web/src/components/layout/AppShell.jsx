@@ -1,0 +1,354 @@
+import { useLayoutEffect, useState } from 'react';
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
+import {
+  ClipboardList,
+  Download,
+  LogOut,
+  Moon,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Search,
+  Sun,
+  User,
+} from 'lucide-react';
+import { useInstall } from '../../lib/pwa';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
+import { NAV } from '../../app/nav';
+import { logout, useSession } from '../../features/auth/session';
+import { useUi } from '../../lib/uiStore';
+import { cn } from '../../lib/cn';
+import { Avatar, IconButton, Menu, focusRing } from '../ui';
+import { BackBar, BottomTabs } from './MobileNav';
+import { OfflineBanner } from './OfflineBanner';
+import { bouncy, soft } from '../../lib/motion';
+import { CelebrationLayer } from '../../features/student/game/Celebration';
+import { LevelBadge } from '../../features/student/game/GameWidgets';
+import { useGame, useLevelUpWatcher } from '../../features/student/game/useGame';
+import { NotificationBell } from '../../features/notifications/NotificationBell';
+import { useMyForms } from '../../features/forms/api';
+import { ExplorerQuest } from '../../features/onboarding/ExplorerQuest';
+import { Splash } from '../../features/onboarding/Splash';
+import { celebrate } from '../../features/student/game/celebrate';
+import { onboardingEnabled, useOnboarding } from '../../lib/onboarding';
+
+const ROLE_LABEL = {
+  student: 'Student',
+  faculty: 'Faculty',
+  mentor: 'Mentor',
+  admin: 'HOD / Admin',
+  coordinator: 'Academic Coordinator',
+};
+
+function Logo() {
+  return (
+    <Link
+      to="/"
+      className={cn(
+        'flex shrink-0 items-center gap-2 rounded-lg text-navy hover:no-underline',
+        focusRing,
+      )}
+    >
+      <motion.img
+        src="/brand/achariya-25-320.webp"
+        alt=""
+        width={40}
+        height={40}
+        initial={{ rotate: -20, scale: 0.6 }}
+        animate={{ rotate: 0, scale: 1 }}
+        whileHover={{ rotate: [0, -10, 10, -5, 0], scale: 1.08 }}
+        transition={bouncy}
+        className="h-9 w-9 rounded-md shadow-press-red-sm sm:h-10 sm:w-10"
+      />
+      {/* The wordmark gives way on the narrowest phones; the logo still names the app. */}
+      <span className="hidden font-heading text-lg font-bold xs:inline sm:text-xl">SkillUp</span>
+      <span className="hidden text-xs font-semibold text-body sm:inline">ACHARIYA</span>
+    </Link>
+  );
+}
+
+function SearchBox({ className }) {
+  const navigate = useNavigate();
+  const [q, setQ] = useState('');
+  return (
+    <form
+      role="search"
+      className={cn('relative', className)}
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (q.trim()) navigate(`/search?q=${encodeURIComponent(q.trim())}`);
+      }}
+    >
+      <label htmlFor="global-search" className="sr-only">
+        Search subjects and topics
+      </label>
+      <Search
+        className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-navy"
+        aria-hidden
+      />
+      <input
+        id="global-search"
+        type="search"
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder="Search topics…"
+        className="min-h-[44px] w-full rounded-md border border-line bg-surface pl-10 pr-4 text-sm text-navy placeholder:text-ink-subtle focus:border-brand focus:bg-card focus:outline-none focus:ring-4 focus:ring-brand/15"
+      />
+    </form>
+  );
+}
+
+/** Students see their level, XP and streak in the top bar, and level ups get celebrated. */
+function StudentGame() {
+  const { game, progress } = useGame();
+  useLevelUpWatcher(game);
+  return <LevelBadge game={game} streak={progress.data?.revision.streakDays ?? 0} />;
+}
+
+/** Light / dark switch in the top bar (ADR 0014). */
+export function ThemeToggle({ className }) {
+  const dark = useUi((s) => s.theme === 'dark');
+  const toggle = useUi((s) => s.toggleTheme);
+  return (
+    <IconButton
+      icon={dark ? Sun : Moon}
+      label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+      onClick={toggle}
+      className={className}
+    />
+  );
+}
+
+function TopBar({ user }) {
+  const navigate = useNavigate();
+  const canInstall = useInstall((s) => Boolean(s.prompt));
+  const install = useInstall((s) => s.install);
+  // Phones: the theme switch moves into the profile menu so the bar fits 360px.
+  const phone = useMediaQuery('(max-width: 639px)');
+  const dark = useUi((s) => s.theme === 'dark');
+  const toggleTheme = useUi((s) => s.toggleTheme);
+  return (
+    // White app bar with a line hairline. 56px tall on phones and 66px from md up, so sticky
+    // offsets elsewhere (top-[56px] md:top-[66px]) line up.
+    <header className="sticky top-0 z-30 border-b border-line bg-card">
+      <div className="flex h-[56px] items-center gap-1 px-3 sm:gap-3 md:h-[66px] lg:px-6">
+        <Logo />
+        <SearchBox className="ml-auto hidden max-w-sm flex-1 sm:block" />
+        <IconButton
+          icon={Search}
+          label="Search"
+          className="ml-auto sm:hidden"
+          onClick={() => navigate('/search')}
+        />
+        <NotificationBell />
+        {!phone && <ThemeToggle />}
+        {user.role === 'student' && <StudentGame />}
+        <Menu
+          label="Profile menu"
+          trigger={
+            <>
+              <Avatar name={user.name} size="sm" />
+              <span className="hidden text-left leading-tight md:block">
+                <span className="block text-sm font-semibold text-navy">{user.name}</span>
+                <span className="block text-xs">{ROLE_LABEL[user.role]}</span>
+              </span>
+            </>
+          }
+          items={[
+            { label: 'My profile', icon: User, onSelect: () => navigate('/profile') },
+            ...(user.role === 'student'
+              ? [{ label: 'My forms', icon: ClipboardList, onSelect: () => navigate('/forms') }]
+              : []),
+            ...(phone
+              ? [
+                  {
+                    label: dark ? 'Light mode' : 'Dark mode',
+                    icon: dark ? Sun : Moon,
+                    onSelect: toggleTheme,
+                  },
+                ]
+              : []),
+            ...(canInstall ? [{ label: 'Install app', icon: Download, onSelect: install }] : []),
+            {
+              label: 'Sign out',
+              icon: LogOut,
+              tone: 'danger',
+              onSelect: async () => {
+                await logout();
+                navigate('/login', { replace: true });
+              },
+            },
+          ]}
+        />
+      </div>
+    </header>
+  );
+}
+
+/** Counts shown on nav links with a `badge` key: a student's forms still to fill in. */
+function useNavBadges(role) {
+  const forms = useMyForms({ enabled: role === 'student' });
+  return { forms: (forms.data ?? []).filter((f) => f.open.open && !f.responded).length };
+}
+
+function Sidebar({ items, badges = {} }) {
+  const collapsed = useUi((s) => s.sidebarCollapsed);
+  const toggle = useUi((s) => s.toggleSidebar);
+  return (
+    <aside
+      className={cn(
+        // A floating card rail, inset from the edges.
+        'glass sticky top-[78px] my-3 ml-3 hidden h-[calc(100vh-90px)] shrink-0 flex-col rounded-card transition-[width] md:flex',
+        collapsed ? 'w-[76px]' : 'w-60',
+      )}
+    >
+      <nav aria-label="Main" className="flex-1 overflow-y-auto p-3">
+        <ul className="space-y-1">
+          {items.map((item) => (
+            <li key={item.to}>
+              <NavLink
+                to={item.to}
+                end={item.end}
+                title={collapsed ? item.label : undefined}
+                className={({ isActive }) =>
+                  cn(
+                    'relative flex min-h-[44px] items-center gap-3 rounded-md px-3 text-sm font-medium text-body transition-colors hover:text-brand hover:no-underline',
+                    isActive && 'font-semibold text-brand',
+                    collapsed && 'justify-center',
+                    focusRing,
+                  )
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    {isActive && (
+                      <motion.span
+                        layoutId="sidebar-active"
+                        aria-hidden
+                        className="absolute inset-0 rounded-md bg-brand-soft"
+                        transition={bouncy}
+                      />
+                    )}
+                    <motion.span
+                      className="relative inline-flex"
+                      whileHover={{ scale: 1.2, rotate: -8 }}
+                      transition={bouncy}
+                    >
+                      <item.icon className="h-5 w-5 shrink-0" aria-hidden />
+                    </motion.span>
+                    <span className={cn('relative', collapsed && 'sr-only')}>{item.label}</span>
+                    {badges[item.badge] > 0 && (
+                      <span
+                        className={cn(
+                          'relative ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-brand px-1.5 text-[11px] font-bold text-white',
+                          collapsed && 'absolute right-1.5 top-1.5 ml-0',
+                        )}
+                      >
+                        {badges[item.badge]}
+                        <span className="sr-only"> to do</span>
+                      </span>
+                    )}
+                  </>
+                )}
+              </NavLink>
+            </li>
+          ))}
+        </ul>
+      </nav>
+      <div className="border-t border-line p-3">
+        <IconButton
+          icon={collapsed ? PanelLeftOpen : PanelLeftClose}
+          label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-expanded={!collapsed}
+          onClick={toggle}
+          className={cn(!collapsed && 'ml-auto flex')}
+        />
+      </div>
+    </aside>
+  );
+}
+
+/**
+ * First visit per user: the welcome splash, then the explorer quest until every menu page has
+ * been opened. The app loads behind the splash, so START lands on a ready page.
+ */
+function Onboarding({ user, items, pathname }) {
+  const loadedFor = useOnboarding((s) => s.userId);
+  const load = useOnboarding((s) => s.load);
+  const splashSeen = useOnboarding((s) => Boolean(s.state.splashSeen));
+  const finishSplash = useOnboarding((s) => s.finishSplash);
+  // Before paint, so a returning user never sees the splash flash.
+  useLayoutEffect(() => load(user.id), [load, user.id]);
+  if (loadedFor !== user.id) return null;
+  return (
+    <>
+      <AnimatePresence>
+        {!splashSeen && (
+          <Splash
+            key="splash"
+            name={user.name}
+            onStart={() => {
+              finishSplash();
+              celebrate({ size: 'lg' });
+            }}
+          />
+        )}
+      </AnimatePresence>
+      {splashSeen && <ExplorerQuest items={items} pathname={pathname} />}
+    </>
+  );
+}
+
+/** Signed-in layout: top bar, collapsible sidebar (desktop), bottom tabs (< 768px). */
+export function AppShell() {
+  const user = useSession((s) => s.user);
+  const items = NAV[user.role] ?? [];
+  const badges = useNavBadges(user.role);
+  const location = useLocation();
+  return (
+    <div className="min-h-screen">
+      <a
+        href="#main"
+        className="sr-only z-50 rounded-full bg-navy px-4 py-2 text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
+      >
+        Skip to content
+      </a>
+      <TopBar user={user} />
+      <OfflineBanner />
+      <div className="flex">
+        <Sidebar items={items} badges={badges} />
+        <main id="main" tabIndex={-1} className="min-w-0 flex-1 pb-28 focus:outline-none md:pb-10">
+          {/* Each section fades and rises in, like moving to the next level screen. Keyed on the
+              first path segment only, so moving inside a section (topic to topic) keeps state. */}
+          <BackBar items={items} />
+          <motion.div
+            key={location.pathname.split('/')[1] ?? ''}
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={soft}
+          >
+            <Outlet />
+          </motion.div>
+        </main>
+      </div>
+      <BottomTabs items={items} badges={badges} />
+      {onboardingEnabled() && <Onboarding user={user} items={items} pathname={location.pathname} />}
+      <CelebrationLayer />
+    </div>
+  );
+}
+
+/** Standard page container with consistent gutters (16px on phones). */
+export function Page({ className, wide, children }) {
+  return (
+    <div
+      className={cn(
+        'mx-auto w-full px-4 py-6 sm:px-6 lg:py-8',
+        wide ? 'max-w-[1440px]' : 'max-w-6xl',
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
+}

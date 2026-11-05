@@ -1,0 +1,102 @@
+# ACET SkillUp production nginx (H1). Rendered by the nginx image with envsubst:
+#   SERVER_NAME   e.g. skillup.acet.ac.in
+#   TLS_CERT      path inside the container, e.g. /etc/nginx/certs/fullchain.pem
+#   TLS_KEY       e.g. /etc/nginx/certs/privkey.pem
+#   API_UPSTREAM  e.g. api:4000
+# Only these variables are substituted; nginx's own $variables are left alone.
+
+upstream skillup_api {
+    server ${API_UPSTREAM};
+    keepalive 64;
+}
+
+# HTTP: ACME challenges (certbot webroot) and a redirect to HTTPS.
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${SERVER_NAME};
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    server_name ${SERVER_NAME};
+
+    ssl_certificate     ${TLS_CERT};
+    ssl_certificate_key ${TLS_KEY};
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_session_cache   shared:SSL:10m;
+    ssl_session_timeout 1d;
+
+    server_tokens off;
+    root /usr/share/nginx/html;
+    include /etc/nginx/snippets/security-headers.conf;
+
+    gzip on;
+    gzip_types text/plain text/css application/javascript application/json image/svg+xml application/manifest+json;
+    gzip_min_length 1024;
+
+    # API: same origin, so the httpOnly refresh cookie and the service worker just work.
+    location /api/ {
+        proxy_pass http://skillup_api;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        # Topic videos are the largest upload (VIDEO_MAX_MB, default 200).
+        client_max_body_size 210m;
+        proxy_request_buffering off;
+        proxy_read_timeout 120s;
+    }
+
+    # Server-sent events: AI job progress and tutor answers must not be buffered.
+    location ~ ^/api/v1/(ai/jobs/[^/]+/events|ai/tutor/ask)$ {
+        proxy_pass http://skillup_api;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 1h;
+    }
+
+    # Hashed build assets never change.
+    location /assets/ {
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        try_files $uri =404;
+    }
+
+    # The service worker and manifest must always be revalidated so updates reach phones.
+    location = /sw.js {
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Cache-Control "no-cache" always;
+        try_files $uri =404;
+    }
+    location = /manifest.webmanifest {
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Cache-Control "no-cache" always;
+        default_type application/manifest+json;
+        try_files $uri =404;
+    }
+
+    # Single-page app: unknown paths serve index.html (never cached).
+    location / {
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Cache-Control "no-cache" always;
+        try_files $uri $uri/ /index.html;
+    }
+}

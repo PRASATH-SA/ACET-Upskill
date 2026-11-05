@@ -1,0 +1,8 @@
+data: {"id":"c1","choices":[{"index":0,"delta":{"role":"assistant","content":"Each "}}]}
+
+data: {"id":"c1","choices":[{"index":0,"delta":{"content":"fact once."}}]}
+
+data: {"id":"c1","choices":[{"index":0,"delta":{},"finish_reason":"stop"}],"usage":{"prompt_tokens":80,"completion_tokens":4}}
+
+data: [DONE]
+

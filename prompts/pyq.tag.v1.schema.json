@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "pyq.tag.v1",
+  "type": "object",
+  "required": ["picks"],
+  "additionalProperties": false,
+  "properties": {
+    "picks": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "required": ["candidate", "confidence"],
+        "additionalProperties": false,
+        "properties": {
+          "candidate": { "type": "integer", "minimum": 1, "maximum": 10 },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+        }
+      }
+    }
+  }
+}

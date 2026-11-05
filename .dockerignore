@@ -1,0 +1,10 @@
+**/node_modules
+**/dist
+**/.env
+.git
+.tmp
+.cache
+.data
+uploads
+apps/api/uploads
+coverage

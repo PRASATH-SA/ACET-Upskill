@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "topic.realWorld.v1",
+  "type": "object",
+  "required": ["uses", "workshop"],
+  "additionalProperties": false,
+  "properties": {
+    "uses": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 5,
+      "items": { "type": "string", "minLength": 5, "maxLength": 300 }
+    },
+    "workshop": {
+      "type": "object",
+      "required": ["title", "brief", "deliverable"],
+      "additionalProperties": false,
+      "properties": {
+        "title": { "type": "string", "minLength": 3, "maxLength": 120 },
+        "brief": { "type": "string", "minLength": 20, "maxLength": 2000 },
+        "deliverable": { "type": "string", "minLength": 5, "maxLength": 300 }
+      }
+    }
+  }
+}

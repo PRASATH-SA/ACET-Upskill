@@ -1,0 +1,23 @@
+PONDICHERRY UNIVERSITY
+B.Tech Computer Science and Engineering - Semester V
+CS T53 DATABASE MANAGEMENT SYSTEMS
+
+Course Objectives: To understand database design, query languages and storage.
+
+UNIT I  INTRODUCTION 9 Hours
+Purpose of Database Systems, Views of Data, Data Models, Database Architecture, Database Users and Administrators
+
+UNIT II
+RELATIONAL MODEL AND SQL
+Relational Model, Keys, Relational Algebra, SQL Queries, Nested Subqueries
+
+UNIT III DATABASE DESIGN
+Functional Dependency, Data Anomalies, Normalization, 1NF 2NF and 3NF, BCNF
+
+UNIT IV - STORAGE AND INDEXING
+File Organization, Indexing, B+ Tree Index, Hashing
+
+UNIT V TRANSACTIONS
+Transaction Concepts, Concurrency Control, Recovery System
+
+Text Books: Silberschatz, Korth and Sudarshan, Database System Concepts.

@@ -1,0 +1,308 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* E-Learning Kit type (ADR 0008): one family, Poppins; semibold headings, body at line-height 1.6. */
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  /* Phones: a 14px root scales every rem-based size (type, spacing, controls) down ~12%.
+     Fixed px values (touch targets, bar heights) are unaffected. */
+  @media (max-width: 639px) {
+    html {
+      font-size: 87.5%;
+    }
+  }
+  body {
+    @apply bg-surface font-sans text-base text-body leading-body antialiased;
+    min-height: 100vh;
+    /* A stray wide element must never make the whole page scroll sideways. `clip` (unlike
+       `hidden`) keeps sticky headers working. */
+    overflow-x: clip;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-heading font-semibold leading-tight text-navy;
+  }
+  h1 {
+    @apply text-2xl font-bold sm:text-3xl;
+  }
+  h2 {
+    @apply text-xl sm:text-2xl;
+  }
+  h3 {
+    @apply text-lg;
+  }
+  h4 {
+    @apply text-base;
+  }
+  a {
+    @apply text-brand underline-offset-2 hover:underline;
+  }
+  /* Kit focus: a 2px solid brand ring with 2px offset on every focusable control. */
+  :focus-visible {
+    @apply outline-none ring-2 ring-brand ring-offset-2;
+  }
+  /* Never justify text. */
+  p,
+  li {
+    text-align: start;
+  }
+}
+
+@layer components {
+  .eyebrow {
+    @apply text-xs font-semibold uppercase tracking-[0.12em] text-brand;
+  }
+  /* Lighter magenta on the dark page; a colour utility on the element still wins. */
+  :where(.dark) .eyebrow {
+    color: #f472b6;
+  }
+  /*
+   * Kit surfaces. The old "glass" class names are kept so every screen restyles in place:
+   * white cards with a 1px line hairline and shadow-card, resting on the surface-alt page.
+   * Positioning utilities such as `absolute` or `sticky` still win because utilities come later.
+   */
+  .glass,
+  .glass-strong,
+  .glass-navy,
+  .glass-gold,
+  .glass-blue {
+    position: relative;
+    border-width: 1px;
+  }
+  .glass {
+    @apply border-line bg-card shadow-card;
+  }
+  /* Overlays (dialogs, menus, toasts): the same card, one step more elevation. */
+  .glass-strong {
+    @apply border-line bg-card shadow-glass-lg;
+  }
+  /* Feature panel: the kit's deep violet "Continue Learning" card. */
+  .glass-navy {
+    @apply border-brand-deep bg-brand-deep text-white shadow-cta;
+  }
+  .glass-gold {
+    @apply border-gold-border/40 bg-gold-tint shadow-card;
+  }
+  /* Selected / highlighted tint (kit: brand-soft). */
+  .glass-blue {
+    @apply border-brand/20 bg-brand-soft shadow-card;
+  }
+  .card {
+    @apply glass rounded-card;
+  }
+  /* Interactive card: lifts slightly on hover. */
+  .glass-hover {
+    @apply transition-[transform,box-shadow,border-color] duration-200 ease-out hover:-translate-y-0.5 hover:border-brand/30 hover:shadow-glass-lg active:translate-y-0;
+  }
+  /* Soft sweep for progress fills. */
+  .shine {
+    position: relative;
+    overflow: hidden;
+  }
+  .shine::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    width: 40%;
+    background: linear-gradient(100deg, transparent, rgb(255 255 255 / 0.25), transparent);
+    @apply animate-shine;
+  }
+  /* The kit's signature CTA gradient (grad-start → grad-end). White on it is 3.1–3.6:1, so it is
+     only for large full-width buttons; Button variant="primary" (solid brand) is the default. */
+  /* The logo's background: yellow centre, orange edges, faint rays. Use navy text on it (7:1). */
+  .bg-sunburst {
+    background-color: #f2c014;
+    background-image:
+      repeating-conic-gradient(
+        from 0deg at 50% 38%,
+        rgb(255 255 255 / 0.13) 0deg 6deg,
+        transparent 6deg 18deg
+      ),
+      radial-gradient(circle at 50% 38%, #fcf024 0%, #f2c014 38%, #f0a818 78%, #e49c18 100%);
+  }
+  .bg-cta-gradient {
+    background-image: linear-gradient(90deg, #c81d78, #e0452c);
+  }
+  /* Horizontal strips (tab lists) still scroll by touch, without a visible scrollbar. */
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+  .prose-acet {
+    @apply max-w-none text-body;
+  }
+  .prose-acet h1,
+  .prose-acet h2,
+  .prose-acet h3 {
+    @apply mb-2 mt-5 first:mt-0;
+  }
+  .prose-acet p,
+  .prose-acet ul,
+  .prose-acet ol,
+  .prose-acet pre,
+  .prose-acet table {
+    @apply my-3;
+  }
+  .prose-acet ul {
+    @apply list-disc pl-6;
+  }
+  .prose-acet ol {
+    @apply list-decimal pl-6;
+  }
+  .prose-acet strong {
+    @apply font-semibold text-navy;
+  }
+  .prose-acet code {
+    @apply rounded-sm bg-brand-soft px-1.5 py-0.5 text-sm text-brand-deep;
+  }
+  .prose-acet pre {
+    @apply overflow-x-auto rounded-md border border-line bg-surface p-4;
+  }
+  /* Markdown wraps each table in .table-scroll so wide tables scroll inside the card. */
+  .prose-acet .table-scroll {
+    @apply my-3 overflow-x-auto;
+  }
+  .prose-acet .table-scroll table {
+    @apply my-0;
+  }
+  .prose-acet table {
+    @apply w-full border-collapse text-sm;
+  }
+  .prose-acet th,
+  .prose-acet td {
+    @apply border border-line px-2 py-1.5 text-left sm:px-3 sm:py-2;
+  }
+  .prose-acet blockquote {
+    @apply border-l-2 border-brand/40 pl-4 italic;
+  }
+}
+
+/* React Flow widgets (zoom controls, minimap) as kit cards to match the map nodes. */
+.react-flow .react-flow__controls {
+  overflow: hidden;
+  border: 1px solid #f1e4cc;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 4px 16px rgba(158, 19, 96, 0.07);
+}
+.react-flow .react-flow__controls-button {
+  width: 36px;
+  height: 36px;
+  border-bottom-color: #f1e4cc;
+  background: transparent;
+  color: #22355e;
+}
+.react-flow .react-flow__controls-button:hover {
+  background: #fde8f3;
+}
+.react-flow .react-flow__minimap {
+  overflow: hidden;
+  border: 1px solid #f1e4cc;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 4px 16px rgba(158, 19, 96, 0.07);
+}
+
+/* iOS Safari zooms into any field under 16px on focus; keep fields at 16px there. */
+@supports (-webkit-touch-callout: none) {
+  input,
+  select,
+  textarea {
+    font-size: max(16px, 1em) !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #fff;
+  }
+  .glass,
+  .glass-strong,
+  .bg-card {
+    background: #fff;
+    box-shadow: none;
+  }
+  /* "Print" on the exam study material prints only that section. */
+  body[data-print] * {
+    visibility: hidden;
+  }
+  body[data-print='step-prepare'] #step-prepare,
+  body[data-print='step-prepare'] #step-prepare *,
+  body[data-print='cheat-sheet'] #cheat-sheet,
+  body[data-print='cheat-sheet'] #cheat-sheet * {
+    visibility: visible;
+  }
+  body[data-print='step-prepare'] #step-prepare,
+  body[data-print='cheat-sheet'] #cheat-sheet {
+    position: absolute;
+    inset: 0 0 auto 0;
+  }
+  /* The cheat sheet is an infographic: keep its colour fills on paper. */
+  .cheat-sheet,
+  .cheat-sheet * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+/*
+ * Dark mode (ADR 0014). The theme variables flip page, cards, lines and text; these rules cover
+ * the few classes whose colour is fixed on purpose and would lose contrast on a dark page.
+ */
+.dark * {
+  --tw-ring-offset-color: #131118;
+}
+/* Ink panels, badges and buttons keep a dark fill so their white text stays readable. */
+.dark .bg-navy {
+  background-color: #2b3866;
+}
+.dark .border-navy {
+  border-color: #2b3866;
+}
+/* White pills and rows become cards. */
+.dark .bg-white {
+  background-color: rgb(var(--c-card));
+}
+/* Yellow fills (mastered, gold badges, sunburst) keep navy text, as in light mode. */
+.dark :is(.bg-gold, .bg-sunburst),
+.dark :is(.bg-gold, .bg-sunburst) :is(.text-navy, h1, h2, h3, h4) {
+  color: #22355e;
+}
+/* …and eyebrows on yellow stay the deep magenta. */
+.dark :is(.bg-gold, .bg-sunburst) .eyebrow {
+  color: #9e1360;
+}
+/* Brand magenta as text is too dark on the dark page; lighten it (links, eyebrows, tabs). */
+:where(.dark) a,
+:where(.dark) .text-brand {
+  color: #f472b6;
+}
+.dark .text-brand-deep {
+  color: #f9a8d4;
+}
+/* The cheat-sheet image is always drawn in the light theme (ADR 0016). */
+.dark .cheat-poster .bg-navy {
+  background-color: #22355e;
+}
+.dark .cheat-poster .text-brand {
+  color: #c81d78;
+}
